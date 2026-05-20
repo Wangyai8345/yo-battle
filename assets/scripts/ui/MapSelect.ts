@@ -13,7 +13,7 @@ export default class MapSelect extends cc.Component {
     }
 
     onConfirmClick() {
-        cc.director.loadScene('Battle');
+        cc.director.loadScene('battle');
     }
 
     onBackClick() {
