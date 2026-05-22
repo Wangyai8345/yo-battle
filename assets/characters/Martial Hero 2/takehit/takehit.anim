@@ -1,0 +1,37 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "takehit",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.375,
+  "sample": 8,
+  "speed": 1,
+  "wrapMode": 1,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "1ce6fcfe-a821-41bf-8c0f-4869ce552944"
+            }
+          },
+          {
+            "frame": 0.125,
+            "value": {
+              "__uuid__": "64feee35-57b0-4282-838b-d839de0186a7"
+            }
+          },
+          {
+            "frame": 0.25,
+            "value": {
+              "__uuid__": "e2113bc0-741b-4880-81be-60380021cfab"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}

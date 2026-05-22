@@ -68,6 +68,6 @@ export default class UIManager extends cc.Component {
     }
 
     goToMainMenu() {
-        this.showScreen('MainMenu');
+        cc.director.loadScene('Mainmenu');
     }
 }
