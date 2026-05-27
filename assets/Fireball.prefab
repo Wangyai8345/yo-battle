@@ -1,0 +1,122 @@
+[
+  {
+    "__type__": "cc.Prefab",
+    "_name": "",
+    "_objFlags": 0,
+    "_native": "",
+    "data": {
+      "__id__": 1
+    },
+    "optimizationPolicy": 0,
+    "asyncLoadAssets": false,
+    "readonly": false
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "Fireball",
+    "_objFlags": 0,
+    "_parent": null,
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 2
+      }
+    ],
+    "_prefab": {
+      "__id__": 3
+    },
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 0,
+      "height": 0
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_eulerAngles": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_skewX": 0,
+    "_skewY": 0,
+    "_is3DNode": false,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "_id": ""
+  },
+  {
+    "__type__": "6bef1G2/0dEFYvgzyT9gL96",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "fireballFrame1": {
+      "__uuid__": "e9b8ae0e-9be5-4c8e-8e7c-cc638d3c7809"
+    },
+    "fireballFrame2": {
+      "__uuid__": "43372c85-8502-4a8f-9997-09cff93f4c18"
+    },
+    "fireballFrame3": {
+      "__uuid__": "beb7384d-66ff-41f3-a43b-6972772e31f9"
+    },
+    "fireballFrame4": {
+      "__uuid__": "5e3bf5da-698f-42e7-bead-6e32bfeac58f"
+    },
+    "fireballFrame5": {
+      "__uuid__": "6cc4d3ba-be37-489f-87ac-3f17405aae58"
+    },
+    "fireballFrame6": {
+      "__uuid__": "045777ba-06f0-4c98-a6fc-e827bdb6c7fd"
+    },
+    "fireballFrame7": {
+      "__uuid__": "1088e079-9a21-423d-b3bc-85aca8ab0465"
+    },
+    "fireballFrameInterval": 0.15,
+    "fireballSpeed": 800,
+    "fireballLifetime": 2,
+    "fireballScaleMultiplier": 0.75,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.PrefabInfo",
+    "root": {
+      "__id__": 1
+    },
+    "asset": {
+      "__id__": 0
+    },
+    "fileId": "",
+    "sync": false
+  }
+]
