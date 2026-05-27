@@ -9,6 +9,10 @@ export default class PlayerTestMove extends cc.Component {
     @property
     jumpForce: number = 800;
 
+    // 0 = P1（A/D/Space），1 = P2（←/→/↑）
+    @property
+    playerIndex: number = 0;
+
     private _rb: cc.RigidBody = null;
     private _onGround: boolean = false;
     private _moveLeft: boolean = false;
@@ -37,17 +41,24 @@ export default class PlayerTestMove extends cc.Component {
     }
 
     private _onKeyDown(e: cc.Event.EventKeyboard) {
-        if (e.keyCode === cc.macro.KEY.a || e.keyCode === cc.macro.KEY.left)  this._moveLeft  = true;
-        if (e.keyCode === cc.macro.KEY.d || e.keyCode === cc.macro.KEY.right) this._moveRight = true;
-        if ((e.keyCode === cc.macro.KEY.space || e.keyCode === cc.macro.KEY.w) && this._onGround) {
+        const leftKey  = this.playerIndex === 0 ? cc.macro.KEY.a     : cc.macro.KEY.left;
+        const rightKey = this.playerIndex === 0 ? cc.macro.KEY.d     : cc.macro.KEY.right;
+        const jumpKey  = this.playerIndex === 0 ? cc.macro.KEY.space : cc.macro.KEY.up;
+
+        if (e.keyCode === leftKey)  this._moveLeft  = true;
+        if (e.keyCode === rightKey) this._moveRight = true;
+        if (e.keyCode === jumpKey && this._onGround) {
             this._rb.linearVelocity = cc.v2(this._rb.linearVelocity.x, this.jumpForce);
             this._onGround = false;
         }
     }
 
     private _onKeyUp(e: cc.Event.EventKeyboard) {
-        if (e.keyCode === cc.macro.KEY.a || e.keyCode === cc.macro.KEY.left)  this._moveLeft  = false;
-        if (e.keyCode === cc.macro.KEY.d || e.keyCode === cc.macro.KEY.right) this._moveRight = false;
+        const leftKey  = this.playerIndex === 0 ? cc.macro.KEY.a    : cc.macro.KEY.left;
+        const rightKey = this.playerIndex === 0 ? cc.macro.KEY.d    : cc.macro.KEY.right;
+
+        if (e.keyCode === leftKey)  this._moveLeft  = false;
+        if (e.keyCode === rightKey) this._moveRight = false;
     }
 
     onBeginContact(contact, selfCollider, otherCollider) {
