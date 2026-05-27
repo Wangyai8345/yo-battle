@@ -1,0 +1,38 @@
+{
+  "ver": "2.3.7",
+  "uuid": "be0d7d89-fb45-4be9-a450-a058f91d10e7",
+  "importer": "texture",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 6336,
+  "height": 2176,
+  "platformSettings": {},
+  "subMetas": {
+    "Elementals_leaf_ranger_288x128_SpriteSheet": {
+      "ver": "1.0.6",
+      "uuid": "d39fa9e8-0b1a-40ee-b3f2-6e2397b48d70",
+      "importer": "sprite-frame",
+      "rawTextureUuid": "be0d7d89-fb45-4be9-a450-a058f91d10e7",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -1,
+      "offsetY": -41,
+      "trimX": 118,
+      "trimY": 83,
+      "width": 6098,
+      "height": 2092,
+      "rawWidth": 6336,
+      "rawHeight": 2176,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}
