@@ -22,7 +22,7 @@ export default class ground_monk_hitbox extends cc.Component {
     }
     onBeginContact(contact,selfCollider,otherCollider){
         if(otherCollider.node.name === "enemy"){
-            const playerController = this.player.getComponent("PlayerController") as any;
+            const playerController = this.player.getComponent("ground_monk_pctrl") as any;
             const facingDir = playerController.getFacingDir();
             const comboStep = playerController.getComboStep();
             switch(selfCollider.node.name){
@@ -38,6 +38,7 @@ export default class ground_monk_hitbox extends cc.Component {
                     else this.knockback(otherCollider.node,-50,0)
                 break;
                 case "specialAttackHitBox":
+                    console.log("special");
                     if(facingDir === 1) this.knockback(otherCollider.node,50,200)
                         else this.knockback(otherCollider.node,-50,200)
                 break;

@@ -1,4 +1,4 @@
-import PlayerController from './PlayerController';
+import PlayerController from './ground_monk_pctrl';
 import Damageable from './Damageable';
 
 const { ccclass, property } = cc._decorator;

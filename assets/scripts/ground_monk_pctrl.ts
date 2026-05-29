@@ -324,7 +324,7 @@ export default class PlayerController extends cc.Component {
         }
 
         this.updateAnimation();
-        
+        console.log("facing:",this.facingDir);
     }
 
     updateAnimation() {
@@ -475,13 +475,27 @@ export default class PlayerController extends cc.Component {
             }
 
             //啟動空中普攻碰撞箱(top)---------------------------------------------------
-            const Collider = this.airAttackHitBox.getComponent(cc.PhysicsBoxCollider);
-            if (!Collider) return;
-            Collider.enabled = true;
+            // const Collider = this.airAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+            // if (!Collider) return;
+            // Collider.enabled = true;
+            // this.scheduleOnce(() => {
+            //     Collider.enabled = false;
+            //     Collider.apply();
+            // }, 0.2);
+            this.airAttackHitBox.setPosition(cc.v2(8, 6));
+            this.airAttackHitBox.active = true;
+            const col = this.airAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+            col.enabled = true;
+            col.apply();
+            const rb = this.airAttackHitBox.getComponent(cc.RigidBody);
+            rb.syncPosition(true);
+
             this.scheduleOnce(() => {
-                Collider.enabled = false;
-                Collider.apply();
-            }, 0.2);
+                col.enabled = false;
+                col.apply();
+
+                this.airAttackHitBox.active = false;
+            }, 0.1);
             //啟動空中普攻碰撞箱(bottom)---------------------------------------------------
 
             this.isAirAttacking = true;
@@ -495,47 +509,61 @@ export default class PlayerController extends cc.Component {
             });
             return;
         }
-        console.log("hitbox parent =", this.normalAttackHitBox.parent.name);
-console.log("player node =", this.node.name);
+        console.log("use normal attack");
         //啟動地面普攻碰撞箱(top)---------------------------------------------------
-        const attackCollider = this.normalAttackHitBox.getComponent(cc.PhysicsBoxCollider);
-        if (!attackCollider) return;
-        const attackDir = this.facingDir;
-        if (this.comboStep > 2) {
-            this.scheduleOnce(() => {
-                attackCollider.size = cc.size(10, 20);
-                attackCollider.offset = attackDir === 1 ? cc.v2(17, 6) : cc.v2(-17, 6);
-                attackCollider.enabled = false;
-                attackCollider.apply();
-            }, 0.1);
+        // const attackCollider = this.normalAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+        // if (!attackCollider) return;
+        // const attackDir = this.facingDir;
+        // if (this.comboStep > 2) {
+        //     this.scheduleOnce(() => {
+        //         attackCollider.size = cc.size(10, 20);
+        //         attackCollider.offset = attackDir === 1 ? cc.v2(17, 6) : cc.v2(-17, 6);
+        //         attackCollider.enabled = false;
+        //         attackCollider.apply();
+        //     }, 0.1);
 
-            this.scheduleOnce(() => {
-                attackCollider.size = cc.size(35, 35);
-                attackCollider.offset = attackDir === 1 ? cc.v2(20, 0) : cc.v2(-20, 0);
-                attackCollider.enabled = true;
-                attackCollider.apply();
+        //     this.scheduleOnce(() => {
+        //         attackCollider.size = cc.size(35, 35);
+        //         attackCollider.offset = attackDir === 1 ? cc.v2(20, 0) : cc.v2(-20, 0);
+        //         attackCollider.enabled = true;
+        //         attackCollider.apply();
 
-                this.scheduleOnce(() => {
-                    attackCollider.enabled = false;
-                    attackCollider.size = cc.size(10, 20);
-                    attackCollider.offset = attackDir === 1 ? cc.v2(17, 6) : cc.v2(-17, 6);
-                    attackCollider.apply();
-                }, 0.1);
-            }, 0.6);
+        //         this.scheduleOnce(() => {
+        //             attackCollider.enabled = false;
+        //             attackCollider.size = cc.size(10, 20);
+        //             attackCollider.offset = attackDir === 1 ? cc.v2(17, 6) : cc.v2(-17, 6);
+        //             attackCollider.apply();
+        //         }, 0.1);
+        //     }, 0.6);
 
-        }
-        else{
-            //attackCollider.offset = attackDir === 1 ? cc.v2(17, 6) : cc.v2(-17, 6);
-            attackCollider.offset = cc.v2(17, 6);
-            attackCollider.enabled = true;
-            attackCollider.apply();
+        // }
+        // else{
+        //     //attackCollider.offset = attackDir === 1 ? cc.v2(17, 6) : cc.v2(-17, 6);
+        //     attackCollider.offset = cc.v2(17, 6);
+        //     attackCollider.enabled = true;
+        //     attackCollider.apply();
 
-            this.scheduleOnce(() => {
-                attackCollider.enabled = false;
-                attackCollider.apply();
-            }, 0.1);
-        }
-        console.log("attack enabled =", attackCollider.enabled);
+        //     this.scheduleOnce(() => {
+        //         attackCollider.enabled = false;
+        //         attackCollider.apply();
+        //     }, 0.1);
+        // }
+        // console.log("attack enabled =", attackCollider.enabled);
+        this.normalAttackHitBox.setPosition(cc.v2(8, 6));
+        this.normalAttackHitBox.active = true;
+        const col = this.normalAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+        col.enabled = true;
+        col.apply();
+        const rb = this.normalAttackHitBox.getComponent(cc.RigidBody);
+        rb.syncPosition(true);
+
+        this.scheduleOnce(() => {
+            col.enabled = false;
+            col.apply();
+
+            this.normalAttackHitBox.active = false;
+        }, 0.1);
+
         //啟動地面普攻碰撞箱(bottom)---------------------------------------------------
         if (this.upPressed) {
             if (this.playAnim('up_atk', true)) {
@@ -596,14 +624,28 @@ console.log("player node =", this.node.name);
         }
 
         //啟動防禦碰撞箱(top)---------------------------------------------------------------------------------------
-        const Collider = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
-        const defendDir = this.facingDir;
-        Collider.offset = (defendDir === 1) ? cc.v2(17, 0) : cc.v2(-17, 0);
-        if (!Collider) return;
-        Collider.enabled = true;
-        this.scheduleOnce(()=>{
-            Collider.enabled = false;
-        }, 0.8);
+        // const Collider = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
+        // const defendDir = this.facingDir;
+        // Collider.offset = (defendDir === 1) ? cc.v2(17, 0) : cc.v2(-17, 0);
+        // if (!Collider) return;
+        // Collider.enabled = true;
+        // this.scheduleOnce(()=>{
+        //     Collider.enabled = false;
+        // }, 0.8);
+        this.defendHitBox.setPosition(cc.v2(10, 0));
+            this.defendHitBox.active = true;
+            const col = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
+            col.enabled = true;
+            col.apply();
+            const rb = this.defendHitBox.getComponent(cc.RigidBody);
+            rb.syncPosition(true);
+
+            this.scheduleOnce(() => {
+                col.enabled = false;
+                col.apply();
+
+                this.defendHitBox.active = false;
+            }, 0.1);
         //啟動防禦碰撞箱(bottom)---------------------------------------------------------------------------------------
 
         this.isDefending = true;
@@ -659,18 +701,31 @@ console.log("player node =", this.node.name);
         this.playAnim(clip, true);
 
         //啟動特殊攻擊碰撞箱(top)--------------------------------------------------------------------
-        const Collider = this.specialAttackHitBox.getComponent(cc.PhysicsBoxCollider);
-        let playerCollider = this.node.getComponent(cc.PhysicsBoxCollider);
-        const specialDir = this.facingDir;
-        Collider.offset = (specialDir === 1) ? cc.v2(10, 0) : cc.v2(-10, 0);
-        playerCollider.offset = (specialDir === 1) ? cc.v2(-25, 0) : cc.v2(25, 0);
-        playerCollider.apply();
-        Collider.enabled = true;
-        this.scheduleOnce(()=>{
-            Collider.enabled = false;
-            playerCollider.offset = cc.v2(0,0);
-            playerCollider.apply();
-        }, 0.7);
+        // const Collider = this.specialAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+        // let playerCollider = this.node.getComponent(cc.PhysicsBoxCollider);
+        // const specialDir = this.facingDir;
+        // Collider.offset = (specialDir === 1) ? cc.v2(10, 0) : cc.v2(-10, 0);
+        // playerCollider.offset = (specialDir === 1) ? cc.v2(-25, 0) : cc.v2(25, 0);
+        // playerCollider.apply();
+        // Collider.enabled = true;
+        // this.scheduleOnce(()=>{
+        //     Collider.enabled = false;
+        //     playerCollider.offset = cc.v2(0,0);
+        //     playerCollider.apply();
+        // }, 0.7);
+        this.specialAttackHitBox.setPosition(cc.v2(10, 0));
+            this.specialAttackHitBox.active = true;
+            const col = this.specialAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+            col.enabled = true;
+            col.apply();
+            const rb = this.specialAttackHitBox.getComponent(cc.RigidBody);
+            rb.syncPosition(true);
+
+            this.scheduleOnce(() => {
+                col.enabled = false;
+                col.apply();
+                this.specialAttackHitBox.active = false;
+            }, 0.8);
         //啟動特殊攻擊碰撞箱(bottom)--------------------------------------------------------------------
 
         const playbackToken = this.attackPlaybackToken;
