@@ -1,6 +1,10 @@
 {
   "ver": "1.1.0",
+<<<<<<< HEAD
   "uuid": "8f74ebf2-c30b-4ec4-ab1a-fb16fea25b79",
+=======
+  "uuid": "c8a5d23c-07d6-404e-8efc-ef57426c2eb7",
+>>>>>>> origin/sammy/initial-upload
   "importer": "typescript",
   "isPlugin": false,
   "loadPluginInWeb": true,

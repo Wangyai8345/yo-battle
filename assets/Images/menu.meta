@@ -1,6 +1,10 @@
 {
   "ver": "1.1.3",
+<<<<<<< HEAD:assets/Images/menu.meta
   "uuid": "011da508-63c1-47fd-ba29-6072c71d14d3",
+=======
+  "uuid": "814d61e6-ce84-4d42-ab1f-c50256a072f5",
+>>>>>>> origin/sammy/initial-upload:assets/images.meta
   "importer": "folder",
   "isBundle": false,
   "bundleName": "",
