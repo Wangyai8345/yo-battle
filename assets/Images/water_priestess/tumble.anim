@@ -1,0 +1,55 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "tumble",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.3,
+  "sample": 20,
+  "speed": 1.5,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "dbbc9335-7424-49ba-8a78-fd915db0f367"
+            }
+          },
+          {
+            "frame": 0.05,
+            "value": {
+              "__uuid__": "c371d139-e3ca-408e-a1f7-0990b1657309"
+            }
+          },
+          {
+            "frame": 0.1,
+            "value": {
+              "__uuid__": "eb2e4701-e7d7-41e5-a5dd-741973c8a295"
+            }
+          },
+          {
+            "frame": 0.15,
+            "value": {
+              "__uuid__": "d9819d12-13ca-43e8-9010-04dd5a8107ac"
+            }
+          },
+          {
+            "frame": 0.2,
+            "value": {
+              "__uuid__": "b8ec2b71-019b-4665-8ddf-c874e1343f6c"
+            }
+          },
+          {
+            "frame": 0.25,
+            "value": {
+              "__uuid__": "1c6bd536-5f80-4de9-8934-6f96b472616c"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}
