@@ -1,16 +1,18 @@
 import AudioManager from './AudioManager';
+import NetworkManager from './NetworkManager';
+import PlayerController from './PlayerController';
 
 const { ccclass, property } = cc._decorator;
 
-enum CharacterPreset {
-    Custom = 0,
-    Monk = 1,
-    Priestess = 2,
-    Hashashin = 3,
-}
+// enum CharacterPreset {
+//     Custom = 0,
+//     Monk = 1,
+//     Priestess = 2,
+//     Hashashin = 3,
+// }
 
 @ccclass
-export default class PlayerController extends cc.Component {
+export default class GroundMonkController extends PlayerController {
     @property
     speed: number = 250;
 
@@ -32,8 +34,8 @@ export default class PlayerController extends cc.Component {
     @property
     groundNodeName: string = 'Platform';
 
-    @property({ type: cc.Enum(CharacterPreset) })
-    characterPreset: CharacterPreset = CharacterPreset.Custom;
+    // @property({ type: cc.Enum(CharacterPreset) })
+    // characterPreset: CharacterPreset = CharacterPreset.Custom;
 
     @property
     switchPresetByNumberKey: boolean = true;
@@ -125,25 +127,25 @@ export default class PlayerController extends cc.Component {
     @property
     dashSfxCooldown: number = 0.1;
 
-    @property(cc.Node)
-    normalAttackHitBox: cc.Node = null;
+    // @property(cc.Node)
+    // defendHitBox: cc.Node = null;
+    
+    // @property(cc.Node)
+    // normalAttackHitBox: cc.Node = null;
 
-    @property(cc.Node)
-    specialAttackHitBox: cc.Node = null;
+    // @property(cc.Node)
+    // specialAttackHitBox: cc.Node = null;
 
-    @property(cc.Node)
-    defendHitBox: cc.Node = null;
+    // @property(cc.Node)
+    // airAttackHitBox: cc.Node = null;
+    
 
-    @property(cc.Node)
-    airAttackHitBox: cc.Node = null;
 
-    private rb: cc.RigidBody = null;
     private moveDir: number = 0;
     private onGround: boolean = false;
     private groundContactCount: number = 0;
     private isDashing: boolean = false;
     private facingDir: number = 1; // 角色面朝的方向，1 for right, -1 for left
-    private anim: cc.Animation = null;
     private currentAnim: string = '';
     private baseScaleX: number = 1;
     private leftPressed: boolean = false;
@@ -155,7 +157,6 @@ export default class PlayerController extends cc.Component {
     private isHit: boolean = false;
     private isDead: boolean = false;
     private isDefending: boolean = false;
-    private hp: number = 0;
     private attackToken: number = 0;
     private attackPlaybackToken: number = 0;
     // 方向鍵狀態
@@ -169,40 +170,19 @@ export default class PlayerController extends cc.Component {
     private lastAttackSfxTime: number = -999;
     private lastDashSfxTime: number = -999;
 
+
     onLoad() {
-        cc.director.getPhysicsManager().enabled = true;
-
-        this.rb = this.getComponent(cc.RigidBody);
-        this.anim = this.getComponent(cc.Animation);
-
-        if (!this.rb) {
-            cc.error('[PlayerController] Missing RigidBody on player node');
-            return;
-        }
-
-        if (!this.anim) {
-            cc.error('[PlayerController] Missing Animation on player node');
-            return;
-        }
-
-        this.rb.enabledContactListener = true;
+        super.onLoad();
         this.baseScaleX = Math.abs(this.node.scaleX);
-        this.hp = this.maxHp;
 
-        this.applyPreset();
+        // this.applyPreset();
         this.preloadSfx();
-
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
-
-          cc.director.getPhysicsManager().enabled = true;
-         cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_shapeBit;
     }
 
     onDestroy() {
         cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
         cc.systemEvent.off(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
-        this.unschedule(this.respawn);
+        // this.unschedule(this.respawn);
         this.unschedule(this.onAttackStepTimeout);
     }
 
@@ -234,9 +214,9 @@ export default class PlayerController extends cc.Component {
             this.lastDashSfxTime = now;
         }
 
-        AudioManager.playEffect(resource, {
-            volume: volume,
-        });
+        // FIXED: server logic
+        // AudioManager.playEffect(resource, volume);
+        NetworkManager.instance.playSoundEffect(resource, volume);
     }
 
     playAttackSfx(level: number) {
@@ -251,24 +231,25 @@ export default class PlayerController extends cc.Component {
         this.playEffectClip(this.dashSfxResource, this.attackSfxVolume, this.dashSfxCooldown, 'dash');
     }
 
-    isPriestessCharacter(): boolean {
-        return this.characterPreset === CharacterPreset.Priestess
-            || this.animRun === 'walk'
-            || this.animDash === 'surf';
-    }
+    // isPriestessCharacter(): boolean {
+    //     return this.characterPreset === CharacterPreset.Priestess
+    //         || this.animRun === 'walk'
+    //         || this.animDash === 'surf';
+    // }
 
     playSpecialAttackSfx() {
-        if (this.isPriestessCharacter() && this.priestessSpecialSfxResource) {
-            this.playEffectClip(this.priestessSpecialSfxResource, this.specialAttackSfxVolume, this.attackSfxCooldown, 'attack');
-            return;
-        }
+        // if (this.isPriestessCharacter() && this.priestessSpecialSfxResource) {
+        //     this.playEffectClip(this.priestessSpecialSfxResource, this.specialAttackSfxVolume, this.attackSfxCooldown, 'attack');
+        //     return;
+        // }
 
         if (this.monkSpecialSfxResource) {
             this.playEffectClip(this.monkSpecialSfxResource, this.specialAttackSfxVolume, this.attackSfxCooldown, 'attack');
         }
     }
 
-    update(dt: number) {
+    // FIXED: implement PlayerController
+    localUpdate(dt: number) {
         // 更新跳躍計時器
         if (this.coyoteTimer > 0) this.coyoteTimer -= dt;
         if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= dt;
@@ -314,7 +295,7 @@ export default class PlayerController extends cc.Component {
         }
 
         this.updateGravityScale();
-
+        
         v.x = this.moveDir * this.speed;
         this.rb.linearVelocity = v;
 
@@ -324,7 +305,7 @@ export default class PlayerController extends cc.Component {
         }
 
         this.updateAnimation();
-        console.log("facing:",this.facingDir);
+        // console.log("facing:",this.facingDir);
     }
 
     updateAnimation() {
@@ -375,14 +356,8 @@ export default class PlayerController extends cc.Component {
 
     }
 
-    canReceiveInput(): boolean {
-        return !!this.node && this.node.activeInHierarchy;
-    }
-
-    onKeyDown(event: cc.Event.EventKeyboard) {
-        if (!this.canReceiveInput()) {
-            return;
-        }
+    // FIXED: implement PlayerController
+    localOnKeyDown(event: cc.Event.EventKeyboard) {
 
         // 方向鍵狀態
         if (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up) {
@@ -391,22 +366,32 @@ export default class PlayerController extends cc.Component {
         if (event.keyCode === cc.macro.KEY.s || event.keyCode === cc.macro.KEY.down) {
             this.downPressed = true;
         }
-        if (this.switchPresetByNumberKey) {
-            const k = event.keyCode;
-            // Cocos 2.x: 1=49, 2=50, 3=51；數字鍵盤: 1=97, 2=98, 3=99
-            if (k === 49 || k === 97) {
-                this.switchPreset(CharacterPreset.Monk);
-            }
-            if (k === 50 || k === 98) {
-                this.switchPreset(CharacterPreset.Priestess);
-            }
-            if (k === 51 || k === 99) {
-                this.switchPreset(CharacterPreset.Hashashin);
-            }
-        }
+        // if (this.switchPresetByNumberKey) {
+        //     const k = event.keyCode;
+        //     // Cocos 2.x: 1=49, 2=50, 3=51；數字鍵盤: 1=97, 2=98, 3=99
+        //     if (k === 49 || k === 97) {
+        //         this.switchPreset(CharacterPreset.Monk);
+        //     }
+        //     if (k === 50 || k === 98) {
+        //         this.switchPreset(CharacterPreset.Priestess);
+        //     }
+        //     if (k === 51 || k === 99) {
+        //         this.switchPreset(CharacterPreset.Hashashin);
+        //     }
+        // }
 
+        // TODO: delete this
         if (event.keyCode === cc.macro.KEY.l) {
             this.takeDamage(this.debugHitDamage);
+            return;
+        }
+
+        // TODO: delete this
+        if (event.keyCode === cc.macro.KEY.p) {
+            NetworkManager.instance.spawnPrefab("exampleProjectilePrefab", {
+                x: this.node.x,
+                y: this.node.y,
+            });
             return;
         }
 
@@ -438,11 +423,8 @@ export default class PlayerController extends cc.Component {
         }
     }
 
-    onKeyUp(event: cc.Event.EventKeyboard) {
-        if (!this.canReceiveInput()) {
-            return;
-        }
-
+    // FIXED: implement PlayerController
+    localOnKeyUp(event: cc.Event.EventKeyboard) {
         if (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up) {
             this.upPressed = false;
         }
@@ -461,6 +443,7 @@ export default class PlayerController extends cc.Component {
             this.stopDefend();
         }
     }
+
 
     requestDirectionalAttack() {
         if (this.isDead || this.isHit || this.isDashing || this.isDefending) {
@@ -482,26 +465,40 @@ export default class PlayerController extends cc.Component {
             //     Collider.enabled = false;
             //     Collider.apply();
             // }, 0.2);
-            this.airAttackHitBox.setPosition(cc.v2(8, 6));
-            this.airAttackHitBox.active = true;
-            const col = this.airAttackHitBox.getComponent(cc.PhysicsBoxCollider);
-            col.enabled = true;
-            col.apply();
-            const rb = this.airAttackHitBox.getComponent(cc.RigidBody);
-            rb.syncPosition(true);
 
-            this.scheduleOnce(() => {
-                col.enabled = false;
-                col.apply();
+            // this.airAttackHitBox.setPosition(cc.v2(8, 6));
+            // this.airAttackHitBox.active = true;
+            // const col = this.airAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+            // col.enabled = true;
+            // col.apply();
+            // const rb = this.airAttackHitBox.getComponent(cc.RigidBody);
+            // rb.syncPosition(true);
 
-                this.airAttackHitBox.active = false;
-            }, 0.1);
+            // this.scheduleOnce(() => {
+            //     col.enabled = false;
+            //     col.apply();
+
+            //     this.airAttackHitBox.active = false;
+            // }, 0.1);
+
+            // FIXED: new hit box logic
+            this.spawnAttackHitBox(
+                "groundMonkAirAttack",  // attackType: 這個字串待會給 beAttacked處理
+                cc.v2(0, 0),            // center: 碰撞箱中心座標(相對於玩家)
+                cc.v2(70, 30),          // size: 碰撞箱寬度、高度
+                0.1,                    // duration: 碰撞箱存在幾秒後自動消失
+                3,                      // damage: 被這個碰到會扣多少血
+                100                     // kbScale: knockback大小
+            );
+
+
             //啟動空中普攻碰撞箱(bottom)---------------------------------------------------
 
             this.isAirAttacking = true;
             this.attackToken++;
             this.playAttackSfx(2);
             this.playAnim(airAttackClip, true);
+            
             this.anim.once('finished', () => {
                 this.isAirAttacking = false;
                 this.currentAnim = '';
@@ -509,6 +506,7 @@ export default class PlayerController extends cc.Component {
             });
             return;
         }
+
         console.log("use normal attack");
         //啟動地面普攻碰撞箱(top)---------------------------------------------------
         // const attackCollider = this.normalAttackHitBox.getComponent(cc.PhysicsBoxCollider);
@@ -549,20 +547,34 @@ export default class PlayerController extends cc.Component {
         //     }, 0.1);
         // }
         // console.log("attack enabled =", attackCollider.enabled);
-        this.normalAttackHitBox.setPosition(cc.v2(8, 6));
-        this.normalAttackHitBox.active = true;
-        const col = this.normalAttackHitBox.getComponent(cc.PhysicsBoxCollider);
-        col.enabled = true;
-        col.apply();
-        const rb = this.normalAttackHitBox.getComponent(cc.RigidBody);
-        rb.syncPosition(true);
 
-        this.scheduleOnce(() => {
-            col.enabled = false;
-            col.apply();
 
-            this.normalAttackHitBox.active = false;
-        }, 0.1);
+        // Old hit box logic
+        // this.normalAttackHitBox.setPosition(cc.v2(9, 6));
+        // this.normalAttackHitBox.active = true;
+        // const col = this.normalAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+        // col.enabled = true;
+        // col.apply();
+        // const rb = this.normalAttackHitBox.getComponent(cc.RigidBody);
+        // rb.syncPosition(true);
+
+        // this.scheduleOnce(() => {
+        //     col.enabled = false;
+        //     col.apply();
+
+        //     this.normalAttackHitBox.active = false;
+        // }, 0.1);
+
+
+        // FIXED: new hit box logic
+        this.spawnAttackHitBox(
+            "groundMonkNormalAttack",
+            cc.v2(10, 6),
+            cc.v2(10, 20),
+            0.1,
+            2,
+            100
+        );
 
         //啟動地面普攻碰撞箱(bottom)---------------------------------------------------
         if (this.upPressed) {
@@ -632,20 +644,23 @@ export default class PlayerController extends cc.Component {
         // this.scheduleOnce(()=>{
         //     Collider.enabled = false;
         // }, 0.8);
-        this.defendHitBox.setPosition(cc.v2(10, 0));
-            this.defendHitBox.active = true;
-            const col = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
-            col.enabled = true;
-            col.apply();
-            const rb = this.defendHitBox.getComponent(cc.RigidBody);
-            rb.syncPosition(true);
 
-            this.scheduleOnce(() => {
-                col.enabled = false;
-                col.apply();
+        // this.defendHitBox.setPosition(cc.v2(10, 0));
+        //     this.defendHitBox.active = true;
+        //     const col = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
+        //     col.enabled = true;
+        //     col.apply();
+        //     const rb = this.defendHitBox.getComponent(cc.RigidBody);
+        //     rb.syncPosition(true);
 
-                this.defendHitBox.active = false;
-            }, 0.1);
+        //     this.scheduleOnce(() => {
+        //         col.enabled = false;
+        //         col.apply();
+
+        //         this.defendHitBox.active = false;
+        //     }, 0.1);
+
+        
         //啟動防禦碰撞箱(bottom)---------------------------------------------------------------------------------------
 
         this.isDefending = true;
@@ -663,9 +678,10 @@ export default class PlayerController extends cc.Component {
         }
 
         //關閉防禦碰撞箱(top)---------------------------------------------------------------------------------------
-        const Collider = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
-        if (!Collider) return;
-        Collider.enabled = false;
+        // const Collider = this.defendHitBox.getComponent(cc.PhysicsBoxCollider);
+        // if (!Collider) return;
+        // Collider.enabled = false;
+
         //關閉防禦碰撞箱(bottom)---------------------------------------------------------------------------------------
 
         this.isDefending = false;
@@ -713,19 +729,34 @@ export default class PlayerController extends cc.Component {
         //     playerCollider.offset = cc.v2(0,0);
         //     playerCollider.apply();
         // }, 0.7);
-        this.specialAttackHitBox.setPosition(cc.v2(10, 0));
-            this.specialAttackHitBox.active = true;
-            const col = this.specialAttackHitBox.getComponent(cc.PhysicsBoxCollider);
-            col.enabled = true;
-            col.apply();
-            const rb = this.specialAttackHitBox.getComponent(cc.RigidBody);
-            rb.syncPosition(true);
 
-            this.scheduleOnce(() => {
-                col.enabled = false;
-                col.apply();
-                this.specialAttackHitBox.active = false;
-            }, 0.8);
+
+        // Old hit box logic
+        // this.specialAttackHitBox.setPosition(cc.v2(10, 0));
+        //     this.specialAttackHitBox.active = true;
+        //     const col = this.specialAttackHitBox.getComponent(cc.PhysicsBoxCollider);
+        //     col.enabled = true;
+        //     col.apply();
+        //     const rb = this.specialAttackHitBox.getComponent(cc.RigidBody);
+        //     rb.syncPosition(true);
+
+        //     this.scheduleOnce(() => {
+        //         col.enabled = false;
+        //         col.apply();
+        //         this.specialAttackHitBox.active = false;
+        //     }, 0.8);
+
+        // FIXED: new hit box logic
+        this.spawnAttackHitBox(
+            "groundMonkSpecialAttack",
+            cc.v2(10, 0),
+            cc.v2(40, 34),
+            0.8,
+            5,
+            200
+        )
+
+
         //啟動特殊攻擊碰撞箱(bottom)--------------------------------------------------------------------
 
         const playbackToken = this.attackPlaybackToken;
@@ -779,7 +810,7 @@ export default class PlayerController extends cc.Component {
         }, 0.2);
     }
 
-    onBeginContact(contact, selfCollider, otherCollider) {
+    onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
         //console.log("contacted");
         if (otherCollider.node.name == this.groundNodeName) {
 
@@ -793,6 +824,12 @@ export default class PlayerController extends cc.Component {
                 this.coyoteTimer = this.COYOTE_TIME;
             }
         }
+
+        // FIXED: triggered when falling out of map
+        if(otherCollider.node.name == "Out Of Bound Trigger"){
+            this.deductHp(999);
+        }
+
         // else if(otherCollider.node.name === "enemy"){
         //     //if(!selfCollider.enabled) return;
         //     console.log("contacted by tag:", selfCollider.tag, "other:", otherCollider.node.name);
@@ -884,6 +921,7 @@ export default class PlayerController extends cc.Component {
         return '';
     }
 
+
     playAnim(animName: string, forceReplay: boolean = false): boolean {
         if (!animName) {
             return false;
@@ -899,11 +937,16 @@ export default class PlayerController extends cc.Component {
         }
 
         if (forceReplay) {
-            this.anim.stop(animName);
+            // FIXED: server logic
+            // this.anim.stop(animName);
+            NetworkManager.instance.stopAnimation(animName);
         }
 
         this.currentAnim = animName;
-        this.anim.play(animName);
+        
+        // FIXED: server logic
+        // this.anim.play(animName);
+        NetworkManager.instance.playAnimation(animName);
         return true;
     }
 
@@ -1012,14 +1055,10 @@ export default class PlayerController extends cc.Component {
             amount = reduced;
         }
 
-        this.hp -= amount;
-        if (this.hp <= 0) {
-            this.hp = 0;
-            this.die();
-            return;
-        }
+        // FIXED: calling PlayerController function
+        this.deductHp(amount);
 
-        this.enterHitState();
+        if(this.hp > 0) this.enterHitState();
     }
 
     enterHitState() {
@@ -1045,7 +1084,8 @@ export default class PlayerController extends cc.Component {
         this.updateAnimation();
     }
 
-    die() {
+    // FIXED: implement PlayerController
+    onDeath() {
         if (this.isDead) {
             return;
         }
@@ -1067,81 +1107,84 @@ export default class PlayerController extends cc.Component {
 
         this.playAnim(this.animDeath);
 
-        if (this.autoRespawn) {
-            this.unschedule(this.respawn);
-            this.scheduleOnce(this.respawn, this.respawnDelay);
-        }
+        // if (this.autoRespawn) {
+        //     this.unschedule(this.respawn);
+        //     this.scheduleOnce(this.respawn, this.respawnDelay);
+        // }
     }
 
-    applyPreset() {
-        if (this.characterPreset === CharacterPreset.Custom) {
-            return;
-        }
+    // applyPreset() {
+    //     if (this.characterPreset === CharacterPreset.Custom) {
+    //         console.log("CUSTOM");
+    //         return;
+    //     }
 
-        if (this.characterPreset === CharacterPreset.Monk) {
-            this.animIdle = 'idle';
-            this.animRun = 'run';
-            this.animJump = 'j_up';
-            this.animJumpDown = 'j_down';
-            this.animDash = 'roll';
-            this.animAttack = '1_atk';
-            this.animAttack2 = '2_atk';
-            this.animAttack3 = '3_atk';
-            this.animJumpAttack = 'air_atk';
-            this.animTakeHit = 'take_hit';
-            this.animDeath = 'death';
-            return;
-        }
+    //     if (this.characterPreset === CharacterPreset.Monk) {
+    //         this.animIdle = 'idle';
+    //         this.animRun = 'run';
+    //         this.animJump = 'j_up';
+    //         this.animJumpDown = 'j_down';
+    //         this.animDash = 'roll';
+    //         this.animAttack = '1_atk';
+    //         this.animAttack2 = '2_atk';
+    //         this.animAttack3 = '3_atk';
+    //         this.animJumpAttack = 'air_atk';
+    //         this.animTakeHit = 'take_hit';
+    //         this.animDeath = 'death';
+    //         return;
+    //     }
 
-        if (this.characterPreset === CharacterPreset.Priestess) {
-            this.animIdle = 'idle';
-            this.animRun = 'walk';      // 走路當 run
-            this.animJump = 'j_up';     // 沒這個 clip 時自動 fallback
-            this.animJumpDown = 'j_down';
-            this.animDash = 'surf';     // 衝刺用 surf
-            this.animAttack = 'atk';    // priestess 第一段叫 atk（不是 1_atk）
-            this.animAttack2 = '2_atk';
-            this.animAttack3 = '3_atk';
-            this.animJumpAttack = 'air_atk';
-            this.animSpecialAttack = 'sp_atk';
-            this.animDefend = 'defend';
-            this.animTakeHit = 'take_hit';
-            this.animDeath = 'death';
-            return;
-        }
+    //     if (this.characterPreset === CharacterPreset.Priestess) {
+    //         this.animIdle = 'idle';
+    //         this.animRun = 'walk';      // 走路當 run
+    //         this.animJump = 'j_up';     // 沒這個 clip 時自動 fallback
+    //         this.animJumpDown = 'j_down';
+    //         this.animDash = 'surf';     // 衝刺用 surf
+    //         this.animAttack = 'atk';    // priestess 第一段叫 atk（不是 1_atk）
+    //         this.animAttack2 = '2_atk';
+    //         this.animAttack3 = '3_atk';
+    //         this.animJumpAttack = 'air_atk';
+    //         this.animSpecialAttack = 'sp_atk';
+    //         this.animDefend = 'defend';
+    //         this.animTakeHit = 'take_hit';
+    //         this.animDeath = 'death';
+    //         return;
+    //     }
 
-        if (this.characterPreset === CharacterPreset.Hashashin) {
-            this.animIdle = 'idle';
-            this.animRun = 'run';
-            this.animJump = 'j_up';
-            this.animJumpDown = 'j_down';
-            this.animDash = 'roll';
-            this.animAttack = '1_atk';
-            this.animAttack2 = '2_atk';
-            this.animAttack3 = '3_atk';
-            this.animJumpAttack = 'air_atk';
-            this.animTakeHit = 'take_hit';
-            this.animDeath = 'death';
-        }
-    }
+    //     if (this.characterPreset === CharacterPreset.Hashashin) {
+    //         this.animIdle = 'idle';
+    //         this.animRun = 'run';
+    //         this.animJump = 'j_up';
+    //         this.animJumpDown = 'j_down';
+    //         this.animDash = 'roll';
+    //         this.animAttack = '1_atk';
+    //         this.animAttack2 = '2_atk';
+    //         this.animAttack3 = '3_atk';
+    //         this.animJumpAttack = 'air_atk';
+    //         this.animTakeHit = 'take_hit';
+    //         this.animDeath = 'death';
+    //     }
+    // }
 
-    switchPreset(preset: CharacterPreset) {
-        this.characterPreset = preset;
-        this.applyPreset();
+    // switchPreset(preset: CharacterPreset) {
+    //     this.characterPreset = preset;
+    //     this.applyPreset();
 
-        this.isAttacking = false;
-        this.isAirAttacking = false;
-        this.comboQueued = false;
-        this.comboStep = 0;
-        this.isHit = false;
-        this.isDead = false;
-        this.hp = this.maxHp;
-        this.currentAnim = '';
+    //     this.isAttacking = false;
+    //     this.isAirAttacking = false;
+    //     this.comboQueued = false;
+    //     this.comboStep = 0;
+    //     this.isHit = false;
+    //     this.isDead = false;
+    //     this.hp = this.maxHp;
+    //     this.currentAnim = '';
 
-        this.updateAnimation();
-    }
+    //     this.updateAnimation();
+    // }
 
-    respawn() {
+
+    // FIXED: implement PlayerController
+    onRestart() {
         this.isDead = false;
         this.isHit = false;
         this.isAttacking = false;
@@ -1150,59 +1193,84 @@ export default class PlayerController extends cc.Component {
         this.comboQueued = false;
         this.comboStep = 0;
         this.moveDir = 0;
-        this.hp = this.maxHp;
         this.currentAnim = '';
 
-        if (this.respawnPoint) {
-            this.node.setPosition(this.respawnPoint.position);
-        }
+        // if (this.respawnPoint) {
+        //     this.node.setPosition(this.respawnPoint.position);
+        // }
 
         if (this.rb) {
             this.rb.linearVelocity = cc.v2(0, 0);
+            
+            if (!this.rb.awake) {
+                this.rb.awake = true;
+            }
         }
+
 
         this.updateAnimation();
     }
 
-    knockback(enemyNode: cc.Node, knockbackX: number, knockbackY: number) {
-        const rb = enemyNode.getComponent(cc.RigidBody);
 
-        if (!rb) return;
+    // FIXED: implement PlayerController
+    beAttacked(attackType: string, damage: number, knockback: cc.Vec2){
+        // TODO: if this player have defend system, make damage lower
+        this.deductHp(damage);
 
-        rb.linearVelocity = cc.v2(
-            (knockbackX === 0)? rb.linearVelocity.x : knockbackX,
-            (knockbackY === 0)? rb.linearVelocity.y : knockbackY,
-        );
-    }
-    closeInactiveHitboxes() {
-        const colliders = this.node.getComponentsInChildren(cc.PhysicsBoxCollider);
+        // TODO: write a knockback function
+        console.log(`You got knockbacked by (${knockback.x}, ${knockback.y})`)
 
-        for (let c of colliders) {
-            if (c.tag === 1 && !this.isAttacking) {
-                c.enabled = false;
-                c.apply();
-            }
-
-            if (c.tag === 2 && !this.isDefending) {
-                c.enabled = false;
-                c.apply();
-            }
-
-            if (c.tag === 3 && !this.isAttacking) {
-                c.enabled = false;
-                c.apply();
-            }
-
-            if (c.tag === 4 && !this.isAirAttacking) {
-                c.enabled = false;
-                c.apply();
-            }
+        // TODO: if there're some special attackType, handle it here
+        switch(attackType){
+            case "groundMonkAirAttack":
+                break
+            default:
+                break
         }
     }
 
-    switchPresetByIndex(index: number) {
-        this.switchPreset(index as CharacterPreset);
-    }
+
+
+    // knockback(enemyNode: cc.Node, knockbackX: number, knockbackY: number) {
+    //     const rb = enemyNode.getComponent(cc.RigidBody);
+
+    //     if (!rb) return;
+
+    //     rb.linearVelocity = cc.v2(
+    //         (knockbackX === 0)? rb.linearVelocity.x : knockbackX,
+    //         (knockbackY === 0)? rb.linearVelocity.y : knockbackY,
+    //     );
+    // }
+
+    // closeInactiveHitboxes() {
+    //     const colliders = this.node.getComponentsInChildren(cc.PhysicsBoxCollider);
+
+    //     for (let c of colliders) {
+    //         if (c.tag === 1 && !this.isAttacking) {
+    //             c.enabled = false;
+    //             c.apply();
+    //         }
+
+    //         if (c.tag === 2 && !this.isDefending) {
+    //             c.enabled = false;
+    //             c.apply();
+    //         }
+
+    //         if (c.tag === 3 && !this.isAttacking) {
+    //             c.enabled = false;
+    //             c.apply();
+    //         }
+
+    //         if (c.tag === 4 && !this.isAirAttacking) {
+    //             c.enabled = false;
+    //             c.apply();
+    //         }
+    //     }
+    // }
+
+    // switchPresetByIndex(index: number) {
+    //     this.switchPreset(index as CharacterPreset);
+    // }
 
     getHp(): number {
         return this.hp;
@@ -1235,6 +1303,6 @@ export default class PlayerController extends cc.Component {
         return this.facingDir;
     }
     getComboStep(): number {
-    return this.comboStep;
-}
+        return this.comboStep;
+    }
 }

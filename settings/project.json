@@ -12,7 +12,7 @@
     ],
     [
       true,
-      false
+      true
     ],
     [
       true,
@@ -45,5 +45,6 @@
     "audience": {
       "enable": false
     }
-  }
+  },
+  "last-module-event-record-time": 1780244762442
 }
