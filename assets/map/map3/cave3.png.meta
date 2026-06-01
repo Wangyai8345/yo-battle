@@ -1,6 +1,6 @@
 {
   "ver": "2.3.7",
-  "uuid": "45b87482-fec9-404b-b0de-3bef383417a1",
+  "uuid": "708d7851-5d77-4d4f-8540-280a8925ee17",
   "importer": "texture",
   "type": "sprite",
   "wrapMode": "clamp",
@@ -14,9 +14,9 @@
   "subMetas": {
     "cave3": {
       "ver": "1.0.6",
-      "uuid": "360d77dc-93fd-4b77-bb61-9f69a46c2375",
+      "uuid": "8ca7050f-1758-4ce0-8c28-5f5c2ef78e9a",
       "importer": "sprite-frame",
-      "rawTextureUuid": "45b87482-fec9-404b-b0de-3bef383417a1",
+      "rawTextureUuid": "708d7851-5d77-4d4f-8540-280a8925ee17",
       "trimType": "auto",
       "trimThreshold": 1,
       "rotated": false,

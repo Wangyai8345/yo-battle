@@ -23,25 +23,60 @@ export default class MapSelect extends cc.Component {
     private _confirmed: boolean = false;
     private readonly TOTAL: number = 3;
 
+    private _canvasKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
     onEnable() {
-        cc.log('[MapSelect] onEnable');
-        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this._onKey, this);
-        if (cc.game.canvas) (cc.game.canvas as HTMLCanvasElement).focus();
+        console.log('[MapSelect] onEnable');
         this._curIdx = 0;
         this._selectedIdx = -1;
         this._confirmed = false;
         this._refresh();
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this._onKey, this);
-        cc.log('[MapSelect] keyboard registered');
+
+        const canvas = cc.game.canvas as HTMLCanvasElement;
+        if (this._canvasKeyHandler) {
+            canvas.removeEventListener('keydown', this._canvasKeyHandler);
+        }
+        this._canvasKeyHandler = (e: KeyboardEvent) => {
+            console.log('[MapSelect] canvas key:', e.keyCode);
+            if (this._confirmed) return;
+            const k = e.keyCode;
+            if (k === 37 || k === 65) { this._curIdx = (this._curIdx - 1 + this.TOTAL) % this.TOTAL; this._refresh(); }
+            if (k === 39 || k === 68) { this._curIdx = (this._curIdx + 1) % this.TOTAL; this._refresh(); }
+            if (k === 32) {
+                e.preventDefault();
+                if (this._selectedIdx === this._curIdx) { this._selectedIdx = -1; }
+                else { this._selectedIdx = this._curIdx; }
+                this._refresh();
+            }
+            if (k === 13) {
+                if (this._selectedIdx >= 0) {
+                    if (this.warningLabel) this.warningLabel.active = false;
+                    this._doConfirm();
+                } else {
+                    if (this.warningLabel) {
+                        this.warningLabel.active = true;
+                        this.warningLabel.getComponent(cc.Label).string = 'Please select a map first !';
+                        this.scheduleOnce(() => { if (this.warningLabel) this.warningLabel.active = false; }, 2);
+                    }
+                }
+            }
+        };
+        canvas.addEventListener('keydown', this._canvasKeyHandler);
+        canvas.focus();
+        console.log('[MapSelect] canvas keyboard registered');
         cc.director.preloadScene('battle');
     }
 
     onDisable() {
-        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this._onKey, this);
+        console.log('[MapSelect] onDisable!');
+        if (this._canvasKeyHandler && cc.game.canvas) {
+            (cc.game.canvas as HTMLCanvasElement).removeEventListener('keydown', this._canvasKeyHandler);
+            this._canvasKeyHandler = null;
+        }
     }
 
     private _onKey(e: cc.Event.EventKeyboard) {
-        cc.log('[MapSelect] key:', e.keyCode, 'confirmed:', this._confirmed);
+        // 保留給直接測試用
         if (this._confirmed) return;
         const k = e.keyCode;
 

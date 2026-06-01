@@ -1,15 +1,19 @@
 import UIManager from '../managers/UIManager';
+import SettingPanel from './SettingPanel';
 
-const { ccclass } = cc._decorator;
+const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class MainMenu extends cc.Component {
+
+    @property(SettingPanel)
+    settingPanel: SettingPanel = null;
 
     onStartClick() {
         UIManager.instance.showScreen('CharSelect');
     }
 
     onSettingsClick() {
-        cc.log('[MainMenu] Settings screen not yet implemented');
+        if (this.settingPanel) this.settingPanel.openFromMenu();
     }
 }

@@ -20,12 +20,12 @@ export default class CharSelect extends cc.Component {
 
     @property([cc.String])
     charNames: string[] = [
-        'WARRIOR',
+        'GROUND MONK',
         'WATER PRIESTESS',
         'WIND HASHASHIN',
         'LEAF RANGER',
         'FIRE KNIGHT',
-        'FIRE HERO'
+        'METAL BLADEKEEPER'
     ];
 
     private _total: number = 6;
