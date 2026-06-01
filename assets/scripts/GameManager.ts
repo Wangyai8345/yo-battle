@@ -16,6 +16,15 @@ export default class GameManager extends cc.Component {
     groundMonkPrefab: cc.Prefab = null;
 
     // TODO: more character's prefab
+
+    @property(cc.Prefab)
+    map0Prefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    map1Prefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    map2Prefab: cc.Prefab = null;
     
     @property(cc.Prefab)
     attackHitBoxPrefab: cc.Prefab = null;
@@ -155,9 +164,18 @@ export default class GameManager extends cc.Component {
     spawnMap(mapName: string){
         console.log(`Spawned Map: ${mapName}`);
 
-        // TODO: spawn map prefab by mapName
+        let mapPrefab: cc.Prefab = null;
         switch(mapName){
+            case "map0": mapPrefab = this.map0Prefab; break;
+            case "map1": mapPrefab = this.map1Prefab; break;
+            case "map2": mapPrefab = this.map2Prefab; break;
+            default: mapPrefab = this.map0Prefab; break;
+        }
 
+        if(mapPrefab){
+            const mapNode = cc.instantiate(mapPrefab);
+            mapNode.parent = cc.find("Canvas");
+            mapNode.setPosition(0, 0);
         }
     }
 

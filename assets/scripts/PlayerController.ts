@@ -1,6 +1,6 @@
 import NetworkManager from "./NetworkManager";
 import GameManager from "./GameManager";
-import AttackHitBox from "./AttackHitBox";
+import AttackHitBox from "./AttackHitbox";
 
 const {ccclass, property} = cc._decorator;
 

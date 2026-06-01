@@ -17,16 +17,19 @@ enum GAMESTATE{
 };
 
 
-// TODO
 // mapName: [{p1.x, p1.y}, {p2.x, p2.y}]
 const SPAWN_POINTS_CONFIG: { [key: string]: { x: number; y: number }[] } = {
     "map0": [
-        { x: -200, y: 200 },
-        { x: 200, y: 200 }
+        { x: -200, y: 220 },
+        { x: 500,  y: -175 }
     ],
     "map1": [
-        { x: -200, y: 200 },
-        { x: 200, y: 200 }
+        { x: -850, y: -100 },
+        { x: 750,  y: -100 }
+    ],
+    "map2": [
+        { x: 800,  y: 200 },
+        { x: -600, y: 75 }
     ],
 };
 
@@ -301,13 +304,9 @@ export class MyRoom extends Room {
 	}
 
 	
-	chooseRandomMap(){ // TODO
-		if(Math.random() < 0.5){
-			this.state.mapName = "map0";
-		}
-		else{
-			this.state.mapName = "map1";
-		}
+	chooseRandomMap(){
+		const maps = ["map0", "map1", "map2"];
+		this.state.mapName = maps[Math.floor(Math.random() * maps.length)];
 	}
 
 

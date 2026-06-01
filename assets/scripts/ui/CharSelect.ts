@@ -94,10 +94,26 @@ export default class CharSelect extends cc.Component {
         }
     }
 
+    // 角色 index 對應 server 用的字串
+    private readonly _charKeys: string[] = [
+        'ground_monk',
+        'water_priestess',
+        'wind_hashashin',
+        'leaf_ranger',
+        'fire_knight',
+        'metal_bladekeeper'
+    ];
+
     private _doConfirm() {
         this._confirmed = true;
         this.selectedIndex = this._selectedIdx;
         this._p1Selection = this._selectedIdx;
+
+        // 存到 localStorage，讓 JoinRoomScene 讀取
+        const charKey = this._charKeys[this._selectedIdx] || 'ground_monk';
+        localStorage.setItem('selectedCharacter', charKey);
+        cc.log('[CharSelect] selectedCharacter saved:', charKey);
+
         this._refresh();
         UIManager.instance.showScreen('MapSelect');
     }
