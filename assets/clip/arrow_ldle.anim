@@ -1,0 +1,25 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "arrow_ldle",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.21666666666666667,
+  "sample": 60,
+  "speed": 0.2,
+  "wrapMode": 1,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "473a396e-9ef0-4c66-8d68-5f0b0fecde77"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}

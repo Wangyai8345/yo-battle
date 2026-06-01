@@ -1127,6 +1127,9 @@
     "groundMonkPrefab": {
       "__uuid__": "84c7e85a-7b8b-4d86-87f5-25f74c10b693"
     },
+    "arrowHeroPrefab": {
+      "__uuid__": "d75000fa-1f72-4160-9c64-3c5417070a3b"
+    },
     "map0Prefab": {
       "__uuid__": "60989b87-b716-4f68-8f6d-1842a8211584"
     },
@@ -1141,6 +1144,12 @@
     },
     "exampleProjectilePrefab": {
       "__uuid__": "942dc145-8c83-40d1-8c92-1ebe1db64857"
+    },
+    "arrowProjectilePrefab": {
+      "__uuid__": "d34b12e2-9399-4a3f-8e7e-741e226d6029"
+    },
+    "arrowBeamPrefab": {
+      "__uuid__": "a9b73e75-3c70-46dc-bfc0-813225d85593"
     },
     "timerLabel": {
       "__id__": 20

@@ -1,672 +1,992 @@
+import NetworkManager from "./NetworkManager";
 import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
 
-type ActionState = {
-    name: string;
-    frames: cc.SpriteFrame[];
-    frameInterval: number;
-    finalHoldDuration: number;
+type SkillSlot = "attack" | "skill2" | "defend" | "super";
+type ArrowClipActionName =
+    | "melee"
+    | "ranged"
+    | "defend"
+    | "super-startup"
+    | "super-charge"
+    | "super-release";
+
+type ControllerLockConfig = {
+    lockMovement: boolean;
+    clearMovement: boolean;
     lockFacing: boolean;
-    holdFrameIndex: number;
-    resumeFrameIndex: number;
-    holdingBeforeResume: boolean;
-    finishOnLastFrame: boolean;
-    loopStartIndex: number;
-    loopEndIndex: number;
-    loopDuration: number;
-    loopElapsedTime: number;
-    loopingBeforeResume: boolean;
-    pauseFrameIndex: number;
-    pauseDuration: number;
-    pauseElapsedTime: number;
-    pauseTriggered: boolean;
-    shakeTriggered: boolean;
 };
 
-type ProjectileState = {
-    node: cc.Node;
-    direction: number;
-    speed: number;
-    lifetime: number;
-    lifeTimer: number;
+type ArrowClipActionConfig = {
+    name: ArrowClipActionName;
+    clip: cc.AnimationClip | null;
+    lock: ControllerLockConfig;
 };
+
+function canStartArrowAction(
+    currentClipAction: ArrowClipActionName | null,
+    isDead: boolean,
+    isHit: boolean
+): boolean {
+    return !currentClipAction && !isDead && !isHit;
+}
+
+function createControllerLockConfig(
+    lockMovement: boolean,
+    clearMovement: boolean,
+    lockFacing: boolean
+): ControllerLockConfig {
+    return {
+        lockMovement,
+        clearMovement,
+        lockFacing,
+    };
+}
+
+function createArrowClipActionConfig(
+    name: ArrowClipActionName,
+    clip: cc.AnimationClip | null,
+    lock: ControllerLockConfig
+): ArrowClipActionConfig {
+    return {
+        name,
+        clip,
+        lock,
+    };
+}
+
+function createArrowMeleeConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "melee",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
+function createArrowRangedConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "ranged",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
+function createArrowDefendConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "defend",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
+
+function createArrowSuperStartupConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "super-startup",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
+
+function createArrowSuperChargeConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "super-charge",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
+
+function createArrowSuperReleaseConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "super-release",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
 
 @ccclass
-export default class Arrowhero extends cc.Component {
-    @property([cc.SpriteFrame])
-    meleeAttackFrames: cc.SpriteFrame[] = [];
+export default class Arrowhero extends PlayerController {
+    private readonly handleWindowBlur = () => {
+        this.resetTransientInputState();
+    };
+
+    private readonly handleVisibilityChange = () => {
+        if (typeof document !== "undefined" && document.hidden) {
+            this.resetTransientInputState();
+        }
+    };
 
     @property
-    meleeAttackFrameInterval: number = 0.08;
-
-    @property([cc.SpriteFrame])
-    rangedAttackFrames: cc.SpriteFrame[] = [];
+    attackCooldown: number = 0.35;
 
     @property
-    rangedAttackFrameInterval: number = 0.08;
-
-    @property({ type: cc.SpriteFrame })
-    rangedAttackProjectileFrame: cc.SpriteFrame = null;
+    skill2Cooldown: number = 1.2;
 
     @property
-    rangedAttackProjectileSpeed: number = 700;
+    defendCooldown: number = 1.2;
 
     @property
-    rangedAttackProjectileLifetime: number = 1.5;
-
-    @property([cc.SpriteFrame])
-    defendFrames: cc.SpriteFrame[] = [];
+    superCooldown: number = 6;
 
     @property
-    defendFrameInterval: number = 0.1;
+    speed: number = 250;
 
     @property
-    defendFinalHoldDuration: number = 0.2;
+    jumpSpeed: number = 500;
 
     @property
-    defendHoldFrameIndex: number = 12;
+    groundAcceleration: number = 2200;
 
     @property
-    defendResumeFrameIndex: number = 14;
-
-    @property([cc.SpriteFrame])
-    superAttackFrames: cc.SpriteFrame[] = [];
+    groundDeceleration: number = 2600;
 
     @property
-    superAttackFrameInterval: number = 0.1;
+    airAcceleration: number = 1400;
 
     @property
-    superAttackLoopStartIndex: number = 4;
+    airDeceleration: number = 500;
 
     @property
-    superAttackLoopEndIndex: number = 5;
+    groundNodeName: string = "Platform";
+
+    @property({ type: cc.AnimationClip })
+    idleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    runClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    jumpUpClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    jumpDownClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    takeHitClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    deathClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    meleeAttackClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    rangedAttackClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    defendClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    superAttackStartClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    superAttackChargeClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    superAttackReleaseClip: cc.AnimationClip = null;
+
+    @property({ type: cc.Prefab })
+    rangedProjectilePrefab: cc.Prefab = null;
+
+    @property({ type: cc.Prefab })
+    superBeamPrefab: cc.Prefab = null;
 
     @property
-    superAttackLoopDuration: number = 0.3;
+    attackSoundResource: string = "attack1";
 
     @property
-    superAttackPauseFrameIndex: number = 9;
+    rangedSoundResource: string = "attack2";
 
     @property
-    superAttackPauseDuration: number = 0;
-
-    @property({ type: cc.Node })
-    shakeTarget: cc.Node = null;
+    defendSoundResource: string = "dash";
 
     @property
-    superAttackShakeDuration: number = 0.2;
+    superSoundResource: string = "attack2";
 
     @property
-    superAttackShakeStrength: number = 12;
+    attackSfxVolume: number = 0.7;
 
-    @property({ type: cc.SpriteFrame })
-    superAttackEffectFrame1: cc.SpriteFrame = null;
+    @property
+    superSfxVolume: number = 1;
 
-    @property({ type: cc.SpriteFrame })
-    superAttackEffectFrame2: cc.SpriteFrame = null;
+    @property
+    defendDamageMultiplier: number = 0.2;
 
-    @property({ type: cc.SpriteFrame })
-    superAttackEffectFrame3: cc.SpriteFrame = null;
+    @property
+    hitRecoverTime: number = 0.25;
 
-    @property({ type: cc.SpriteFrame })
-    superAttackEffectFrame4: cc.SpriteFrame = null;
+    @property
+    rangedHitboxDistance: number = 260;
 
-    private controller: PlayerController = null;
-    private sprite: cc.Sprite = null;
-    private superAttackEffectNode: cc.Node = null;
-    private superAttackEffectSprite: cc.Sprite = null;
-    private currentAction: ActionState = null;
-    private currentFrameIndex: number = 0;
-    private currentFrameTimer: number = 0;
-    private currentHoldTimer: number = 0;
-    private resolvedMeleeAttackFrames: cc.SpriteFrame[] = [];
-    private resolvedRangedAttackFrames: cc.SpriteFrame[] = [];
-    private resolvedDefendFrames: cc.SpriteFrame[] = [];
-    private resolvedSuperAttackFrames: cc.SpriteFrame[] = [];
-    private resolvedSuperAttackEffectFrames: cc.SpriteFrame[] = [];
-    private shakingNode: cc.Node = null;
-    private shakeOrigin: cc.Vec3 = null;
-    private shakeTimer: number = 0;
-    private shakeDuration: number = 0;
-    private shakeStrength: number = 0;
-    private activeProjectiles: ProjectileState[] = [];
+    @property
+    rangedSpawnOffsetX: number = 60;
 
-    onLoad() {
-        this.controller = this.getComponent(PlayerController);
-        this.sprite = this.getComponent(cc.Sprite);
-        this.resolveShakeTarget();
-        this.resolvedMeleeAttackFrames = this.meleeAttackFrames.filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.resolvedRangedAttackFrames = this.rangedAttackFrames.filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.resolvedDefendFrames = this.defendFrames.filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.resolvedSuperAttackFrames = this.superAttackFrames.filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.resolvedSuperAttackEffectFrames = [
-            this.superAttackEffectFrame1,
-            this.superAttackEffectFrame2,
-            this.superAttackEffectFrame3,
-            this.superAttackEffectFrame4,
-        ].filter((frame): frame is cc.SpriteFrame => !!frame);
+    @property
+    rangedSpawnOffsetY: number = 18;
 
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+    @property
+    rangedProjectileSpeed: number = 900;
+
+    @property
+    rangedProjectileLifetime: number = 0.8;
+
+    @property
+    rangedProjectileDamage: number = 10;
+
+    @property
+    rangedProjectileKnockback: number = 120;
+
+    @property
+    superBeamOffsetX: number = 600;
+
+    @property
+    superBeamInsetX: number = 60;
+
+    @property
+    superBeamOffsetY: number = 25;
+
+    @property
+    superBeamDuration: number = 0.45;
+
+    @property
+    superBeamDamage: number = 24;
+
+    @property
+    superBeamKnockback: number = 260;
+
+    @property
+    superBeamDamageDelay: number = 0.06;
+
+    @property
+    airborneAnimationVelocityThreshold: number = 20;
+
+    private moveInput: number = 0;
+    private onGround: boolean = true;
+    private groundContactCount: number = 0;
+    private currentAnim: string = "";
+    private leftHeld: boolean = false;
+    private rightHeld: boolean = false;
+    private facingDir: number = 1;
+    private lockedFacingDir: number = 1;
+    private facingLocked: boolean = false;
+    private directionInputLocked: boolean = false;
+    private movementLocked: boolean = false;
+    private animationLocked: boolean = false;
+    private attackCooldownRemaining: number = 0;
+    private skill2CooldownRemaining: number = 0;
+    private defendCooldownRemaining: number = 0;
+    private superCooldownRemaining: number = 0;
+    private isDead: boolean = false;
+    private isHit: boolean = false;
+    private isDefending: boolean = false;
+    private currentClipAction: ArrowClipActionName | null = null;
+
+    protected onLoad(): void {
+        super.onLoad();
+        this.configureClipWrapModes();
+        if (typeof window !== "undefined") {
+            window.addEventListener("blur", this.handleWindowBlur);
+        }
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", this.handleVisibilityChange);
+        }
     }
 
     onDestroy() {
-        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
-        this.clearSuperAttackEffect();
-        this.clearProjectiles();
+        if (this.anim) {
+            this.anim.off("finished", this.onClipFinished, this);
+        }
+        if (typeof window !== "undefined") {
+            window.removeEventListener("blur", this.handleWindowBlur);
+        }
+        if (typeof document !== "undefined") {
+            document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+        }
+        super.onDestroy();
     }
 
-    update(dt: number) {
-        this.updateShake(dt);
-        this.updateProjectiles(dt);
+    protected localUpdate(dt: number): void {
+        this.updateCooldowns(dt);
 
-        if (!this.currentAction || !this.sprite) {
-            this.hideSuperAttackEffect();
+        if (!this.rb) {
             return;
         }
 
-        this.syncSuperAttackEffect();
-        this.tryStartSuperAttackShake();
-
-        const isFinalFrame = this.currentFrameIndex >= this.currentAction.frames.length - 1;
-        const isHoldingBeforeResume =
-            this.currentAction.holdingBeforeResume &&
-            this.currentFrameIndex === this.currentAction.holdFrameIndex;
-        const isLoopingBeforeResume =
-            this.currentAction.loopingBeforeResume &&
-            this.currentFrameIndex >= this.currentAction.loopStartIndex &&
-            this.currentFrameIndex <= this.currentAction.loopEndIndex;
-        const isPausedAtFrame =
-            !this.currentAction.pauseTriggered &&
-            this.currentAction.pauseDuration > 0 &&
-            this.currentAction.pauseFrameIndex >= 0 &&
-            this.currentFrameIndex === this.currentAction.pauseFrameIndex;
-
-        if (isHoldingBeforeResume) {
-            this.sprite.spriteFrame = this.currentAction.frames[this.currentAction.holdFrameIndex];
-            this.currentHoldTimer += dt;
-            if (this.currentHoldTimer >= this.currentAction.finalHoldDuration) {
-                this.currentAction.holdingBeforeResume = false;
-                this.currentAction.finalHoldDuration = 0;
-                this.currentFrameIndex = Math.min(
-                    this.currentAction.resumeFrameIndex,
-                    this.currentAction.frames.length - 1
-                );
-                this.currentFrameTimer = 0;
-                this.currentHoldTimer = 0;
-                this.sprite.spriteFrame = this.currentAction.frames[this.currentFrameIndex];
+        if (this.isDead || this.isHit) {
+            const velocity = this.rb.linearVelocity;
+            velocity.x = 0;
+            this.rb.linearVelocity = velocity;
+            if (!this.animationLocked) {
+                this.updateAnimation();
             }
             return;
         }
 
-        if (isLoopingBeforeResume) {
-            this.currentAction.loopElapsedTime += dt;
+        const velocity = this.rb.linearVelocity;
+        velocity.x = this.updateHorizontalVelocity(velocity.x, dt);
+        this.rb.linearVelocity = velocity;
 
-            if (this.currentAction.loopElapsedTime >= this.currentAction.loopDuration) {
-                this.currentAction.loopingBeforeResume = false;
-                this.currentFrameIndex = Math.min(
-                    this.currentAction.loopEndIndex + 1,
-                    this.currentAction.frames.length - 1
-                );
-                this.currentFrameTimer = 0;
-                this.sprite.spriteFrame = this.currentAction.frames[this.currentFrameIndex];
-                return;
-            }
+        this.updateFacingFromVelocity(velocity.x);
+        this.applyFacingDirection();
 
-            this.currentFrameTimer += dt;
-            if (this.currentFrameTimer < this.currentAction.frameInterval) {
-                return;
-            }
-
-            this.currentFrameTimer = 0;
-            if (this.currentFrameIndex >= this.currentAction.loopEndIndex) {
-                this.currentFrameIndex = this.currentAction.loopStartIndex;
-            } else {
-                this.currentFrameIndex++;
-            }
-            this.sprite.spriteFrame = this.currentAction.frames[this.currentFrameIndex];
-            return;
+        if (!this.animationLocked) {
+            this.updateAnimation();
         }
-
-        if (isPausedAtFrame) {
-            this.sprite.spriteFrame = this.currentAction.frames[this.currentAction.pauseFrameIndex];
-            this.currentAction.pauseElapsedTime += dt;
-            if (this.currentAction.pauseElapsedTime >= this.currentAction.pauseDuration) {
-                this.currentAction.pauseTriggered = true;
-                this.currentAction.pauseElapsedTime = 0;
-                this.currentFrameTimer = 0;
-            }
-            return;
-        }
-
-        if (isFinalFrame && this.currentAction.finishOnLastFrame) {
-            this.finishAction();
-            return;
-        }
-
-        if (isFinalFrame && this.currentAction.finalHoldDuration > 0) {
-            this.sprite.spriteFrame = this.currentAction.frames[this.currentAction.frames.length - 1];
-            this.currentHoldTimer += dt;
-            if (this.currentHoldTimer >= this.currentAction.finalHoldDuration) {
-                this.finishAction();
-            }
-            return;
-        }
-
-        this.currentFrameTimer += dt;
-        if (this.currentFrameTimer < this.currentAction.frameInterval) {
-            return;
-        }
-
-        this.currentFrameTimer = 0;
-        this.currentFrameIndex++;
-
-        if (this.currentFrameIndex >= this.currentAction.frames.length) {
-            this.finishAction();
-            return;
-        }
-
-        this.sprite.spriteFrame = this.currentAction.frames[this.currentFrameIndex];
     }
 
-    onKeyDown(event: cc.Event.EventKeyboard) {
-        if (this.currentAction) {
+    protected localOnKeyDown(event: cc.Event.EventKeyboard): void {
+        if (event.keyCode === cc.macro.KEY.a && !this.directionInputLocked) {
+            this.leftHeld = true;
+            this.refreshMoveInput();
+        }
+
+        if (event.keyCode === cc.macro.KEY.d && !this.directionInputLocked) {
+            this.rightHeld = true;
+            this.refreshMoveInput();
+        }
+
+        if (
+            !this.movementLocked &&
+            !this.isDead &&
+            !this.isHit &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.space) &&
+            this.onGround &&
+            this.rb
+        ) {
+            const velocity = this.rb.linearVelocity;
+            velocity.y = this.jumpSpeed;
+            this.rb.linearVelocity = velocity;
+            this.onGround = false;
+            this.groundContactCount = 0;
+            this.updateAnimation();
+        }
+
+        if (!canStartArrowAction(this.currentClipAction, this.isDead, this.isHit)) {
             return;
         }
 
         if (event.keyCode === cc.macro.KEY.e) {
-            if (!this.tryUseCooldown("attack")) {
-                return;
-            }
-            this.startAction(
-                "melee",
-                this.resolvedMeleeAttackFrames,
-                this.meleeAttackFrameInterval,
-                0,
-                false,
-                -1,
-                -1,
-                -1,
-                -1,
-                0,
-                -1,
-                0,
-                false,
-                false
-            );
+            this.useMelee();
             return;
         }
 
         if (event.keyCode === cc.macro.KEY.r) {
-            if (!this.tryUseCooldown("skill2")) {
-                return;
-            }
-            this.startAction(
-                "ranged",
-                this.resolvedRangedAttackFrames,
-                this.rangedAttackFrameInterval,
-                0,
-                false,
-                -1,
-                -1,
-                -1,
-                -1,
-                0,
-                -1,
-                0,
-                false,
-                false
-            );
+            this.useRanged();
             return;
         }
 
         if (event.keyCode === cc.macro.KEY.f) {
-            if (!this.tryUseCooldown("defend")) {
-                return;
-            }
-            this.startAction(
-                "defend",
-                this.resolvedDefendFrames,
-                this.defendFrameInterval,
-                this.defendFinalHoldDuration,
-                true,
-                this.defendHoldFrameIndex,
-                this.defendResumeFrameIndex
-            );
+            this.useDefend();
             return;
         }
 
         if (event.keyCode === cc.macro.KEY.q) {
-            if (!this.tryUseCooldown("super")) {
-                return;
-            }
-            this.startAction(
-                "super",
-                this.resolvedSuperAttackFrames,
-                this.superAttackFrameInterval,
-                0,
-                true,
-                -1,
-                -1,
-                this.superAttackLoopStartIndex,
-                this.superAttackLoopEndIndex,
-                this.superAttackLoopDuration,
-                this.superAttackPauseFrameIndex,
-                this.superAttackPauseDuration
-            );
+            this.useSuper();
         }
     }
 
-    private startAction(
-        actionName: string,
-        frames: cc.SpriteFrame[],
-        frameInterval: number,
-        finalHoldDuration: number = 0,
-        lockFacing: boolean = false,
-        holdFrameIndex: number = -1,
-        resumeFrameIndex: number = -1,
-        loopStartIndex: number = -1,
-        loopEndIndex: number = -1,
-        loopDuration: number = 0,
-        pauseFrameIndex: number = -1,
-        pauseDuration: number = 0,
-        lockMovement: boolean = true,
-        clearMovement: boolean = true
-    ) {
-        if (frames.length === 0 || !this.sprite) {
+    protected localOnKeyUp(event: cc.Event.EventKeyboard): void {
+        if (event.keyCode === cc.macro.KEY.a && !this.directionInputLocked) {
+            this.leftHeld = false;
+            this.refreshMoveInput();
+        }
+
+        if (event.keyCode === cc.macro.KEY.d && !this.directionInputLocked) {
+            this.rightHeld = false;
+            this.refreshMoveInput();
+        }
+    }
+
+    public beAttacked(attackType: string, damage: number, knockback: cc.Vec2): void {
+        if (this.isDead) {
             return;
         }
 
-        const clampedHoldFrameIndex = holdFrameIndex >= 0
-            ? cc.misc.clampf(holdFrameIndex, 0, frames.length - 1)
-            : -1;
-        const clampedResumeFrameIndex = resumeFrameIndex >= 0
-            ? cc.misc.clampf(resumeFrameIndex, 0, frames.length - 1)
-            : -1;
-        const shouldHoldBeforeResume =
-            clampedHoldFrameIndex >= 0 &&
-            clampedResumeFrameIndex > clampedHoldFrameIndex &&
-            clampedResumeFrameIndex < frames.length;
-        const clampedLoopStartIndex = loopStartIndex >= 0
-            ? cc.misc.clampf(loopStartIndex, 0, frames.length - 1)
-            : -1;
-        const clampedLoopEndIndex = loopEndIndex >= 0
-            ? cc.misc.clampf(loopEndIndex, 0, frames.length - 1)
-            : -1;
-        const shouldLoopBeforeResume =
-            clampedLoopStartIndex >= 0 &&
-            clampedLoopEndIndex > clampedLoopStartIndex &&
-            clampedLoopEndIndex < frames.length &&
-            loopDuration > 0;
-        const clampedPauseFrameIndex = pauseFrameIndex >= 0
-            ? cc.misc.clampf(pauseFrameIndex, 0, frames.length - 1)
-            : -1;
+        let finalDamage = damage;
+        if (this.isDefending) {
+            finalDamage = Math.floor(finalDamage * this.defendDamageMultiplier);
+            if (finalDamage <= 0) {
+                return;
+            }
+        }
 
-        this.currentAction = {
-            name: actionName,
-            frames,
-            frameInterval: Math.max(0.001, frameInterval),
-            finalHoldDuration: Math.max(0, finalHoldDuration),
-            lockFacing,
-            holdFrameIndex: clampedHoldFrameIndex,
-            resumeFrameIndex: clampedResumeFrameIndex,
-            holdingBeforeResume: shouldHoldBeforeResume,
-            finishOnLastFrame: shouldHoldBeforeResume,
-            loopStartIndex: clampedLoopStartIndex,
-            loopEndIndex: clampedLoopEndIndex,
-            loopDuration: Math.max(0, loopDuration),
-            loopElapsedTime: 0,
-            loopingBeforeResume: shouldLoopBeforeResume,
-            pauseFrameIndex: clampedPauseFrameIndex,
-            pauseDuration: Math.max(0, pauseDuration),
-            pauseElapsedTime: 0,
-            pauseTriggered: false,
-            shakeTriggered: false,
-        };
-        this.currentFrameIndex = 0;
-        this.currentFrameTimer = 0;
-        this.currentHoldTimer = 0;
-        this.lockController(lockMovement, clearMovement, lockFacing);
-        this.sprite.spriteFrame = frames[0];
+        this.deductHp(finalDamage);
+
+        if (this.hp > 0) {
+            this.enterHitState(knockback);
+        }
+
+        switch (attackType) {
+            case "arrowSuperAttack":
+                break;
+            default:
+                break;
+        }
     }
 
-    private finishAction() {
-        const finishedActionName = this.currentAction ? this.currentAction.name : "";
-        this.hideSuperAttackEffect();
-        this.currentAction = null;
-        this.currentFrameIndex = 0;
-        this.currentFrameTimer = 0;
-        this.currentHoldTimer = 0;
-        if (finishedActionName === "ranged") {
-            this.spawnRangedProjectile();
+    protected onDeath(): void {
+        if (this.isDead) {
+            return;
         }
+
+        this.anim.off("finished", this.onClipFinished, this);
+        this.isDead = true;
+        this.isHit = false;
+        this.isDefending = false;
+        this.currentClipAction = null;
+        this.movementLocked = true;
+        this.animationLocked = false;
+        this.directionInputLocked = true;
+        this.moveInput = 0;
+        this.leftHeld = false;
+        this.rightHeld = false;
+
+        if (this.rb) {
+            const velocity = this.rb.linearVelocity;
+            velocity.x = 0;
+            this.rb.linearVelocity = velocity;
+        }
+
+        this.currentAnim = "";
+        this.playAnimationClip(this.deathClip, true);
+    }
+
+    public onRestart(): void {
+        this.isDead = false;
+        this.isHit = false;
+        this.isDefending = false;
+        this.currentClipAction = null;
+        this.movementLocked = false;
+        this.animationLocked = false;
+        this.directionInputLocked = false;
+        this.facingLocked = false;
+        this.leftHeld = false;
+        this.rightHeld = false;
+        this.moveInput = 0;
+        this.onGround = true;
+        this.groundContactCount = 0;
+        this.attackCooldownRemaining = 0;
+        this.skill2CooldownRemaining = 0;
+        this.defendCooldownRemaining = 0;
+        this.superCooldownRemaining = 0;
+        this.currentAnim = "";
+
+        if (this.rb) {
+            this.rb.linearVelocity = cc.v2(0, 0);
+            if (!this.rb.awake) {
+                this.rb.awake = true;
+            }
+        }
+
+        this.updateAnimation();
+    }
+
+    onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
+        if (otherCollider.node.name === this.groundNodeName) {
+            this.groundContactCount++;
+            this.onGround = true;
+            this.updateAnimation();
+        } else if (otherCollider.node.name === "Out Of Bound Trigger" && this.isLocal) {
+            this.deductHp(999);
+        }
+    }
+
+    onEndContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
+        if (otherCollider.node.name !== this.groundNodeName) {
+            return;
+        }
+
+        this.groundContactCount = Math.max(0, this.groundContactCount - 1);
+        this.onGround = this.groundContactCount > 0;
+    }
+
+    public useMelee(): boolean {
+        if (!this.tryUseCooldown("attack")) {
+            return false;
+        }
+
+        if (!this.startClipAction(createArrowMeleeConfig(this.meleeAttackClip), this.attackSoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.scheduleAttackHitBox("arrowMeleeAttack", 80, 8, 96, 42, 0.12, 12, 150, 0.08);
+        return true;
+    }
+
+    public useRanged(): boolean {
+        if (!this.tryUseCooldown("skill2")) {
+            return false;
+        }
+
+        if (!this.startClipAction(createArrowRangedConfig(this.rangedAttackClip), this.rangedSoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.scheduleOnce(() => {
+            if (this.isDead) {
+                return;
+            }
+
+            if (!this.spawnRangedProjectilePrefab()) {
+                this.spawnAttackHitBox(
+                    "arrowRangedAttack",
+                    cc.v2(this.rangedHitboxDistance, 12),
+                    cc.v2(360, 28),
+                    0.12,
+                    this.rangedProjectileDamage,
+                    this.rangedProjectileKnockback
+                );
+            }
+        }, 0.12);
+
+        return true;
+    }
+
+    public useDefend(): boolean {
+        if (!this.tryUseCooldown("defend")) {
+            return false;
+        }
+
+        this.isDefending = true;
+        return this.startClipAction(createArrowDefendConfig(this.defendClip), this.defendSoundResource, this.attackSfxVolume);
+    }
+
+    public useSuper(): boolean {
+        if (!this.tryUseCooldown("super")) {
+            return false;
+        }
+
+        return this.startClipAction(
+            createArrowSuperStartupConfig(this.superAttackStartClip),
+            this.superSoundResource,
+            this.superSfxVolume
+        );
+    }
+
+    private startClipAction(
+        config: ArrowClipActionConfig,
+        soundResource?: string,
+        soundVolume: number = 1
+    ): boolean {
+        if (!config.clip || !this.anim) {
+            return false;
+        }
+
+        this.currentClipAction = config.name;
+        this.applyControlLock(config.lock);
+
+        if (soundResource) {
+            NetworkManager.instance.playSoundEffect(soundResource, soundVolume);
+        }
+
+        this.anim.off("finished", this.onClipFinished, this);
+        this.anim.once("finished", this.onClipFinished, this);
+        this.playAnimationClip(config.clip, true);
+        return true;
+    }
+
+    private onClipFinished() {
+        const actionName = this.currentClipAction;
+        this.currentClipAction = null;
+
+        if (!actionName) {
+            return;
+        }
+
+        if (actionName === "super-startup") {
+            if (!this.startClipAction(createArrowSuperChargeConfig(this.superAttackChargeClip))) {
+                this.unlockController();
+            }
+            return;
+        }
+
+        if (actionName === "super-charge") {
+            if (!this.startClipAction(createArrowSuperReleaseConfig(this.superAttackReleaseClip))) {
+                this.unlockController();
+                return;
+            }
+
+            this.spawnSuperBeamPrefab();
+            this.scheduleAttackHitBox(
+                "arrowSuperAttack",
+                this.getSuperBeamLocalCenterX(),
+                this.superBeamOffsetY,
+                1200,
+                120,
+                0.16,
+                this.superBeamDamage,
+                this.superBeamKnockback,
+                this.superBeamDamageDelay
+            );
+            return;
+        }
+
+        if (actionName === "defend") {
+            this.isDefending = false;
+        }
+
         this.unlockController();
     }
 
-    private lockController(lockMovement: boolean, clearMovement: boolean, lockFacing: boolean) {
-        if (!this.controller) {
+    private scheduleAttackHitBox(
+        attackType: string,
+        centerX: number,
+        centerY: number,
+        width: number,
+        height: number,
+        duration: number,
+        damage: number,
+        kbScale: number,
+        delay: number
+    ) {
+        this.scheduleOnce(() => {
+            if (this.isDead) {
+                return;
+            }
+
+            this.spawnAttackHitBox(
+                attackType,
+                cc.v2(centerX, centerY),
+                cc.v2(width, height),
+                duration,
+                damage,
+                kbScale
+            );
+        }, Math.max(0, delay));
+    }
+
+    private spawnRangedProjectilePrefab(): boolean {
+        if (!this.rangedProjectilePrefab) {
+            cc.warn("[Arrowhero] rangedProjectilePrefab is not assigned");
+            return false;
+        }
+
+        const direction = this.getFacingDirection();
+        NetworkManager.instance.spawnPrefab(this.rangedProjectilePrefab.name, {
+            x: this.node.x + direction * this.rangedSpawnOffsetX,
+            y: this.node.y + this.rangedSpawnOffsetY,
+            direction,
+            speed: this.rangedProjectileSpeed,
+            lifetime: this.rangedProjectileLifetime,
+            damage: this.rangedProjectileDamage,
+            kbScale: this.rangedProjectileKnockback,
+            attackType: "arrowRangedAttack",
+        });
+        return true;
+    }
+
+    private spawnSuperBeamPrefab(): boolean {
+        if (!this.superBeamPrefab) {
+            cc.warn("[Arrowhero] superBeamPrefab is not assigned");
+            return false;
+        }
+
+        const direction = this.getFacingDirection();
+        const animationName = this.getPrimaryClipName(this.superBeamPrefab);
+        NetworkManager.instance.spawnPrefab(this.superBeamPrefab.name, {
+            x: this.node.x + this.getSuperBeamCenterX(),
+            y: this.node.y + this.superBeamOffsetY,
+            direction,
+            duration: this.superBeamDuration,
+            animationName,
+        });
+        return true;
+    }
+
+    private getSuperBeamCenterX(): number {
+        return this.getFacingDirection() * this.getSuperBeamLocalCenterX();
+    }
+
+    private getSuperBeamLocalCenterX(): number {
+        return Math.max(0, this.superBeamOffsetX - this.superBeamInsetX);
+    }
+
+    private getPrimaryClipName(prefab: cc.Prefab | null): string {
+        if (!prefab || !prefab.data) {
+            return "";
+        }
+
+        const animation = prefab.data.getComponent(cc.Animation);
+        if (!animation) {
+            return "";
+        }
+
+        const clips = animation.getClips();
+        if (!clips || clips.length === 0 || !clips[0]) {
+            return "";
+        }
+
+        return clips[0].name;
+    }
+
+    private enterHitState(knockback: cc.Vec2) {
+        this.anim.off("finished", this.onClipFinished, this);
+        this.currentClipAction = null;
+        this.isDefending = false;
+        this.animationLocked = true;
+        this.movementLocked = true;
+        this.directionInputLocked = true;
+        this.isHit = true;
+
+        this.applyKnockback(knockback);
+        this.currentAnim = "";
+        this.playAnimationClip(this.takeHitClip, true);
+
+        this.unschedule(this.exitHitState);
+        this.scheduleOnce(this.exitHitState, this.hitRecoverTime);
+    }
+
+    private exitHitState() {
+        if (this.isDead) {
             return;
         }
 
-        if (clearMovement) {
-            this.controller.clearMovementInput();
+        this.isHit = false;
+        this.movementLocked = false;
+        this.animationLocked = false;
+        this.directionInputLocked = false;
+        this.currentAnim = "";
+        this.updateAnimation();
+    }
+
+    private applyKnockback(knockback: cc.Vec2) {
+        if (!this.rb) {
+            return;
         }
 
-        this.controller.setMovementLocked(lockMovement);
-        this.controller.setAnimationLocked(true);
-        this.controller.setDirectionInputLocked(lockFacing);
-        if (lockFacing) {
-            this.controller.lockFacing();
+        const velocity = this.rb.linearVelocity;
+        velocity.x = knockback.x;
+        velocity.y = Math.max(velocity.y, knockback.y);
+        this.rb.linearVelocity = velocity;
+        this.rb.awake = true;
+    }
+
+    private updateAnimation() {
+        if (this.currentClipAction) {
+            return;
+        }
+
+        if (this.isDead) {
+            this.playAnimationClip(this.deathClip);
+            return;
+        }
+
+        if (this.isHit) {
+            this.playAnimationClip(this.takeHitClip);
+            return;
+        }
+
+        if (!this.onGround) {
+            const verticalVelocity = this.rb ? this.rb.linearVelocity.y : 0;
+            if (Math.abs(verticalVelocity) < this.airborneAnimationVelocityThreshold) {
+                this.playAnimationClip(this.moveInput === 0 ? this.idleClip : this.runClip);
+                return;
+            }
+            this.playAnimationClip(verticalVelocity >= 0 ? this.jumpUpClip : this.jumpDownClip);
+            return;
+        }
+
+        this.playAnimationClip(this.moveInput === 0 ? this.idleClip : this.runClip);
+    }
+
+    private configureClipWrapModes() {
+        this.setClipWrapMode(this.idleClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.runClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.jumpUpClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.jumpDownClip, cc.WrapMode.Loop);
+    }
+
+    private setClipWrapMode(clip: cc.AnimationClip | null, wrapMode: cc.WrapMode) {
+        if (!clip) {
+            return;
+        }
+
+        clip.wrapMode = wrapMode;
+    }
+
+    private playAnimationClip(clip: cc.AnimationClip | null, forceReplay: boolean = false): boolean {
+        if (!clip) {
+            return false;
+        }
+
+        if (this.currentAnim === clip.name && !forceReplay) {
+            return true;
+        }
+
+        if (forceReplay) {
+            NetworkManager.instance.stopAnimation(clip.name);
+        }
+
+        this.currentAnim = clip.name;
+        NetworkManager.instance.playAnimation(clip.name);
+        return true;
+    }
+
+    private updateHorizontalVelocity(currentX: number, dt: number): number {
+        if (this.movementLocked) {
+            return this.onGround ? 0 : currentX;
+        }
+
+        const targetX = this.moveInput * this.speed;
+        const hasInput = this.moveInput !== 0;
+        const acceleration = this.onGround
+            ? (hasInput ? this.groundAcceleration : this.groundDeceleration)
+            : (hasInput ? this.airAcceleration : this.airDeceleration);
+
+        return this.moveTowards(currentX, targetX, acceleration * dt);
+    }
+
+    private moveTowards(current: number, target: number, maxDelta: number): number {
+        if (current < target) {
+            return Math.min(current + maxDelta, target);
+        }
+
+        if (current > target) {
+            return Math.max(current - maxDelta, target);
+        }
+
+        return target;
+    }
+
+    private refreshMoveInput() {
+        if (this.leftHeld === this.rightHeld) {
+            this.moveInput = 0;
+        } else if (this.leftHeld) {
+            this.moveInput = -1;
+        } else {
+            this.moveInput = 1;
+        }
+
+        if (!this.facingLocked && this.moveInput !== 0) {
+            this.facingDir = this.moveInput > 0 ? 1 : -1;
+            this.applyFacingDirection();
+        }
+    }
+
+    private updateFacingFromVelocity(velocityX: number) {
+        if (this.movementLocked || this.facingLocked) {
+            return;
+        }
+
+        if (Math.abs(velocityX) > 1) {
+            this.facingDir = velocityX > 0 ? 1 : -1;
+        } else if (this.moveInput !== 0) {
+            this.facingDir = this.moveInput > 0 ? 1 : -1;
+        }
+    }
+
+    private applyFacingDirection() {
+        const direction = this.getFacingDirection();
+        this.node.scaleX = Math.abs(this.node.scaleX) * direction;
+    }
+
+    private getFacingDirection(): number {
+        return this.facingLocked ? this.lockedFacingDir : this.facingDir;
+    }
+
+    private clearMovementInput() {
+        this.leftHeld = false;
+        this.rightHeld = false;
+        this.moveInput = 0;
+    }
+
+    private resetTransientInputState() {
+        if (!this.isLocal) {
+            return;
+        }
+
+        this.clearMovementInput();
+
+        if (this.rb && !this.movementLocked) {
+            const velocity = this.rb.linearVelocity;
+            velocity.x = 0;
+            this.rb.linearVelocity = velocity;
+        }
+    }
+
+    private applyControlLock(lock: ControllerLockConfig) {
+        if (lock.clearMovement) {
+            this.clearMovementInput();
+        }
+
+        this.movementLocked = lock.lockMovement;
+        this.animationLocked = true;
+        this.directionInputLocked = lock.lockFacing;
+        if (lock.lockFacing) {
+            this.facingLocked = true;
+            this.lockedFacingDir = this.facingDir;
         }
     }
 
     private unlockController() {
-        if (!this.controller) {
-            return;
-        }
-
-        this.controller.setMovementLocked(false);
-        this.controller.setAnimationLocked(false);
-        this.controller.setDirectionInputLocked(false);
-        this.controller.unlockFacing();
-        this.controller.refreshVisual();
+        this.anim.off("finished", this.onClipFinished, this);
+        this.currentClipAction = null;
+        this.isDefending = false;
+        this.movementLocked = false;
+        this.animationLocked = false;
+        this.directionInputLocked = false;
+        this.facingLocked = false;
+        this.currentAnim = "";
+        this.updateAnimation();
     }
 
-    private syncSuperAttackEffect() {
-        if (!this.currentAction || this.currentAction.name !== "super") {
-            this.hideSuperAttackEffect();
-            return;
-        }
-
-        if (
-            this.currentFrameIndex < this.superAttackPauseFrameIndex ||
-            this.currentFrameIndex > 13 ||
-            this.resolvedSuperAttackEffectFrames.length === 0
-        ) {
-            this.hideSuperAttackEffect();
-            return;
-        }
-
-        this.ensureSuperAttackEffect();
-        if (!this.superAttackEffectNode || !this.superAttackEffectSprite) {
-            return;
-        }
-
-        const localIndex = Math.min(
-            this.resolvedSuperAttackEffectFrames.length - 1,
-            Math.max(0, this.currentFrameIndex - this.superAttackPauseFrameIndex)
-        );
-
-        const effectFrame = this.resolvedSuperAttackEffectFrames[localIndex];
-        this.superAttackEffectSprite.spriteFrame = effectFrame;
-        this.syncSuperAttackEffectSize(effectFrame);
-        this.superAttackEffectNode.active = true;
-        this.superAttackEffectNode.setPosition(600, 40);
+    private updateCooldowns(dt: number) {
+        this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
+        this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
+        this.defendCooldownRemaining = Math.max(0, this.defendCooldownRemaining - dt);
+        this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
     }
 
-    private ensureSuperAttackEffect() {
-        if (this.superAttackEffectNode && cc.isValid(this.superAttackEffectNode)) {
-            return;
+    private tryUseCooldown(slot: SkillSlot): boolean {
+        const remaining = this.getCooldownRemaining(slot);
+        if (remaining > 0) {
+            return false;
         }
 
-        this.superAttackEffectNode = new cc.Node("SuperAttackEffect");
-        this.superAttackEffectNode.parent = this.node;
-        this.superAttackEffectNode.zIndex = 10;
-        this.superAttackEffectNode.setAnchorPoint(0.5, 0.5);
-        this.superAttackEffectNode.setScale(5, 5);
-        this.superAttackEffectSprite = this.superAttackEffectNode.addComponent(cc.Sprite);
-        this.superAttackEffectSprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+        this.setCooldownRemaining(slot, this.getCooldownDuration(slot));
+        return true;
     }
 
-    private syncSuperAttackEffectSize(frame: cc.SpriteFrame) {
-        if (!this.superAttackEffectNode || !frame) {
-            return;
-        }
-
-        const rect = frame.getRect();
-        this.superAttackEffectNode.setContentSize(rect.width, rect.height);
-    }
-
-    private tryStartSuperAttackShake() {
-        if (
-            !this.currentAction ||
-            this.currentAction.name !== "super" ||
-            this.currentAction.shakeTriggered ||
-            this.currentAction.pauseFrameIndex < 0 ||
-            this.currentFrameIndex < this.currentAction.pauseFrameIndex
-        ) {
-            return;
-        }
-
-        this.currentAction.shakeTriggered = true;
-        this.startShake(this.superAttackShakeDuration, this.superAttackShakeStrength);
-    }
-
-    private resolveShakeTarget() {
-        if (this.shakeTarget && cc.isValid(this.shakeTarget)) {
-            this.shakingNode = this.shakeTarget;
-        } else {
-            const mainCameraNode = cc.find("Canvas/Main Camera") || cc.find("Main Camera");
-            if (mainCameraNode) {
-                this.shakingNode = mainCameraNode;
-            } else {
-                const camera = cc.director.getScene().getComponentInChildren(cc.Camera);
-                this.shakingNode = camera ? camera.node : null;
-            }
-        }
-
-        if (this.shakingNode) {
-            this.shakeOrigin = this.shakingNode.position.clone();
+    private getCooldownDuration(slot: SkillSlot): number {
+        switch (slot) {
+            case "attack":
+                return Math.max(0, this.attackCooldown);
+            case "skill2":
+                return Math.max(0, this.skill2Cooldown);
+            case "defend":
+                return Math.max(0, this.defendCooldown);
+            case "super":
+                return Math.max(0, this.superCooldown);
         }
     }
 
-    private startShake(duration: number, strength: number) {
-        if (!this.shakingNode) {
-            this.resolveShakeTarget();
-        }
-
-        if (!this.shakingNode) {
-            return;
-        }
-
-        this.shakeOrigin = this.shakingNode.position.clone();
-        this.shakeDuration = duration;
-        this.shakeStrength = strength;
-        this.shakeTimer = duration;
-    }
-
-    private updateShake(dt: number) {
-        if (!this.shakingNode) {
-            return;
-        }
-
-        let strength = 0;
-
-        if (this.shakeTimer > 0) {
-            this.shakeTimer = Math.max(0, this.shakeTimer - dt);
-            const progress = this.shakeDuration > 0 ? this.shakeTimer / this.shakeDuration : 0;
-            strength = Math.max(strength, this.shakeStrength * progress);
-        }
-
-        if (strength <= 0) {
-            this.shakingNode.setPosition(this.shakeOrigin.x, this.shakeOrigin.y);
-            return;
-        }
-
-        const offsetX = (Math.random() * 2 - 1) * strength;
-        const offsetY = (Math.random() * 2 - 1) * strength;
-        this.shakingNode.setPosition(this.shakeOrigin.x + offsetX, this.shakeOrigin.y + offsetY);
-    }
-
-    private spawnRangedProjectile() {
-        if (!this.rangedAttackProjectileFrame || !this.node.parent) {
-            return;
-        }
-
-        const direction = this.controller ? this.controller.getFacingDirection() : 1;
-        const projectileNode = new cc.Node("RangedAttackProjectile");
-        projectileNode.parent = this.node.parent;
-        projectileNode.setPosition(this.node.x + (direction * 56), this.node.y + 10);
-        const projectileSprite = projectileNode.addComponent(cc.Sprite);
-        projectileSprite.spriteFrame = this.rangedAttackProjectileFrame;
-        projectileSprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
-        projectileNode.scaleX = direction >= 0 ? 3 : -3;
-        projectileNode.scaleY = 6;
-
-        this.activeProjectiles.push({
-            node: projectileNode,
-            direction,
-            speed: this.rangedAttackProjectileSpeed,
-            lifetime: this.rangedAttackProjectileLifetime,
-            lifeTimer: 0,
-        });
-    }
-
-    private updateProjectiles(dt: number) {
-        for (let i = this.activeProjectiles.length - 1; i >= 0; i--) {
-            const projectile = this.activeProjectiles[i];
-
-            if (!cc.isValid(projectile.node)) {
-                this.activeProjectiles.splice(i, 1);
-                continue;
-            }
-
-            projectile.lifeTimer += dt;
-            projectile.node.x += projectile.direction * projectile.speed * dt;
-
-            if (projectile.lifeTimer >= projectile.lifetime) {
-                projectile.node.destroy();
-                this.activeProjectiles.splice(i, 1);
-            }
+    private getCooldownRemaining(slot: SkillSlot): number {
+        switch (slot) {
+            case "attack":
+                return this.attackCooldownRemaining;
+            case "skill2":
+                return this.skill2CooldownRemaining;
+            case "defend":
+                return this.defendCooldownRemaining;
+            case "super":
+                return this.superCooldownRemaining;
         }
     }
 
-    private clearProjectiles() {
-        for (const projectile of this.activeProjectiles) {
-            if (projectile.node && cc.isValid(projectile.node)) {
-                projectile.node.destroy();
-            }
+    private setCooldownRemaining(slot: SkillSlot, value: number) {
+        switch (slot) {
+            case "attack":
+                this.attackCooldownRemaining = value;
+                return;
+            case "skill2":
+                this.skill2CooldownRemaining = value;
+                return;
+            case "defend":
+                this.defendCooldownRemaining = value;
+                return;
+            case "super":
+                this.superCooldownRemaining = value;
+                return;
         }
-
-        this.activeProjectiles = [];
-    }
-
-    private hideSuperAttackEffect() {
-        if (this.superAttackEffectNode && cc.isValid(this.superAttackEffectNode)) {
-            this.superAttackEffectNode.active = false;
-        }
-    }
-
-    private clearSuperAttackEffect() {
-        if (this.superAttackEffectNode && cc.isValid(this.superAttackEffectNode)) {
-            this.superAttackEffectNode.destroy();
-        }
-
-        this.superAttackEffectNode = null;
-        this.superAttackEffectSprite = null;
-    }
-
-    private tryUseCooldown(slot: "attack" | "skill2" | "defend" | "super") {
-        return this.controller ? this.controller.tryUseSkillCooldown(slot) : true;
     }
 }
