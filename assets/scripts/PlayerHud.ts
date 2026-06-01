@@ -1,37 +1,37 @@
-import PlayerController from './PlayerController';
+import GroundMonkController from './GroundMonkController';
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class PlayerHud extends cc.Component {
-    @property(PlayerController)
-    player: PlayerController = null;
+    // @property(GroundMonkController)
+    // player: GroundMonkController = null;
 
-    @property(cc.ProgressBar)
-    hpBar: cc.ProgressBar = null;
+    // @property(cc.ProgressBar)
+    // hpBar: cc.ProgressBar = null;
 
-    @property(cc.Label)
-    hpLabel: cc.Label = null;
+    // @property(cc.Label)
+    // hpLabel: cc.Label = null;
 
-    @property(cc.Label)
-    stateLabel: cc.Label = null;
+    // @property(cc.Label)
+    // stateLabel: cc.Label = null;
 
-    update(dt: number) {
-        if (!this.player) {
-            return;
-        }
+    // update(dt: number) {
+    //     if (!this.player) {
+    //         return;
+    //     }
 
-        const ratio = this.player.getHpRatio();
-        if (this.hpBar) {
-            this.hpBar.progress = Math.max(0, Math.min(1, ratio));
-        }
+    //     const ratio = this.player.getHpRatio();
+    //     if (this.hpBar) {
+    //         this.hpBar.progress = Math.max(0, Math.min(1, ratio));
+    //     }
 
-        if (this.hpLabel) {
-            this.hpLabel.string = `${Math.ceil(this.player.getHp())} / ${Math.ceil(this.player.getMaxHp())}`;
-        }
+    //     if (this.hpLabel) {
+    //         this.hpLabel.string = `${Math.ceil(this.player.getHp())} / ${Math.ceil(this.player.getMaxHp())}`;
+    //     }
 
-        if (this.stateLabel) {
-            this.stateLabel.string = this.player.getIsDead() ? 'DEAD' : 'ALIVE';
-        }
-    }
+    //     if (this.stateLabel) {
+    //         this.stateLabel.string = this.player.getIsDead() ? 'DEAD' : 'ALIVE';
+    //     }
+    // }
 }

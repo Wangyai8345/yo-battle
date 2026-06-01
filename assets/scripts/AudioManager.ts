@@ -1,12 +1,8 @@
-export interface AudioEffectOptions {
-    volume?: number;
-    loop?: boolean;
-}
-
 export default class AudioManager {
     private static clipCache: { [resource: string]: cc.AudioClip } = {};
     private static loadingCallbacks: { [resource: string]: Array<(clip: cc.AudioClip) => void> } = {};
     private static currentMusicResource: string = '';
+
 
     static preload(resource: string, onLoaded?: (clip: cc.AudioClip) => void) {
         if (!resource) {
@@ -47,8 +43,10 @@ export default class AudioManager {
         });
     }
 
-    static playEffect(resource: string, options?: AudioEffectOptions): boolean {
+
+    static playEffect(resource: string, volume: number = 1, loop: boolean = false): boolean {
         if (!resource) {
+            console.log('DEBUG: NO RESOURCE');
             return false;
         }
 
@@ -56,8 +54,7 @@ export default class AudioManager {
             if (!clip) {
                 return;
             }
-            const requestedVolume = options && options.volume !== undefined ? options.volume : 1;
-            cc.audioEngine.play(clip, !!(options && options.loop), Math.max(0, requestedVolume));
+            cc.audioEngine.play(clip, loop, Math.max(0, volume));
         };
 
         const cachedClip = AudioManager.clipCache[resource];
@@ -69,6 +66,7 @@ export default class AudioManager {
         AudioManager.preload(resource, playLoadedClip);
         return true;
     }
+
 
     static playMusic(resource: string, volume: number = 1, loop: boolean = true) {
         if (!resource) {
