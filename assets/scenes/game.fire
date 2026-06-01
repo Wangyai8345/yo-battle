@@ -1127,6 +1127,9 @@
     "groundMonkPrefab": {
       "__uuid__": "84c7e85a-7b8b-4d86-87f5-25f74c10b693"
     },
+    "windHeroPrefab": {
+      "__uuid__": "3bc929c9-272f-48af-baba-b4decb417c6c"
+    },
     "arrowHeroPrefab": {
       "__uuid__": "d75000fa-1f72-4160-9c64-3c5417070a3b"
     },
