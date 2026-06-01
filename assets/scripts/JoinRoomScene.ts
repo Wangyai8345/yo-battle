@@ -97,6 +97,6 @@ export default class JoinRoomScene extends cc.Component {
 
 
     getSelectedCharacter(){
-        return localStorage.getItem('selectedCharacter') || 'ground_monk';
+        return "arrow_hero";
     }
 }
