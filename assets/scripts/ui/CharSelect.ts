@@ -115,7 +115,7 @@ export default class CharSelect extends cc.Component {
         cc.log('[CharSelect] selectedCharacter saved:', charKey);
 
         this._refresh();
-        UIManager.instance.showScreen('MapSelect');
+        cc.director.loadScene('join_room_scene');
     }
 
     private _refresh() {

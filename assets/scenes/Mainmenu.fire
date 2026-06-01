@@ -1627,7 +1627,8 @@
     "sfxValueLabel": {
       "__id__": 62
     },
-    "resumeButton": null,
+    "titleLabel": null,
+    "confirmDialog": null,
     "_id": "1a6/q47NlDXaxZ+VcidAgu"
   },
   {
