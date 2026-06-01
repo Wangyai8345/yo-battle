@@ -3,6 +3,9 @@ import AudioManager from "./AudioManager";
 import NetworkManager, { GAMESTATE } from "./NetworkManager";
 import PlayerController from "./PlayerController";
 import ProjectileController from "./ProjectileController";
+import GroundMonkController from "./GroundMonkController";
+import Windhero from "./Windhero";
+import Arrowhero from "./Arrowhero";
 
 
 const {ccclass, property} = cc._decorator;
@@ -15,22 +18,23 @@ export default class GameManager extends cc.Component {
     @property(cc.Prefab)
     groundMonkPrefab: cc.Prefab = null;
 
-    // TODO: more character's prefab
+    @property(cc.Prefab)
+    windHeroPrefab: cc.Prefab = null;
 
     @property(cc.Prefab)
-    map0Prefab: cc.Prefab = null;
-
-    @property(cc.Prefab)
-    map1Prefab: cc.Prefab = null;
-
-    @property(cc.Prefab)
-    map2Prefab: cc.Prefab = null;
+    arrowHeroPrefab: cc.Prefab = null;
     
     @property(cc.Prefab)
     attackHitBoxPrefab: cc.Prefab = null;
     
     @property(cc.Prefab)
     exampleProjectilePrefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    arrowProjectilePrefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    arrowBeamPrefab: cc.Prefab = null;
     
     @property(cc.Label)
     timerLabel: cc.Label = null;
@@ -95,14 +99,31 @@ export default class GameManager extends cc.Component {
     }
 
 
-    // TODO: Add more prefab based on character string
     getPlayerPrefab(character: string){
         switch(character){
             case "ground_monk":
                 return this.groundMonkPrefab;
+            case "wind":
+            case "wind_hero":
+            case "wind_hashashin":
+                return this.windHeroPrefab || this.groundMonkPrefab;
+            case "arrow":
+            case "arrow_hero":
+            case "leaf_ranger":
+                return this.arrowHeroPrefab || this.groundMonkPrefab;
             default:
                 return this.groundMonkPrefab;
         }
+    }
+
+
+    private resolvePlayerController(playerNode: cc.Node): PlayerController {
+        return (
+            playerNode.getComponent(PlayerController)
+            || playerNode.getComponent(Windhero)
+            || playerNode.getComponent(Arrowhero)
+            || playerNode.getComponent(GroundMonkController)
+        );
     }
 
 
@@ -139,7 +160,11 @@ export default class GameManager extends cc.Component {
         labelNode2.setPosition(0, 60, 0);
         
         // Player Controller
-        let controller = playerNode.getComponent(PlayerController);
+        let controller = this.resolvePlayerController(playerNode);
+        if (!controller) {
+            cc.error(`[GameManager] Missing PlayerController on prefab for character "${player.character}"`);
+            return playerNode;
+        }
         controller.isLocal = isLocal;
         controller.sessionId = sessionId;
         controller.id = player.id;
@@ -164,18 +189,9 @@ export default class GameManager extends cc.Component {
     spawnMap(mapName: string){
         console.log(`Spawned Map: ${mapName}`);
 
-        let mapPrefab: cc.Prefab = null;
+        // TODO: spawn map prefab by mapName
         switch(mapName){
-            case "map0": mapPrefab = this.map0Prefab; break;
-            case "map1": mapPrefab = this.map1Prefab; break;
-            case "map2": mapPrefab = this.map2Prefab; break;
-            default: mapPrefab = this.map0Prefab; break;
-        }
 
-        if(mapPrefab){
-            const mapNode = cc.instantiate(mapPrefab);
-            mapNode.parent = cc.find("Canvas");
-            mapNode.setPosition(0, 0);
         }
     }
 
@@ -188,8 +204,10 @@ export default class GameManager extends cc.Component {
     updateHeartLabel(){
         let str: string = ''
         this.playerNodes.forEach((node) => {
-            let controller = node.getComponent(PlayerController);
-            str += `P${controller.id}: ${controller.heart}❤️ `;
+            let controller = this.resolvePlayerController(node);
+            if (controller) {
+                str += `P${controller.id}: ${controller.heart}❤️ `;
+            }
         })
         if(this.heartLabel) this.heartLabel.string = str;
     }
@@ -205,15 +223,21 @@ export default class GameManager extends cc.Component {
 
     gameStart(){
         this.playerNodes.forEach((node) => {
-            node.getComponent(PlayerController).onRestart();
-            node.getComponent(PlayerController).isControllable = true;
+            const controller = this.resolvePlayerController(node);
+            if (controller) {
+                controller.onRestart();
+                controller.isControllable = true;
+            }
         });
     }
 
 
     gameBreak(){
         this.playerNodes.forEach((node) => {
-            node.getComponent(PlayerController).isControllable = false;
+            const controller = this.resolvePlayerController(node);
+            if (controller) {
+                controller.isControllable = false;
+            }
         });
     }
 
@@ -237,8 +261,18 @@ export default class GameManager extends cc.Component {
 
         let node: cc.Node = null;
 
+        const exampleProjectilePrefabName = this.exampleProjectilePrefab
+            ? this.exampleProjectilePrefab.name
+            : "exampleProjectilePrefab";
+        const arrowProjectilePrefabName = this.arrowProjectilePrefab
+            ? this.arrowProjectilePrefab.name
+            : "arrowProjectilePrefab";
+        const arrowBeamPrefabName = this.arrowBeamPrefab
+            ? this.arrowBeamPrefab.name
+            : "arrowBeamPrefab";
+
         switch(prefabName){
-            case "exampleProjectilePrefab":
+            case exampleProjectilePrefabName:
                 node = cc.instantiate(this.exampleProjectilePrefab);
                 
                 node.setPosition(infos.x, infos.y);
@@ -257,6 +291,81 @@ export default class GameManager extends cc.Component {
                     10,
                     0
                 );
+
+                break;
+
+            case arrowProjectilePrefabName:
+                if (!this.arrowProjectilePrefab) {
+                    cc.warn("[GameManager] arrowProjectilePrefab is not assigned");
+                    break;
+                }
+
+                node = cc.instantiate(this.arrowProjectilePrefab);
+                node.active = true;
+                node.setPosition(infos.x, infos.y);
+                node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
+
+                let arrowRb = node.getComponent(cc.RigidBody);
+                if (arrowRb) {
+                    arrowRb.gravityScale = 0;
+                    arrowRb.enabledContactListener = true;
+                    arrowRb.linearVelocity = cc.v2((infos.speed || 0) * (infos.direction || 1), infos.vy || 0);
+                    arrowRb.awake = true;
+                }
+
+                let arrowController = node.getComponent(ProjectileController);
+                if (arrowController) {
+                    arrowController.initialize(
+                        infos.isLocal,
+                        infos.uid,
+                        infos.attackType || "arrowRangedAttack",
+                        infos.damage || 0,
+                        infos.kbScale || 0,
+                        infos.lifetime || 0.8
+                    );
+                }
+
+                break;
+
+            case arrowBeamPrefabName:
+                if (!this.arrowBeamPrefab) {
+                    cc.warn("[GameManager] arrowBeamPrefab is not assigned");
+                    break;
+                }
+
+                node = cc.instantiate(this.arrowBeamPrefab);
+                node.active = false;
+                node.setPosition(infos.x, infos.y);
+                node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
+
+                let beamSprite = node.getComponent(cc.Sprite);
+                if (!beamSprite) {
+                    beamSprite = node.addComponent(cc.Sprite);
+                } else {
+                    beamSprite.enabled = false;
+                }
+
+                let beamAnim = node.getComponent(cc.Animation);
+                node.active = true;
+                if (beamSprite) {
+                    beamSprite.enabled = true;
+                }
+                if (beamAnim) {
+                    const clips = beamAnim.getClips();
+                    const clipName = infos.animationName
+                        || (clips && clips.length > 0 && clips[0] ? clips[0].name : "");
+                    if (clipName) {
+                        beamAnim.play(clipName);
+                    }
+                }
+
+                if (infos.isLocal && infos.duration > 0) {
+                    this.scheduleOnce(() => {
+                        if (this.prefabNodes.has(infos.uid)) {
+                            NetworkManager.instance.destroyPrefab(infos.uid);
+                        }
+                    }, infos.duration);
+                }
 
                 break;
             

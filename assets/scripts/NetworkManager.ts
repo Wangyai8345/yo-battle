@@ -232,7 +232,7 @@ export default class NetworkManager extends cc.Component {
             debug(`S_playAnimation, From: ${message.senderId}, ClipName: ${message.clipName}`);
             
             let controller = this.getPlayerControllerOf(message.senderId);
-            if(controller) controller.anim.play(message.clipName);
+            if(controller && controller.anim) controller.anim.play(message.clipName);
         });
 
 
@@ -240,7 +240,7 @@ export default class NetworkManager extends cc.Component {
             debug(`S_stopAnimation, From: ${message.senderId}, ClipName: ${message.clipName}`);
             
             let controller = this.getPlayerControllerOf(message.senderId);
-            if(controller) controller.anim.stop(message.clipName);
+            if(controller && controller.anim) controller.anim.stop(message.clipName);
         });
 
 
@@ -433,7 +433,7 @@ export default class NetworkManager extends cc.Component {
     public playAnimation(clipName: string){
         // First play locally
         let controller = this.getPlayerControllerOf(this.localSessionId);
-        if(controller) controller.anim.play(clipName);
+        if(controller && controller.anim) controller.anim.play(clipName);
         
         // Then play to server
         this.sendToServer("C_playAnimation", clipName);
@@ -444,7 +444,7 @@ export default class NetworkManager extends cc.Component {
     public stopAnimation(clipName: string){
         // First stop locally
         let controller = this.getPlayerControllerOf(this.localSessionId);
-        if(controller) controller.anim.stop(clipName);
+        if(controller && controller.anim) controller.anim.stop(clipName);
         
         // Then stop to server
         this.sendToServer("C_stopAnimation", clipName);

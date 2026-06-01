@@ -12,12 +12,16 @@ export default class ProjectileController extends cc.Component {
     protected attackType: string = "";
     protected damage: number = 0;
     protected kbScale: number = 0;
+    protected lifetime: number = 5;
     
     protected rb: cc.RigidBody = null;
 
 
     protected onLoad(): void {
-        this.rb = this.getComponent(cc.RigidBody);    
+        this.rb = this.getComponent(cc.RigidBody);
+        if (this.rb) {
+            this.rb.enabledContactListener = true;
+        }
     }
 
 
@@ -27,25 +31,28 @@ export default class ProjectileController extends cc.Component {
         uid: string,
         attackType: string,
         damage: number = 0,
-        kbScale: number = 0
+        kbScale: number = 0,
+        lifetime: number = 5
     ){
         this.isLocal = isLocal;
         this.uid = uid;
         this.attackType = attackType;
         this.damage = damage;
         this.kbScale = kbScale;
+        this.lifetime = Math.max(0.05, lifetime);
 
         this.scheduleAutoDestroy();
     }
 
 
     private scheduleAutoDestroy(){
-        // Destroy automatically after DURATION seconds
-        const DURATION = 5;
+        if (!this.isLocal) {
+            return;
+        }
 
         this.scheduleOnce(() => {
             NetworkManager.instance.destroyPrefab(this.uid);
-        }, DURATION);
+        }, this.lifetime);
     }
 
 
