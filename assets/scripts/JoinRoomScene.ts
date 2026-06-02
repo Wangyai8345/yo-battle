@@ -5,6 +5,8 @@ const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class JoinRoomScene extends cc.Component {
+    private static readonly DEFAULT_CHARACTER = "ground_monk";
+    private static readonly SELECTED_CHARACTER_STORAGE_KEY = "selectedCharacter";
 
     @property(cc.EditBox)
     roomNameInput: cc.EditBox = null;
@@ -96,7 +98,18 @@ export default class JoinRoomScene extends cc.Component {
     }
 
 
-    getSelectedCharacter(){
-        return "arrow_hero";
+    getSelectedCharacter() {
+        const selectedCharacter = localStorage.getItem(
+            JoinRoomScene.SELECTED_CHARACTER_STORAGE_KEY
+        );
+
+        if (selectedCharacter && selectedCharacter.trim() !== "") {
+            return selectedCharacter;
+        }
+
+        cc.warn(
+            `[JoinRoomScene] No selected character found, fallback to ${JoinRoomScene.DEFAULT_CHARACTER}`
+        );
+        return JoinRoomScene.DEFAULT_CHARACTER;
     }
-}
+}   
