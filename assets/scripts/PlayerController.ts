@@ -1,6 +1,8 @@
 import NetworkManager from "./NetworkManager";
 import GameManager from "./GameManager";
 import AttackHitBox from "./AttackHitbox";
+import UIManager from "./managers/UIManager";
+import ScreenEffect from "./ui/ScreenEffect";
 
 const {ccclass, property} = cc._decorator;
 
@@ -67,8 +69,7 @@ export default abstract class PlayerController extends cc.Component {
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
 
-        // TODO: delete this
-        cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_shapeBit;
+        // cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_shapeBit;
     }
 
 
@@ -100,6 +101,7 @@ export default abstract class PlayerController extends cc.Component {
     public setTargetHp(newHp: number){
         this.hp = newHp;
         this.node.getChildByName("HP Label").getComponent(cc.Label).string = `HP: ${newHp}`;
+        if (UIManager.instance) UIManager.instance.updateHP(this.id - 1, newHp, 100);
     }
 
     protected isGroundNode(node: cc.Node | null): boolean {
@@ -201,8 +203,10 @@ export default abstract class PlayerController extends cc.Component {
 
         NetworkManager.instance.sendHpToServer(this.hp);
         this.node.getChildByName("HP Label").getComponent(cc.Label).string = `HP: ${this.hp}`;
+        if (UIManager.instance) UIManager.instance.updateHP(this.id - 1, this.hp, 100);
         
         if(this.hp <= 0) {
+            if (ScreenEffect.instance) ScreenEffect.instance.shake();
             this.onDeath();
             NetworkManager.instance.playerDead();
         }

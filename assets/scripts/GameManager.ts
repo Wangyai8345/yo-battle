@@ -4,6 +4,7 @@ import NetworkManager, { GAMESTATE } from "./NetworkManager";
 import PlayerController from "./PlayerController";
 import { resolvePlayerController } from "./PlayerControllerResolver";
 import ProjectileController from "./ProjectileController";
+import UIManager from "./managers/UIManager";
 
 
 const {ccclass, property} = cc._decorator;
@@ -174,7 +175,8 @@ export default class GameManager extends cc.Component {
         label2.fontSize = 12;
         labelNode2.parent = playerNode;
         labelNode2.setPosition(0, 60, 0);
-        
+        labelNode2.active = false;
+
         // Player Controller
         let controller = this.resolvePlayerController(playerNode);
         if (!controller) {
@@ -185,6 +187,8 @@ export default class GameManager extends cc.Component {
         controller.sessionId = sessionId;
         controller.id = player.id;
         controller.hp = player.hp;
+        // 初始化血條
+        if (UIManager.instance) UIManager.instance.updateHP(player.id - 1, player.hp, 100);
         
         // Set rb to Static if nonlocal
         if(!isLocal){
@@ -217,6 +221,8 @@ export default class GameManager extends cc.Component {
             const mapNode = cc.instantiate(mapPrefab);
             mapNode.parent = cc.find("Canvas");
             mapNode.setPosition(0, 0);
+            const uiLayer = cc.find("Canvas/UI_Layer");
+            if (uiLayer) uiLayer.setSiblingIndex(uiLayer.parent.childrenCount - 1);
         }
     }
 

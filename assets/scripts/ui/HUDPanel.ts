@@ -11,7 +11,11 @@ export default class HUDPanel extends cc.Component {
 
     setHP(current: number, max: number) {
         if (!this.hpBarFG) return;
-        this.hpBarFG.fillRange = cc.misc.clampf(current / max, 0, 1);
+        const ratio = cc.misc.clampf(current / max, 0, 1);
+        this.hpBarFG.fillRange = ratio;
+        if (this.knockbackLabel) {
+            this.knockbackLabel.string = `${Math.round(ratio * 100)}%`;
+        }
     }
 
     setKnockback(percent: number) {
