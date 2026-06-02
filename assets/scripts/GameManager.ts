@@ -184,11 +184,11 @@ export default class GameManager extends cc.Component {
         if(!isLocal){
             let rb = playerNode.getComponent(cc.RigidBody);
             if(rb){
-                // rb.type = cc.RigidBodyType.Static;
-                // rb.active = false;
                 rb.active = false;
-                rb.type = cc.RigidBodyType.Static;
+                rb.type = cc.RigidBodyType.Kinematic;
                 rb.active = true;
+                rb.linearVelocity = cc.v2(0, 0);
+                rb.angularVelocity = 0;
             }
         }
 

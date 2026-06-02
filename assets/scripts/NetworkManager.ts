@@ -263,8 +263,7 @@ export default class NetworkManager extends cc.Component {
                         cc.warn(`[NetworkManager] Missing controller while resetting position for ${data.sessionId}`);
                         return;
                     }
-                    node.setPosition(data.x, data.y);
-                    controller.setTargetPosition(data.x, data.y);
+                    controller.snapToPosition(data.x, data.y);
                 });
             }
         );

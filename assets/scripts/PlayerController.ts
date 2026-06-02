@@ -90,9 +90,32 @@ export default abstract class PlayerController extends cc.Component {
     }
 
 
+    public snapToPosition(x: number, y: number) {
+        this.targetX = x;
+        this.targetY = y;
+        this.applyRemotePosition(x, y);
+    }
+
+
     public setTargetHp(newHp: number){
         this.hp = newHp;
         this.node.getChildByName("HP Label").getComponent(cc.Label).string = `HP: ${newHp}`;
+    }
+
+    protected isGroundNode(node: cc.Node | null): boolean {
+        if (!node) {
+            return false;
+        }
+
+        const configuredGroundNodeName = (this as any).groundNodeName;
+        const normalizedNodeName = (node.name || "").toLowerCase();
+        const normalizedConfiguredName = typeof configuredGroundNodeName === "string"
+            ? configuredGroundNodeName.toLowerCase()
+            : "";
+
+        return normalizedNodeName === normalizedConfiguredName
+            || normalizedNodeName === "platform"
+            || normalizedNodeName.startsWith("platform_");
     }
 
     public syncDeathState() {
@@ -126,15 +149,30 @@ export default abstract class PlayerController extends cc.Component {
         // Directly set to target if too close
         const EPSILON = 0.1;
         if(distanceSquared < EPSILON){
-            this.node.x = this.targetX;
-            this.node.y = this.targetY;
+            this.applyRemotePosition(this.targetX, this.targetY);
             return;
         }
 
         const MOVEMENT_SHARPNESS = 25;
         let ratio = Math.min(dt * MOVEMENT_SHARPNESS, 1); // prevent overshoot if dt spike
-        this.node.x = cc.misc.lerp(this.node.x, this.targetX, ratio);
-        this.node.y = cc.misc.lerp(this.node.y, this.targetY, ratio);
+        this.applyRemotePosition(
+            cc.misc.lerp(this.node.x, this.targetX, ratio),
+            cc.misc.lerp(this.node.y, this.targetY, ratio)
+        );
+    }
+
+
+    private applyRemotePosition(x: number, y: number) {
+        this.node.setPosition(x, y);
+
+        if (!this.rb) {
+            return;
+        }
+
+        this.rb.linearVelocity = cc.v2(0, 0);
+        this.rb.angularVelocity = 0;
+        this.rb.syncPosition(true);
+        this.rb.awake = true;
     }
 
 

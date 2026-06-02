@@ -812,7 +812,7 @@ export default class GroundMonkController extends PlayerController {
 
     onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
         //console.log("contacted");
-        if (otherCollider.node.name == this.groundNodeName) {
+        if (this.isGroundNode(otherCollider.node)) {
 
             const normal = contact.getWorldManifold().normal;
             // Box2D normal 由 selfCollider 指向 otherCollider；
@@ -868,7 +868,7 @@ export default class GroundMonkController extends PlayerController {
     }
 
     onEndContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
-        if (otherCollider.node.name !== this.groundNodeName) {
+        if (!this.isGroundNode(otherCollider.node)) {
             return;
         }
 

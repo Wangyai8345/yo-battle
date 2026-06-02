@@ -542,7 +542,7 @@ export default class Windhero extends PlayerController {
     }
 
     onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
-        if (otherCollider.node.name === this.groundNodeName) {
+        if (this.isGroundNode(otherCollider.node)) {
             this.groundContactCount++;
             this.onGround = true;
             this.updateAnimation();
@@ -552,7 +552,7 @@ export default class Windhero extends PlayerController {
     }
 
     onEndContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
-        if (otherCollider.node.name !== this.groundNodeName) {
+        if (!this.isGroundNode(otherCollider.node)) {
             return;
         }
 
