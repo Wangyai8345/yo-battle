@@ -325,6 +325,11 @@ export default class Windhero extends PlayerController {
     private currentClipAction: WindClipActionName | null = null;
     private pendingPhase: TimedPhaseState | null = null;
     private superModel: WindSuperModel | null = null;
+    private readonly hideAfterDeath = () => {
+        if (this.isDead) {
+            this.node.opacity = 0;
+        }
+    };
 
     protected onLoad(): void {
         super.onLoad();
@@ -475,6 +480,7 @@ export default class Windhero extends PlayerController {
             return;
         }
 
+        this.unschedule(this.hideAfterDeath);
         this.anim.off("finished", this.onClipFinished, this);
         this.isDead = true;
         this.isHit = false;
@@ -497,10 +503,12 @@ export default class Windhero extends PlayerController {
         }
 
         this.currentAnim = "";
-        this.playAnimationClip(this.deathClip, true);
+        this.playAnimationClip(this.getDeathClip(), true);
+        this.scheduleDeathHide();
     }
 
     public onRestart(): void {
+        this.unschedule(this.hideAfterDeath);
         this.isDead = false;
         this.isHit = false;
         this.isDefending = false;
@@ -816,7 +824,7 @@ export default class Windhero extends PlayerController {
         }
 
         if (this.isDead) {
-            this.playAnimationClip(this.deathClip);
+            this.playAnimationClip(this.getDeathClip());
             return;
         }
 
@@ -849,7 +857,7 @@ export default class Windhero extends PlayerController {
         this.setClipWrapMode(this.superAttackStartupClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.superAttackClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.takeHitClip, cc.WrapMode.Normal);
-        this.setClipWrapMode(this.deathClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.getDeathClip(), cc.WrapMode.Normal);
     }
 
     private setClipWrapMode(clip: cc.AnimationClip | null, wrapMode: cc.WrapMode) {
@@ -858,6 +866,25 @@ export default class Windhero extends PlayerController {
         }
 
         clip.wrapMode = wrapMode;
+    }
+
+    private getDeathClip(): cc.AnimationClip | null {
+        return this.deathClip || this.idleClip;
+    }
+
+    private scheduleDeathHide() {
+        const deathClip = this.getDeathClip();
+        if (!deathClip) {
+            this.hideAfterDeath();
+            return;
+        }
+
+        this.scheduleOnce(this.hideAfterDeath, this.getClipPlaybackDuration(deathClip));
+    }
+
+    private getClipPlaybackDuration(clip: cc.AnimationClip): number {
+        const speed = Math.abs(clip.speed || 1);
+        return Math.max(0.05, clip.duration / speed);
     }
 
     private playAnimationClip(clip: cc.AnimationClip | null, forceReplay: boolean = false): boolean {
@@ -870,11 +897,19 @@ export default class Windhero extends PlayerController {
         }
 
         if (forceReplay) {
-            NetworkManager.instance.stopAnimation(clip.name);
+            if (this.isLocal) {
+                NetworkManager.instance.stopAnimation(clip.name);
+            } else if (this.anim) {
+                this.anim.stop(clip.name);
+            }
         }
 
         this.currentAnim = clip.name;
-        NetworkManager.instance.playAnimation(clip.name);
+        if (this.isLocal) {
+            NetworkManager.instance.playAnimation(clip.name);
+        } else if (this.anim) {
+            this.anim.play(clip.name);
+        }
         return true;
     }
 

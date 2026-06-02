@@ -1,6 +1,7 @@
 import AudioManager from "./AudioManager";
 import GameManager from "./GameManager";
 import PlayerController from "./PlayerController";
+import { resolvePlayerController } from "./PlayerControllerResolver";
 
 const DEBUG_MODE = true;
 function debug(msg: string){
@@ -120,8 +121,7 @@ export default class NetworkManager extends cc.Component {
 
     getPlayerControllerOf(sessionId: string): PlayerController{
         let node = this.playerNodes.get(sessionId);
-        if(!node) return null;
-        return node.getComponent(PlayerController);
+        return resolvePlayerController(node);
     }
 
 
@@ -244,12 +244,27 @@ export default class NetworkManager extends cc.Component {
         });
 
 
+        this.room.onMessage("S_playerDead", (message: { sessionId: string }) => {
+            debug(`S_playerDead, SessionId: ${message.sessionId}`);
+
+            let controller = this.getPlayerControllerOf(message.sessionId);
+            if (controller) {
+                controller.syncDeathState();
+            }
+        });
+
+
         this.room.onMessage("S_resetPositions", 
             (message: { positions: { sessionId: string, x: number, y: number }[] }) => {
                 message.positions.forEach(data => {
                     let node = this.playerNodes.get(data.sessionId);
+                    let controller = resolvePlayerController(node);
+                    if (!node || !controller) {
+                        cc.warn(`[NetworkManager] Missing controller while resetting position for ${data.sessionId}`);
+                        return;
+                    }
                     node.setPosition(data.x, data.y);
-                    node.getComponent(PlayerController).setTargetPosition(data.x, data.y);
+                    controller.setTargetPosition(data.x, data.y);
                 });
             }
         );
@@ -257,7 +272,10 @@ export default class NetworkManager extends cc.Component {
 
         this.room.onMessage("S_resetHp", () => {
             this.playerNodes.forEach((node) => {
-                node.getComponent(PlayerController).setTargetHp(100);
+                let controller = resolvePlayerController(node);
+                if (controller) {
+                    controller.setTargetHp(100);
+                }
             })
         });
 

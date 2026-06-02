@@ -280,6 +280,11 @@ export default class Arrowhero extends PlayerController {
     private isHit: boolean = false;
     private isDefending: boolean = false;
     private currentClipAction: ArrowClipActionName | null = null;
+    private readonly hideAfterDeath = () => {
+        if (this.isDead) {
+            this.node.opacity = 0;
+        }
+    };
 
     protected onLoad(): void {
         super.onLoad();
@@ -429,6 +434,7 @@ export default class Arrowhero extends PlayerController {
             return;
         }
 
+        this.unschedule(this.hideAfterDeath);
         this.anim.off("finished", this.onClipFinished, this);
         this.isDead = true;
         this.isHit = false;
@@ -440,6 +446,7 @@ export default class Arrowhero extends PlayerController {
         this.moveInput = 0;
         this.leftHeld = false;
         this.rightHeld = false;
+        this.node.opacity = 255;
 
         if (this.rb) {
             const velocity = this.rb.linearVelocity;
@@ -448,10 +455,12 @@ export default class Arrowhero extends PlayerController {
         }
 
         this.currentAnim = "";
-        this.playAnimationClip(this.deathClip, true);
+        this.playAnimationClip(this.getDeathClip(), true);
+        this.scheduleDeathHide();
     }
 
     public onRestart(): void {
+        this.unschedule(this.hideAfterDeath);
         this.isDead = false;
         this.isHit = false;
         this.isDefending = false;
@@ -465,6 +474,7 @@ export default class Arrowhero extends PlayerController {
         this.moveInput = 0;
         this.onGround = true;
         this.groundContactCount = 0;
+        this.node.opacity = 255;
         this.attackCooldownRemaining = 0;
         this.skill2CooldownRemaining = 0;
         this.defendCooldownRemaining = 0;
@@ -730,7 +740,7 @@ export default class Arrowhero extends PlayerController {
 
         this.applyKnockback(knockback);
         this.currentAnim = "";
-        this.playAnimationClip(this.takeHitClip, true);
+        this.playAnimationClip(this.getTakeHitClip(), true);
 
         this.unschedule(this.exitHitState);
         this.scheduleOnce(this.exitHitState, this.hitRecoverTime);
@@ -767,12 +777,12 @@ export default class Arrowhero extends PlayerController {
         }
 
         if (this.isDead) {
-            this.playAnimationClip(this.deathClip);
+            this.playAnimationClip(this.getDeathClip());
             return;
         }
 
         if (this.isHit) {
-            this.playAnimationClip(this.takeHitClip);
+            this.playAnimationClip(this.getTakeHitClip());
             return;
         }
 
@@ -794,6 +804,14 @@ export default class Arrowhero extends PlayerController {
         this.setClipWrapMode(this.runClip, cc.WrapMode.Loop);
         this.setClipWrapMode(this.jumpUpClip, cc.WrapMode.Loop);
         this.setClipWrapMode(this.jumpDownClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.meleeAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.rangedAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.defendClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.superAttackStartClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.superAttackChargeClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.superAttackReleaseClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.getTakeHitClip(), cc.WrapMode.Normal);
+        this.setClipWrapMode(this.getDeathClip(), cc.WrapMode.Normal);
     }
 
     private setClipWrapMode(clip: cc.AnimationClip | null, wrapMode: cc.WrapMode) {
@@ -802,6 +820,29 @@ export default class Arrowhero extends PlayerController {
         }
 
         clip.wrapMode = wrapMode;
+    }
+
+    private getTakeHitClip(): cc.AnimationClip | null {
+        return this.takeHitClip || this.defendClip || this.idleClip;
+    }
+
+    private getDeathClip(): cc.AnimationClip | null {
+        return this.deathClip || this.idleClip;
+    }
+
+    private scheduleDeathHide() {
+        const deathClip = this.getDeathClip();
+        if (!deathClip) {
+            this.hideAfterDeath();
+            return;
+        }
+
+        this.scheduleOnce(this.hideAfterDeath, this.getClipPlaybackDuration(deathClip));
+    }
+
+    private getClipPlaybackDuration(clip: cc.AnimationClip): number {
+        const speed = Math.abs(clip.speed || 1);
+        return Math.max(0.05, clip.duration / speed);
     }
 
     private playAnimationClip(clip: cc.AnimationClip | null, forceReplay: boolean = false): boolean {
@@ -814,11 +855,19 @@ export default class Arrowhero extends PlayerController {
         }
 
         if (forceReplay) {
-            NetworkManager.instance.stopAnimation(clip.name);
+            if (this.isLocal) {
+                NetworkManager.instance.stopAnimation(clip.name);
+            } else if (this.anim) {
+                this.anim.stop(clip.name);
+            }
         }
 
         this.currentAnim = clip.name;
-        NetworkManager.instance.playAnimation(clip.name);
+        if (this.isLocal) {
+            NetworkManager.instance.playAnimation(clip.name);
+        } else if (this.anim) {
+            this.anim.play(clip.name);
+        }
         return true;
     }
 

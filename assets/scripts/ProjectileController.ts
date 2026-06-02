@@ -1,5 +1,6 @@
 import NetworkManager from "./NetworkManager";
 import PlayerController from "./PlayerController";
+import { resolvePlayerController } from "./PlayerControllerResolver";
 
 const {ccclass, property} = cc._decorator;
 
@@ -61,7 +62,7 @@ export default class ProjectileController extends cc.Component {
         // Only handle bullets that are shot by yourself
         if(!this.isLocal) return;
 
-        let otherPlayer = otherCollider.node.getComponent(PlayerController);
+        let otherPlayer = resolvePlayerController(otherCollider.node);
 
         // Hit other player!
         if (otherPlayer && !otherPlayer.isLocal) {

@@ -95,6 +95,10 @@ export default abstract class PlayerController extends cc.Component {
         this.node.getChildByName("HP Label").getComponent(cc.Label).string = `HP: ${newHp}`;
     }
 
+    public syncDeathState() {
+        this.onDeath();
+    }
+
 
     public setHeart(newHeart: number){
         this.heart = newHeart;

@@ -1,0 +1,55 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "metal_takehit",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.1,
+  "sample": 60,
+  "speed": 0.5,
+  "wrapMode": 1,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "9f50d50a-093b-4b6f-aee8-794168165885"
+            }
+          },
+          {
+            "frame": 0.016666666666666666,
+            "value": {
+              "__uuid__": "0bb798e7-4e6c-4780-967f-f3f9d519e3de"
+            }
+          },
+          {
+            "frame": 0.03333333333333333,
+            "value": {
+              "__uuid__": "6124830e-0a3d-4a82-afa9-ce1147ea720a"
+            }
+          },
+          {
+            "frame": 0.05,
+            "value": {
+              "__uuid__": "8deca2da-360a-422a-9012-82f9fb9302f6"
+            }
+          },
+          {
+            "frame": 0.06666666666666667,
+            "value": {
+              "__uuid__": "cadd8c71-17c3-4adf-80bb-7e7dd3e648a1"
+            }
+          },
+          {
+            "frame": 0.08333333333333333,
+            "value": {
+              "__uuid__": "d2bff408-37e6-4d0d-b6ee-a44b3394ad69"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}

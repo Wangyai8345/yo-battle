@@ -1,0 +1,296 @@
+[
+  {
+    "__type__": "cc.Prefab",
+    "_name": "",
+    "_objFlags": 0,
+    "_native": "",
+    "data": {
+      "__id__": 1
+    },
+    "optimizationPolicy": 0,
+    "asyncLoadAssets": false,
+    "readonly": false
+  },
+  {
+    "__type__": "cc.Node",
+    "_name": "Metalhero",
+    "_objFlags": 0,
+    "_parent": null,
+    "_children": [],
+    "_active": true,
+    "_components": [
+      {
+        "__id__": 2
+      },
+      {
+        "__id__": 3
+      },
+      {
+        "__id__": 4
+      },
+      {
+        "__id__": 5
+      },
+      {
+        "__id__": 6
+      }
+    ],
+    "_prefab": {
+      "__id__": 7
+    },
+    "_opacity": 255,
+    "_color": {
+      "__type__": "cc.Color",
+      "r": 255,
+      "g": 255,
+      "b": 255,
+      "a": 255
+    },
+    "_contentSize": {
+      "__type__": "cc.Size",
+      "width": 120,
+      "height": 120
+    },
+    "_anchorPoint": {
+      "__type__": "cc.Vec2",
+      "x": 0.5,
+      "y": 0.5
+    },
+    "_trs": {
+      "__type__": "TypedArray",
+      "ctor": "Float64Array",
+      "array": [
+        428.922,
+        -202.249,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "_eulerAngles": {
+      "__type__": "cc.Vec3",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "_skewX": 0,
+    "_skewY": 0,
+    "_is3DNode": false,
+    "_groupIndex": 0,
+    "groupIndex": 0,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.Sprite",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "_materials": [
+      {
+        "__uuid__": "eca5d2f2-8ef6-41c2-bbe6-f9c79d09c432"
+      }
+    ],
+    "_srcBlendFactor": 770,
+    "_dstBlendFactor": 771,
+    "_spriteFrame": {
+      "__uuid__": "7cf2eb7c-a3b8-4f59-bf2a-b7a6a798debb"
+    },
+    "_type": 0,
+    "_sizeMode": 0,
+    "_fillType": 0,
+    "_fillCenter": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "_fillStart": 0,
+    "_fillRange": 0,
+    "_isTrimmedMode": true,
+    "_atlas": null,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.RigidBody",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "_type": 2,
+    "_allowSleep": true,
+    "_gravityScale": 3,
+    "_linearDamping": 0,
+    "_angularDamping": 0,
+    "_linearVelocity": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "_angularVelocity": 0,
+    "_fixedRotation": true,
+    "enabledContactListener": true,
+    "bullet": false,
+    "awakeOnLoad": true,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.PhysicsBoxCollider",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "tag": 2,
+    "_density": 1,
+    "_sensor": false,
+    "_friction": 0.2,
+    "_restitution": 0,
+    "body": null,
+    "_offset": {
+      "__type__": "cc.Vec2",
+      "x": 0,
+      "y": 0
+    },
+    "_size": {
+      "__type__": "cc.Size",
+      "width": 75,
+      "height": 120
+    },
+    "_id": ""
+  },
+  {
+    "__type__": "cc.Animation",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "_defaultClip": {
+      "__uuid__": "bfae38eb-5774-40c4-8896-db5ba52ca3b2"
+    },
+    "_clips": [
+      {
+        "__uuid__": "bfae38eb-5774-40c4-8896-db5ba52ca3b2"
+      },
+      {
+        "__uuid__": "8fff7035-0afe-46ce-8065-9a533271b305"
+      },
+      {
+        "__uuid__": "013ad491-6b49-4d2a-a41a-0384c450f504"
+      },
+      {
+        "__uuid__": "1e895ccc-01d3-4488-a4a8-71c3e3e6f039"
+      },
+      {
+        "__uuid__": "248ed2a2-519e-4be2-ba45-66d94e4fef70"
+      },
+      {
+        "__uuid__": "726c6657-6151-43ed-9d8a-e837790002fe"
+      },
+      {
+        "__uuid__": "91aeaf8f-3820-4267-b8d0-d6644bae244e"
+      },
+      {
+        "__uuid__": "6a811a63-6b0f-40dc-bf7a-c0cad17ec62e"
+      },
+      {
+        "__uuid__": "a7117c6d-7c9d-47ea-ad47-529a0f69c87b"
+      },
+      {
+        "__uuid__": "a63ef98a-85ad-4306-9457-a74bddeaca26"
+      },
+      {
+        "__uuid__": "186d36ea-f337-49e8-9d42-9e797505264b"
+      }
+    ],
+    "playOnLoad": false,
+    "_id": ""
+  },
+  {
+    "__type__": "0e001CnpYVOG5mp0C7Pny7p",
+    "_name": "",
+    "_objFlags": 0,
+    "node": {
+      "__id__": 1
+    },
+    "_enabled": true,
+    "attackCooldown": 0.35,
+    "skill2Cooldown": 1.4,
+    "defendCooldown": 1.2,
+    "superCooldown": 6,
+    "speed": 250,
+    "jumpSpeed": 600,
+    "groundAcceleration": 2200,
+    "groundDeceleration": 2600,
+    "airAcceleration": 1400,
+    "airDeceleration": 500,
+    "groundNodeName": "Platform",
+    "idleClip": {
+      "__uuid__": "bfae38eb-5774-40c4-8896-db5ba52ca3b2"
+    },
+    "runClip": {
+      "__uuid__": "a7117c6d-7c9d-47ea-ad47-529a0f69c87b"
+    },
+    "jumpUpClip": {
+      "__uuid__": "1e895ccc-01d3-4488-a4a8-71c3e3e6f039"
+    },
+    "jumpDownClip": {
+      "__uuid__": "013ad491-6b49-4d2a-a41a-0384c450f504"
+    },
+    "takeHitClip": {
+      "__uuid__": "186d36ea-f337-49e8-9d42-9e797505264b"
+    },
+    "deathClip": {
+      "__uuid__": "a63ef98a-85ad-4306-9457-a74bddeaca26"
+    },
+    "meleeAttackClip": {
+      "__uuid__": "248ed2a2-519e-4be2-ba45-66d94e4fef70"
+    },
+    "rangedAttackClip": {
+      "__uuid__": "91aeaf8f-3820-4267-b8d0-d6644bae244e"
+    },
+    "defendClip": {
+      "__uuid__": "8fff7035-0afe-46ce-8065-9a533271b305"
+    },
+    "superAttackStartupClip": {
+      "__uuid__": "6a811a63-6b0f-40dc-bf7a-c0cad17ec62e"
+    },
+    "superAttackClip": {
+      "__uuid__": "726c6657-6151-43ed-9d8a-e837790002fe"
+    },
+    "superAttackTeleportDelay": 1,
+    "superAttackForwardDistance": 600,
+    "attackSoundResource": "attack1",
+    "rangedSoundResource": "attack2",
+    "defendSoundResource": "dash",
+    "superSoundResource": "attack2",
+    "attackSfxVolume": 0.7,
+    "superSfxVolume": 1,
+    "defendDamageMultiplier": 0.2,
+    "hitRecoverTime": 0.25,
+    "airborneAnimationVelocityThreshold": 20,
+    "_id": ""
+  },
+  {
+    "__type__": "cc.PrefabInfo",
+    "root": {
+      "__id__": 1
+    },
+    "asset": {
+      "__id__": 0
+    },
+    "fileId": "",
+    "sync": false
+  }
+]

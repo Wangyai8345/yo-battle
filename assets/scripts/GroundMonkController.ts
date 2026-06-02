@@ -937,16 +937,20 @@ export default class GroundMonkController extends PlayerController {
         }
 
         if (forceReplay) {
-            // FIXED: server logic
-            // this.anim.stop(animName);
-            NetworkManager.instance.stopAnimation(animName);
+            if (this.isLocal) {
+                NetworkManager.instance.stopAnimation(animName);
+            } else {
+                this.anim.stop(animName);
+            }
         }
 
         this.currentAnim = animName;
-        
-        // FIXED: server logic
-        // this.anim.play(animName);
-        NetworkManager.instance.playAnimation(animName);
+
+        if (this.isLocal) {
+            NetworkManager.instance.playAnimation(animName);
+        } else {
+            this.anim.play(animName);
+        }
         return true;
     }
 

@@ -1,5 +1,6 @@
 import NetworkManager from "./NetworkManager";
 import PlayerController from "./PlayerController";
+import { resolvePlayerController } from "./PlayerControllerResolver";
 
 const { ccclass, property } = cc._decorator;
 
@@ -68,7 +69,7 @@ export default class AttackHitBox extends cc.Component {
         // Attacker of this hitbox must be local
         if(!NetworkManager.instance.isLocal(this.attackerSessionId)) return;
 
-        let otherPlayer = otherCollider.node.getComponent(PlayerController);
+        let otherPlayer = resolvePlayerController(otherCollider.node);
 
         // Hit other player!
         if (otherPlayer && otherPlayer.sessionId !== this.attackerSessionId) {

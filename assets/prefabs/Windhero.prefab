@@ -127,7 +127,7 @@
     "_enabled": true,
     "_type": 2,
     "_allowSleep": true,
-    "_gravityScale": 2,
+    "_gravityScale": 3,
     "_linearDamping": 0,
     "_angularDamping": 0,
     "_linearVelocity": {
@@ -181,7 +181,7 @@
     "defendCooldown": 1.2,
     "superCooldown": 6,
     "speed": 250,
-    "jumpSpeed": 500,
+    "jumpSpeed": 600,
     "groundAcceleration": 2200,
     "groundDeceleration": 2600,
     "airAcceleration": 1400,
@@ -199,8 +199,12 @@
     "jumpDownClip": {
       "__uuid__": "556bb4f5-27bf-449d-ad08-02d8cfc0b775"
     },
-    "takeHitClip": null,
-    "deathClip": null,
+    "takeHitClip": {
+      "__uuid__": "91505b2b-5d8f-4e9a-866d-fc66ad5d81da"
+    },
+    "deathClip": {
+      "__uuid__": "0aac6c36-b902-450a-949d-31e3802ec03c"
+    },
     "meleeAttackClip": {
       "__uuid__": "2561c436-a3e2-4517-86d7-0d7f9b402334"
     },
@@ -237,7 +241,9 @@
       "__id__": 1
     },
     "_enabled": true,
-    "_defaultClip": null,
+    "_defaultClip": {
+      "__uuid__": "8446d5cc-78e8-43b0-b615-630479615b2e"
+    },
     "_clips": [
       {
         "__uuid__": "2561c436-a3e2-4517-86d7-0d7f9b402334"
@@ -263,10 +269,14 @@
       {
         "__uuid__": "6a12bc9f-a466-4187-8e1d-ce42bb843a0a"
       },
-      null,
-      null
+      {
+        "__uuid__": "91505b2b-5d8f-4e9a-866d-fc66ad5d81da"
+      },
+      {
+        "__uuid__": "0aac6c36-b902-450a-949d-31e3802ec03c"
+      }
     ],
-    "playOnLoad": true,
+    "playOnLoad": false,
     "_id": ""
   },
   {

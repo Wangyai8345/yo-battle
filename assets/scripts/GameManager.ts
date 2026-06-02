@@ -2,10 +2,8 @@
 import AudioManager from "./AudioManager";
 import NetworkManager, { GAMESTATE } from "./NetworkManager";
 import PlayerController from "./PlayerController";
+import { resolvePlayerController } from "./PlayerControllerResolver";
 import ProjectileController from "./ProjectileController";
-import GroundMonkController from "./GroundMonkController";
-import Windhero from "./Windhero";
-import Arrowhero from "./Arrowhero";
 
 
 const {ccclass, property} = cc._decorator;
@@ -23,6 +21,9 @@ export default class GameManager extends cc.Component {
 
     @property(cc.Prefab)
     arrowHeroPrefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    metalHeroPrefab: cc.Prefab = null;
     
     @property(cc.Prefab)
     attackHitBoxPrefab: cc.Prefab = null;
@@ -120,6 +121,11 @@ export default class GameManager extends cc.Component {
             case "arrow_hero":
             case "leaf_ranger":
                 return this.arrowHeroPrefab || this.groundMonkPrefab;
+            case "metal":
+            case "metal_hero":
+            case "metalhero":
+            case "metal_bladekeeper":
+                return this.metalHeroPrefab || this.groundMonkPrefab;
             default:
                 return this.groundMonkPrefab;
         }
@@ -127,12 +133,7 @@ export default class GameManager extends cc.Component {
 
 
     private resolvePlayerController(playerNode: cc.Node): PlayerController {
-        return (
-            playerNode.getComponent(PlayerController)
-            || playerNode.getComponent(Windhero)
-            || playerNode.getComponent(Arrowhero)
-            || playerNode.getComponent(GroundMonkController)
-        );
+        return resolvePlayerController(playerNode);
     }
 
 
@@ -386,7 +387,7 @@ export default class GameManager extends cc.Component {
                 }
 
                 break;
-            
+                
             // TODO: more prefabs types
                 
             default:

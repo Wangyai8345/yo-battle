@@ -20,16 +20,16 @@ enum GAMESTATE {
 // mapName: [{p1.x, p1.y}, {p2.x, p2.y}]
 const SPAWN_POINTS_CONFIG: { [key: string]: { x: number; y: number }[] } = {
 	"map0": [
-		{ x: -180, y: 20 },
-		{ x: 180, y: 20 }
+		{ x: -180, y: 200 },
+		{ x: 180, y: 200 }
 	],
 	"map1": [
-		{ x: -420, y: -100 },
-		{ x: 420, y: -100 }
+		{ x: -180, y: 200 },
+		{ x: 180, y: 200 }
 	],
 	"map2": [
-		{ x: -420, y: 120 },
-		{ x: 420, y: 120 }
+		{ x: -180, y: 200 },
+		{ x: 180, y: 200 }
 	],
 };
 
@@ -380,6 +380,10 @@ export class MyRoom extends Room {
 
 
 		this.onMessage("C_playerDead", (client) => {
+			this.broadcast("S_playerDead", {
+				sessionId: client.sessionId
+			});
+
 			this.playerLoseOneHeart(client.sessionId);
 		});
 

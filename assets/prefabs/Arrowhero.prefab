@@ -127,7 +127,7 @@
     "_enabled": true,
     "_type": 2,
     "_allowSleep": true,
-    "_gravityScale": 2,
+    "_gravityScale": 3,
     "_linearDamping": 0,
     "_angularDamping": 0,
     "_linearVelocity": {
@@ -181,7 +181,7 @@
     "defendCooldown": 1.2,
     "superCooldown": 6,
     "speed": 250,
-    "jumpSpeed": 500,
+    "jumpSpeed": 600,
     "groundAcceleration": 2200,
     "groundDeceleration": 2600,
     "airAcceleration": 1400,
@@ -199,8 +199,12 @@
     "jumpDownClip": {
       "__uuid__": "f8711481-8937-4c44-9035-785a3e9d20bb"
     },
-    "takeHitClip": null,
-    "deathClip": null,
+    "takeHitClip": {
+      "__uuid__": "bfe583fd-0586-4a64-a6f5-6162bbdaf7a9"
+    },
+    "deathClip": {
+      "__uuid__": "98a6aa13-e162-4c74-a62d-d1fc7ea4f3d8"
+    },
     "meleeAttackClip": {
       "__uuid__": "1597c39e-175d-4b49-91fd-cf6e9bf7d0ae"
     },
@@ -247,6 +251,7 @@
     "superBeamDamage": 24,
     "superBeamKnockback": 260,
     "superBeamDamageDelay": 0.06,
+    "airborneAnimationVelocityThreshold": 20,
     "_id": ""
   },
   {
@@ -257,7 +262,9 @@
       "__id__": 1
     },
     "_enabled": true,
-    "_defaultClip": null,
+    "_defaultClip": {
+      "__uuid__": "1a6e3f56-a904-48ed-9c43-1900def38b2f"
+    },
     "_clips": [
       {
         "__uuid__": "8ec973be-6dbc-4b16-bb0b-93d477c69dbd"
@@ -291,6 +298,12 @@
       },
       {
         "__uuid__": "957693a9-a928-403d-b03f-8b35a40b560a"
+      },
+      {
+        "__uuid__": "98a6aa13-e162-4c74-a62d-d1fc7ea4f3d8"
+      },
+      {
+        "__uuid__": "bfe583fd-0586-4a64-a6f5-6162bbdaf7a9"
       }
     ],
     "playOnLoad": false,

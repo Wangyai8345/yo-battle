@@ -1,4 +1,5 @@
 import PlayerController from "./PlayerController";
+import { resolvePlayerController } from "./PlayerControllerResolver";
 
 const { ccclass, property } = cc._decorator;
 
@@ -54,7 +55,7 @@ export default class CooldownPie extends cc.Component {
     }
 
     private resolveController() {
-        this.controller = this.targetPlayer ? this.targetPlayer.getComponent(PlayerController) : null;
+        this.controller = resolvePlayerController(this.targetPlayer);
     }
 
     private configureOverlay() {
