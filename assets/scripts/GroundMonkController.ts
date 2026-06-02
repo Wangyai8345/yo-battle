@@ -395,6 +395,27 @@ export default class GroundMonkController extends PlayerController {
             return;
         }
 
+        if (
+            !this.isDead &&
+            !this.isHit &&
+            !this.isDashing &&
+            !this.isDefending &&
+            !this.isAttacking &&
+            !this.isAirAttacking &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up || event.keyCode === cc.macro.KEY.space) &&
+            this.onGround &&
+            this.rb
+        ) {
+            const velocity = this.rb.linearVelocity;
+            velocity.y = this.jumpSpeed;
+            this.rb.linearVelocity = velocity;
+            this.onGround = false;
+            this.groundContactCount = 0;
+            this.jumpBufferTimer = 0;
+            this.coyoteTimer = 0;
+            this.updateAnimation();
+        }
+
         if (this.isDead || this.isHit || this.isDashing) return;
 
         if(event.keyCode === cc.macro.KEY.a) {
@@ -409,16 +430,16 @@ export default class GroundMonkController extends PlayerController {
             // 不直接跳，先丟進 buffer；update 會根據 onGround / coyote 判斷實際是否起跳
             this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
         }
-        if(event.keyCode === cc.macro.KEY.shift) {
+        if(event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.q || event.keyCode === cc.macro.KEY.g) {
             this.dash();
         }
-        if(event.keyCode === cc.macro.KEY.j) {
+        if(event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
             this.requestDirectionalAttack();
         }
-        if(event.keyCode === cc.macro.KEY.k) {
+        if(event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
             this.requestSpecialAttack();
         }
-        if(event.keyCode === cc.macro.KEY.e) {
+        if(event.keyCode === cc.macro.KEY.f) {
             this.startDefend();
         }
     }
@@ -439,7 +460,7 @@ export default class GroundMonkController extends PlayerController {
             this.rightPressed = false;
             this.refreshMoveDir();
         }
-        if (event.keyCode === cc.macro.KEY.e) {
+        if (event.keyCode === cc.macro.KEY.f) {
             this.stopDefend();
         }
     }
@@ -783,6 +804,8 @@ export default class GroundMonkController extends PlayerController {
         v.y = this.jumpSpeed;
         this.rb.linearVelocity = v;
         this.onGround = false;
+        this.groundContactCount = 0;
+        this.updateAnimation();
     }
 
     dash() {
@@ -813,11 +836,19 @@ export default class GroundMonkController extends PlayerController {
     onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
         //console.log("contacted");
         if (this.isGroundNode(otherCollider.node)) {
+            (contact as any)._isGroundForPlayer = true;
+            this.groundContactCount++;
+            this.onGround = true;
+            this.coyoteTimer = this.COYOTE_TIME;
+            this.updateAnimation();
+            return;
 
             const normal = contact.getWorldManifold().normal;
             // Box2D normal 由 selfCollider 指向 otherCollider；
             // 玩家踩在平台上時 normal 由「玩家 → 平台」= 朝下，所以 normal.y < 0
-            if (normal.y < -0.5) {
+            const isMostlyVerticalContact = Math.abs(normal.y) > Math.abs(normal.x);
+            const playerIsAboveGround = selfCollider.node.y >= otherCollider.node.y;
+            if (isMostlyVerticalContact && playerIsAboveGround) {
                 (contact as any)._isGroundForPlayer = true;
                 this.groundContactCount++;
                 this.onGround = this.groundContactCount > 0;
@@ -1197,6 +1228,10 @@ export default class GroundMonkController extends PlayerController {
         this.comboQueued = false;
         this.comboStep = 0;
         this.moveDir = 0;
+        this.onGround = true;
+        this.groundContactCount = 0;
+        this.coyoteTimer = 0;
+        this.jumpBufferTimer = 0;
         this.currentAnim = '';
 
         // if (this.respawnPoint) {

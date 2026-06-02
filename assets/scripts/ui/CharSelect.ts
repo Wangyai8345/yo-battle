@@ -9,6 +9,8 @@ const { ccclass, property } = cc._decorator;
 @ccclass
 export default class CharSelect extends cc.Component {
 
+    private static readonly SELECTED_CHARACTER_STORAGE_KEY = 'selectedCharacter';
+
     @property([cc.Node])
     cards: cc.Node[] = [];
 
@@ -111,11 +113,29 @@ export default class CharSelect extends cc.Component {
 
         // 存到 localStorage，讓 JoinRoomScene 讀取
         const charKey = this._charKeys[this._selectedIdx] || 'ground_monk';
-        localStorage.setItem('selectedCharacter', charKey);
+        this.saveSelectedCharacter(charKey);
         cc.log('[CharSelect] selectedCharacter saved:', charKey);
 
         this._refresh();
         cc.director.loadScene('join_room_scene');
+    }
+
+    private saveSelectedCharacter(charKey: string) {
+        try {
+            if (typeof window !== 'undefined' && window.sessionStorage) {
+                window.sessionStorage.setItem(CharSelect.SELECTED_CHARACTER_STORAGE_KEY, charKey);
+            }
+        } catch (error) {
+            cc.warn('[CharSelect] Failed to save selectedCharacter to sessionStorage', error);
+        }
+
+        try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.removeItem(CharSelect.SELECTED_CHARACTER_STORAGE_KEY);
+            }
+        } catch (error) {
+            cc.warn('[CharSelect] Failed to clear legacy localStorage selectedCharacter', error);
+        }
     }
 
     private _refresh() {

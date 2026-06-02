@@ -17,6 +17,9 @@ export default class GameManager extends cc.Component {
     groundMonkPrefab: cc.Prefab = null;
 
     @property(cc.Prefab)
+    waterPriestessPrefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
     windHeroPrefab: cc.Prefab = null;
 
     @property(cc.Prefab)
@@ -113,6 +116,8 @@ export default class GameManager extends cc.Component {
         switch(character){
             case "ground_monk":
                 return this.groundMonkPrefab;
+            case "water_priestess":
+                return this.waterPriestessPrefab || this.groundMonkPrefab;
             case "wind":
             case "wind_hero":
             case "wind_hashashin":
@@ -127,6 +132,7 @@ export default class GameManager extends cc.Component {
             case "metal_bladekeeper":
                 return this.metalHeroPrefab || this.groundMonkPrefab;
             default:
+                cc.warn(`[GameManager] Unsupported character "${character}", fallback to groundMonkPrefab`);
                 return this.groundMonkPrefab;
         }
     }

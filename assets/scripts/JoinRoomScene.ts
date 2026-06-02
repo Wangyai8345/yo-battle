@@ -99,9 +99,7 @@ export default class JoinRoomScene extends cc.Component {
 
 
     getSelectedCharacter() {
-        const selectedCharacter = localStorage.getItem(
-            JoinRoomScene.SELECTED_CHARACTER_STORAGE_KEY
-        );
+        const selectedCharacter = this.readSelectedCharacter();
 
         if (selectedCharacter && selectedCharacter.trim() !== "") {
             return selectedCharacter;
@@ -111,5 +109,33 @@ export default class JoinRoomScene extends cc.Component {
             `[JoinRoomScene] No selected character found, fallback to ${JoinRoomScene.DEFAULT_CHARACTER}`
         );
         return JoinRoomScene.DEFAULT_CHARACTER;
+    }
+
+    private readSelectedCharacter(): string | null {
+        try {
+            if (typeof window !== "undefined" && window.sessionStorage) {
+                const sessionValue = window.sessionStorage.getItem(
+                    JoinRoomScene.SELECTED_CHARACTER_STORAGE_KEY
+                );
+
+                if (sessionValue && sessionValue.trim() !== "") {
+                    return sessionValue;
+                }
+            }
+        } catch (error) {
+            cc.warn("[JoinRoomScene] Failed to read selectedCharacter from sessionStorage", error);
+        }
+
+        try {
+            if (typeof window !== "undefined" && window.localStorage) {
+                return window.localStorage.getItem(
+                    JoinRoomScene.SELECTED_CHARACTER_STORAGE_KEY
+                );
+            }
+        } catch (error) {
+            cc.warn("[JoinRoomScene] Failed to read selectedCharacter from localStorage", error);
+        }
+
+        return null;
     }
 }   
