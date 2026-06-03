@@ -315,6 +315,14 @@ export default class NetworkManager extends cc.Component {
             GameManager.instance.handleDestroyPrefab(message.uid);
         });
 
+
+        this.room.onMessage("S_playerTeleport", (message: {senderId: string, x: number, y: number}) => {
+            debug(`S_playerTeleport called by ${message.senderId}`);
+            let controller = this.getPlayerControllerOf(message.senderId);
+            if (controller) {
+                controller.snapToPosition(message.x, message.y);
+            }
+        });
     }   
 
 
@@ -520,5 +528,12 @@ export default class NetworkManager extends cc.Component {
     public destroyPrefab(uid: string){
         GameManager.instance.handleDestroyPrefab(uid);
         this.sendToServer("C_destroyPrefab", uid);
+    }
+
+
+    /**@usage When a player is teleporting, use this function so nonlocal player will 
+     * use snapToPosition instead of interpolation to update this player*/
+    public playerTeleport(x: number, y: number) {
+        this.sendToServer("C_playerTeleport", { x, y });
     }
 }

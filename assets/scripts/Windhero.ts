@@ -729,6 +729,7 @@ export default class Windhero extends PlayerController {
 
     private teleportTo(target: WindTeleportTarget) {
         this.node.setPosition(target.x, target.y, target.z);
+        NetworkManager.instance.playerTeleport(target.x, target.y);
 
         if (!this.rb) {
             return;

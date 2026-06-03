@@ -447,5 +447,14 @@ export class MyRoom extends Room {
 				uid: uid
 			}, { except: client });
 		});
+
+
+		this.onMessage("C_playerTeleport", (client: Client, message: any) => {
+			this.broadcast("S_playerTeleport", {
+				senderId: client.sessionId,
+				x: message.x,
+				y: message.y
+			}, {except: client});
+		});
 	}
 }

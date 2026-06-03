@@ -729,6 +729,7 @@ export default class Metalhero extends PlayerController {
 
     private teleportTo(target: WindTeleportTarget) {
         this.node.setPosition(target.x, target.y, target.z);
+        NetworkManager.instance.playerTeleport(target.x, target.y);
 
         if (!this.rb) {
             return;
