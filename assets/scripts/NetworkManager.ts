@@ -43,6 +43,7 @@ export default class NetworkManager extends cc.Component {
 
     // Execute when receiving "S_pendingResolvedSignal" from server
     private onMatchReadyCallback: Function = null;
+    private quitPromise: Promise<void> | null = null;
 
 
 
@@ -96,6 +97,22 @@ export default class NetworkManager extends cc.Component {
         return this.localSessionId === sessionId;
     }
 
+    private isValidNode(node: cc.Node | null | undefined): node is cc.Node {
+        return !!node && cc.isValid(node, true);
+    }
+
+    private isValidAnimation(animation: cc.Animation | null | undefined): animation is cc.Animation {
+        return !!animation && cc.isValid(animation, true);
+    }
+
+    private destroyTrackedPlayerNode(sessionId: string) {
+        const node = this.playerNodes.get(sessionId);
+        if (this.isValidNode(node)) {
+            node.destroy();
+        }
+        this.playerNodes.delete(sessionId);
+    }
+
 
     private sendToServer(messageName: string, message?: any) {
         if (!this.room) return;
@@ -145,7 +162,9 @@ export default class NetworkManager extends cc.Component {
 
             this.callbacks.listen(player, "scaleX", (newScaleX: number) => {
                 let node = this.playerNodes.get(sessionId);
-                if(node) node.scaleX = newScaleX;
+                if (this.isValidNode(node)) {
+                    node.scaleX = newScaleX;
+                }
             });
             
             this.callbacks.listen(player, "hp", (newHP: number) => {
@@ -179,38 +198,37 @@ export default class NetworkManager extends cc.Component {
             }
 
             if (this.playerNodes.has(sessionId)) {
-                this.playerNodes.get(sessionId).destroy();
-                this.playerNodes.delete(sessionId);
+                this.destroyTrackedPlayerNode(sessionId);
             }
         });
           
 
         this.callbacks.listen("isPending", (isPending: boolean) => {
-            if(!isPending) this.onMatchReadyCallback();
+            if (!isPending && this.onMatchReadyCallback) this.onMatchReadyCallback();
         });
 
 
         this.callbacks.listen("gameState", (currentGameState: number) => {
+            const gameManager = GameManager.instance;
             switch(currentGameState){
                 case GAMESTATE.READY:
-                    GameManager.instance.gameReady();
+                    gameManager?.gameReady();
 					break;
 
 				case GAMESTATE.GAME:
-                    GameManager.instance.gameStart();
+                    gameManager?.gameStart();
 					break;
 
 				case GAMESTATE.BREAK:
-					GameManager.instance.gameBreak();
+					gameManager?.gameBreak();
 					break;
 
 				case GAMESTATE.END:
-                    GameManager.instance.gameEnd();
+                    gameManager?.gameEnd();
 					break;
 
 				case GAMESTATE.TERMINATED:
-                    this.quitServer();
-                    GameManager.instance.gameTerminated();
+                    this.terminateAndReturnToLobby();
 					break;
             }
         });
@@ -232,7 +250,9 @@ export default class NetworkManager extends cc.Component {
             debug(`S_playAnimation, From: ${message.senderId}, ClipName: ${message.clipName}`);
             
             let controller = this.getPlayerControllerOf(message.senderId);
-            if(controller && controller.anim) controller.anim.play(message.clipName);
+            if (controller && this.isValidAnimation(controller.anim)) {
+                controller.anim.play(message.clipName);
+            }
         });
 
 
@@ -240,7 +260,9 @@ export default class NetworkManager extends cc.Component {
             debug(`S_stopAnimation, From: ${message.senderId}, ClipName: ${message.clipName}`);
             
             let controller = this.getPlayerControllerOf(message.senderId);
-            if(controller && controller.anim) controller.anim.stop(message.clipName);
+            if (controller && this.isValidAnimation(controller.anim)) {
+                controller.anim.stop(message.clipName);
+            }
         });
 
 
@@ -306,13 +328,13 @@ export default class NetworkManager extends cc.Component {
 
         this.room.onMessage("S_spawnPrefab", (message: { senderId: string, prefabName: string, infos: any }) => {
             debug(`S_spawnPrefab`);
-            GameManager.instance.handleSpawnPrefab(message.prefabName, message.infos);
+            GameManager.instance?.handleSpawnPrefab(message.prefabName, message.infos);
         });
         
         
         this.room.onMessage("S_destroyPrefab", (message: {uid: string}) => {
             debug(`S_destroyPrefab`);
-            GameManager.instance.handleDestroyPrefab(message.uid);
+            GameManager.instance?.handleDestroyPrefab(message.uid);
         });
 
 
@@ -323,6 +345,7 @@ export default class NetworkManager extends cc.Component {
                 controller.snapToPosition(message.x, message.y);
             }
         });
+
     }   
 
 
@@ -366,6 +389,25 @@ export default class NetworkManager extends cc.Component {
 
     /** @usage called at Join Game Scene when player clicked quit game button */
     public async quitServer(){
+        if (this.quitPromise) {
+            return this.quitPromise;
+        }
+
+        this.quitPromise = this.performQuitServer();
+        try {
+            await this.quitPromise;
+        }
+        finally {
+            this.quitPromise = null;
+        }
+    }
+
+    public async terminateAndReturnToLobby() {
+        await this.quitServer();
+        GameManager.instance?.gameTerminated();
+    }
+
+    private async performQuitServer() {
         try {
             if(!this.room) return;
             debug(`Leaving room: ${this.room.name} (Session ID: ${this.localSessionId})`);
@@ -374,10 +416,9 @@ export default class NetworkManager extends cc.Component {
             await this.room.leave(true);
             
             // clear local things
-            this.playerNodes.forEach((node) => {
-                if(cc.isValid(node)) node.destroy();
+            Array.from(this.playerNodes.keys()).forEach((sessionId) => {
+                this.destroyTrackedPlayerNode(sessionId);
             });
-            this.playerNodes.clear(); 
             this.pendingPlayers.clear();
             this.localSessionId = "";
             this.onMatchReadyCallback = null;
@@ -531,7 +572,7 @@ export default class NetworkManager extends cc.Component {
     }
 
 
-    /**@usage When a player is teleporting, use this function so nonlocal player will 
+    /**@usage When a player is teleporting, use this function so nonlocal player will
      * use snapToPosition instead of interpolation to update this player*/
     public playerTeleport(x: number, y: number) {
         this.sendToServer("C_playerTeleport", { x, y });

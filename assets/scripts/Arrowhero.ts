@@ -298,9 +298,7 @@ export default class Arrowhero extends PlayerController {
     }
 
     onDestroy() {
-        if (this.anim) {
-            this.anim.off("finished", this.onClipFinished, this);
-        }
+        this.clearAnimationFinishedListener(this.onClipFinished);
         if (typeof window !== "undefined") {
             window.removeEventListener("blur", this.handleWindowBlur);
         }
@@ -435,7 +433,7 @@ export default class Arrowhero extends PlayerController {
         }
 
         this.unschedule(this.hideAfterDeath);
-        this.anim.off("finished", this.onClipFinished, this);
+        this.clearAnimationFinishedListener(this.onClipFinished);
         this.isDead = true;
         this.isHit = false;
         this.isDefending = false;
@@ -589,8 +587,10 @@ export default class Arrowhero extends PlayerController {
             NetworkManager.instance.playSoundEffect(soundResource, soundVolume);
         }
 
-        this.anim.off("finished", this.onClipFinished, this);
-        this.anim.once("finished", this.onClipFinished, this);
+        if (!this.listenForAnimationFinishedOnce(this.onClipFinished)) {
+            return false;
+        }
+
         this.playAnimationClip(config.clip, true);
         return true;
     }
@@ -730,7 +730,7 @@ export default class Arrowhero extends PlayerController {
     }
 
     private enterHitState(knockback: cc.Vec2) {
-        this.anim.off("finished", this.onClipFinished, this);
+        this.clearAnimationFinishedListener(this.onClipFinished);
         this.currentClipAction = null;
         this.isDefending = false;
         this.animationLocked = true;
@@ -968,7 +968,7 @@ export default class Arrowhero extends PlayerController {
     }
 
     private unlockController() {
-        this.anim.off("finished", this.onClipFinished, this);
+        this.clearAnimationFinishedListener(this.onClipFinished);
         this.currentClipAction = null;
         this.isDefending = false;
         this.movementLocked = false;

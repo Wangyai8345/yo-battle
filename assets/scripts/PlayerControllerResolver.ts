@@ -5,15 +5,17 @@ import PlayerController from "./PlayerController";
 import Windhero from "./Windhero";
 
 export function resolvePlayerController(node: cc.Node | null): PlayerController | null {
-    if (!node) {
+    if (!node || !cc.isValid(node, true)) {
         return null;
     }
 
-    return (
+    const controller = (
         node.getComponent(PlayerController)
         || node.getComponent(Windhero)
         || node.getComponent(Arrowhero)
         || node.getComponent(Metalhero)
         || node.getComponent(GroundMonkController)
     );
+
+    return controller && cc.isValid(controller, true) ? controller : null;
 }

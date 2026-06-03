@@ -4,12 +4,12 @@ import AttackHitBox from "./AttackHitbox";
 import UIManager from "./managers/UIManager";
 import ScreenEffect from "./ui/ScreenEffect";
 
-const {ccclass, property} = cc._decorator;
+const { ccclass, property } = cc._decorator;
 
 
 @ccclass
 export default abstract class PlayerController extends cc.Component {
-    
+
     // @property
     // speed: number = 100;
     // @property
@@ -18,7 +18,7 @@ export default abstract class PlayerController extends cc.Component {
     // coyoteTime: number = 0.2;
     // @property
     // maxHP: number = 100;
-    
+
     public hp: number = 0;
     public heart: number = 0;
     protected rb: cc.RigidBody = null;
@@ -41,7 +41,7 @@ export default abstract class PlayerController extends cc.Component {
     protected abstract localOnKeyUp(event: cc.Event.EventKeyboard): void;
 
     public abstract beAttacked(attackType: string, damage: number, knockback: cc.Vec2): void;
-   
+
     protected abstract onDeath(): void;
 
     public abstract onRestart(): void;
@@ -69,7 +69,7 @@ export default abstract class PlayerController extends cc.Component {
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
 
-        // cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_shapeBit;
+        cc.director.getPhysicsManager().debugDrawFlags = cc.PhysicsManager.DrawBits.e_shapeBit;
     }
 
 
@@ -98,7 +98,7 @@ export default abstract class PlayerController extends cc.Component {
     }
 
 
-    public setTargetHp(newHp: number){
+    public setTargetHp(newHp: number) {
         this.hp = newHp;
         this.node.getChildByName("HP Label").getComponent(cc.Label).string = `HP: ${newHp}`;
         if (UIManager.instance) UIManager.instance.updateHP(this.id - 1, newHp, 100);
@@ -117,7 +117,40 @@ export default abstract class PlayerController extends cc.Component {
 
         return normalizedNodeName === normalizedConfiguredName
             || normalizedNodeName === "platform"
-            || normalizedNodeName.startsWith("platform_");
+            || normalizedNodeName.startsWith("platform_")
+            || normalizedNodeName.startsWith("terrain")
+            || normalizedNodeName.startsWith("ground")
+            || normalizedNodeName.startsWith("floor");
+    }
+
+    protected clearAnimationFinishedListener(callback: Function): void {
+        const animation = this.anim;
+        if (!animation || !cc.isValid(animation, true)) {
+            return;
+        }
+
+        const callbackTable = (animation as any)._callbackTable;
+        if (!callbackTable || typeof callbackTable !== "object") {
+            return;
+        }
+
+        animation.off("finished", callback, this);
+    }
+
+    protected listenForAnimationFinishedOnce(callback: Function): boolean {
+        const animation = this.anim;
+        if (!animation || !cc.isValid(animation, true)) {
+            return false;
+        }
+
+        const callbackTable = (animation as any)._callbackTable;
+        if (!callbackTable || typeof callbackTable !== "object") {
+            return false;
+        }
+
+        this.clearAnimationFinishedListener(callback);
+        animation.once("finished", callback, this);
+        return true;
     }
 
     public syncDeathState() {
@@ -125,32 +158,32 @@ export default abstract class PlayerController extends cc.Component {
     }
 
 
-    public setHeart(newHeart: number){
+    public setHeart(newHeart: number) {
         this.heart = newHeart;
         GameManager.instance.updateHeartLabel();
     }
 
 
     protected update(dt: number): void {
-        if(this.isLocal){
+        if (this.isLocal) {
             this.localUpdate(dt);
             NetworkManager.instance.sendPositionToServer(this.node.x, this.node.y);
             NetworkManager.instance.sendScaleXToServer(this.node.scaleX);
         }
-        else{
+        else {
             this.interpolation(dt);
         }
     }
 
 
-    interpolation(dt: number){
+    interpolation(dt: number) {
         let dx = this.targetX - this.node.x;
         let dy = this.targetY - this.node.y;
         let distanceSquared = dx * dx + dy * dy;
 
         // Directly set to target if too close
         const EPSILON = 0.1;
-        if(distanceSquared < EPSILON){
+        if (distanceSquared < EPSILON) {
             this.applyRemotePosition(this.targetX, this.targetY);
             return;
         }
@@ -179,33 +212,33 @@ export default abstract class PlayerController extends cc.Component {
 
 
     onKeyDown(event: cc.Event.EventKeyboard) {
-        if(!this.isLocal) return;
-        if(!(!!this.node && this.node.activeInHierarchy)) return;
-        if(!this.isControllable) return;
-        
+        if (!this.isLocal) return;
+        if (!(!!this.node && this.node.activeInHierarchy)) return;
+        if (!this.isControllable) return;
+
         this.localOnKeyDown(event);
     }
-    
-    
+
+
     onKeyUp(event: cc.Event.EventKeyboard) {
-        if(!this.isLocal) return;
-        if(!(!!this.node && this.node.activeInHierarchy)) return;
+        if (!this.isLocal) return;
+        if (!(!!this.node && this.node.activeInHierarchy)) return;
         // if(!this.isControllable) return;
 
         this.localOnKeyUp(event);
     }
 
 
-    deductHp(amount: number){
-        if(!this.isLocal) return;
+    deductHp(amount: number) {
+        if (!this.isLocal) return;
 
         this.hp = Math.min(Math.max(0, this.hp - amount), 100);
 
         NetworkManager.instance.sendHpToServer(this.hp);
         this.node.getChildByName("HP Label").getComponent(cc.Label).string = `HP: ${this.hp}`;
         if (UIManager.instance) UIManager.instance.updateHP(this.id - 1, this.hp, 100);
-        
-        if(this.hp <= 0) {
+
+        if (this.hp <= 0) {
             if (ScreenEffect.instance) ScreenEffect.instance.shake();
             this.onDeath();
             NetworkManager.instance.playerDead();
@@ -235,10 +268,10 @@ export default abstract class PlayerController extends cc.Component {
 
 
     // _______________________________ TEST ZONE _______________________________
-    
+
     // beAttacked(attackType: string, fromX: number, fromY: number){
     //     if(!this.isLocal) return;
-        
+
     //     switch(attackType){
     //         case "groundMonkNormalAttack":
     //             this.deductHp(2);
@@ -252,12 +285,12 @@ export default abstract class PlayerController extends cc.Component {
     //     }
     // }
 
-    
+
     // jump(){
     //     if(!this.isLocal) return;
     //     if(!this.isGrounded) return;
     //     if(this.isJumping) return;
-        
+
     //     this.rb.linearVelocity = cc.v2(this.rb.linearVelocity.x, this.jumpSpeed);
     //     this.isJumping = true;
     // }
@@ -293,7 +326,7 @@ export default abstract class PlayerController extends cc.Component {
     //     if(other.node.name === "Floor"){
     //         if(this.groundColliders.has(other)){
     //             this.groundColliders.delete(other);
-                
+
     //             // Player is not on ground,
     //             // however we set isGrounded to false AFTER coyoteTime
     //             if(this.groundColliders.size === 0){    
@@ -311,8 +344,8 @@ export default abstract class PlayerController extends cc.Component {
     //     if(!this.isLocal) return;
     //     NetworkManager.instance.playAudio("coin");
     // }
-    
-    
+
+
     // attack(){
     //     if(!this.isLocal) return;
 

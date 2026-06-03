@@ -106,8 +106,7 @@ export default class GameManager extends cc.Component {
         this.scheduleOnce(() => {
             if(!this.isReady){
                 cc.warn(`Auto quit triggered`);
-                NetworkManager.instance.quitServer();
-                this.gameTerminated();
+                NetworkManager.instance.terminateAndReturnToLobby();
             }
         }, WAIT_TIME);
     }
@@ -415,7 +414,10 @@ export default class GameManager extends cc.Component {
 
     handleDestroyPrefab(prefabId: string){
         if(this.prefabNodes.has(prefabId)){
-            this.prefabNodes.get(prefabId).destroy();
+            const node = this.prefabNodes.get(prefabId);
+            if (node && cc.isValid(node, true)) {
+                node.destroy();
+            }
             this.prefabNodes.delete(prefabId);
         }
     }

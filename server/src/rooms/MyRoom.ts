@@ -305,7 +305,7 @@ export class MyRoom extends Room {
 
 
 	chooseRandomMap() {
-		const maps = ["map0","map1","map2"];
+		const maps = ["map1"];
 		this.state.mapName = maps[Math.floor(Math.random() * maps.length)];
 	}
 
