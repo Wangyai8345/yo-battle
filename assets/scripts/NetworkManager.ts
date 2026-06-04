@@ -81,6 +81,7 @@ export default class NetworkManager extends cc.Component {
         
         this.client = new ColyseusJS.Client({
             hostname: targetHost,           // server IP
+            port: 443,
             secure: true                   // 如果未來改用 wss/https 再設為 true
         });
         
@@ -403,6 +404,7 @@ export default class NetworkManager extends cc.Component {
 
     public async terminateAndReturnToLobby() {
         await this.quitServer();
+        // this.quitServer();
         GameManager.instance?.gameTerminated();
     }
 
@@ -410,10 +412,7 @@ export default class NetworkManager extends cc.Component {
         try {
             if(!this.room) return;
             debug(`Leaving room: ${this.room.name} (Session ID: ${this.localSessionId})`);
-            
-            // server function
-            await this.room.leave(true);
-            
+                        
             // clear local things
             Array.from(this.playerNodes.keys()).forEach((sessionId) => {
                 this.destroyTrackedPlayerNode(sessionId);
@@ -422,7 +421,16 @@ export default class NetworkManager extends cc.Component {
             this.localSessionId = "";
             this.onMatchReadyCallback = null;
             this.callbacks = null;
+            
+            const roomToLeave = this.room;
             this.room = null;
+            
+            // server function
+            roomToLeave.leave(true).then(() => {
+                debug("後端也成功確認徹底離開房間");
+            }).catch((err: any) => {
+                cc.warn("Error:", err);
+            });
 
             debug("Successfully quit server");
         }
