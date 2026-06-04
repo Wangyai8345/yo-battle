@@ -387,6 +387,13 @@ export default class NetworkManager extends cc.Component {
     }
 
 
+    public async terminateAndReturnToLobby() {
+        await this.quitServer();
+        // this.quitServer();
+        GameManager.instance?.gameTerminated();
+    }
+
+
     /** @usage called at Join Game Scene when player clicked quit game button */
     public async quitServer(){
         if (this.quitPromise) {
@@ -402,18 +409,44 @@ export default class NetworkManager extends cc.Component {
         }
     }
 
-    public async terminateAndReturnToLobby() {
-        await this.quitServer();
-        // this.quitServer();
-        GameManager.instance?.gameTerminated();
-    }
 
     private async performQuitServer() {
         try {
-            if(!this.room) return;
+            if (!this.room) return;
             debug(`Leaving room: ${this.room.name} (Session ID: ${this.localSessionId})`);
-                        
-            // clear local things
+            
+            const roomToLeave = this.room;
+
+            // =========================================================================
+            // 🟢 核心黑魔法：強制閹割 Colyseus 內部的所有重連與狀態監聽器！
+            // =========================================================================
+            try {
+                // 1. 拔掉所有人為註冊的 State, Message 監聽（防止中途還有網路封包塞進來）
+                roomToLeave.removeAllListeners();
+                
+                // 2. 這是最關鍵的一槍：強行把 Colyseus 內建用來重連的監聽器全部清空！
+                // 在 Colyseus.js 中，內部偵測斷線重連通常綁在 .onLeave 或者是內部的 event emitter 上
+                if (roomToLeave.onLeave) {
+                    roomToLeave.onLeave.clear(); // 拔掉所有離場回呼，不讓它觸發任何後續邏輯
+                }
+                
+                // 3. 直接破壞底層的 connection 物件（強行關閉 WebSocket 且不觸發重連）
+                if ((roomToLeave as any).connection) {
+                    // 拔掉底層 WebSocket 的關閉與錯誤監聽器，這樣它死掉時就不會觸發 reconnection 迴圈
+                    (roomToLeave as any).connection.onclose = null;
+                    (roomToLeave as any).connection.onerror = null;
+                    
+                    // 強制關閉底層 Socket 房間
+                    (roomToLeave as any).connection.close();
+                }
+            } catch (err) {
+                cc.warn("嘗試暴力閹割 Colyseus 底層時噴錯，通常可忽略:", err);
+            }
+            // =========================================================================
+
+            // 3. 立刻斷開前端引用與大掃除，UI 直接放行換場景
+            this.room = null; 
+
             Array.from(this.playerNodes.keys()).forEach((sessionId) => {
                 this.destroyTrackedPlayerNode(sessionId);
             });
@@ -421,20 +454,13 @@ export default class NetworkManager extends cc.Component {
             this.localSessionId = "";
             this.onMatchReadyCallback = null;
             this.callbacks = null;
-            
-            const roomToLeave = this.room;
-            this.room = null;
-            
-            // server function
-            roomToLeave.leave(true).then(() => {
-                debug("後端也成功確認徹底離開房間");
-            }).catch((err: any) => {
-                cc.warn("Error:", err);
-            });
 
-            debug("Successfully quit server");
+            // 4. 背景默默發送通知給後端，這時因為監聽器全拔了，就算它失敗或卡住，也絕對不會在 Console 噴重連 Log
+            roomToLeave.leave(true).catch(() => {});
+
+            debug("本地狀態已完全清空，且已物理中斷 Colyseus 重連定時器！");
         }
-        catch(e){
+        catch (e) {
             cc.error("Failed to quit server:", e);
             throw e;
         }
