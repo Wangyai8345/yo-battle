@@ -70,7 +70,7 @@ export default class NetworkManager extends cc.Component {
             return;
         }
 
-        let targetHost = "localhost";
+        let targetHost = "yo-battle.onrender.com";
 
         if (typeof window !== 'undefined' && window.location) {
             const currentHost = window.location.hostname;
