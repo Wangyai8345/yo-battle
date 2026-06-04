@@ -305,7 +305,7 @@ export class MyRoom extends Room {
 
 
 	chooseRandomMap() {
-		const maps = ["map1"];
+		const maps = ["map0", "map1", "map2"];
 		this.state.mapName = maps[Math.floor(Math.random() * maps.length)];
 	}
 
@@ -406,7 +406,7 @@ export class MyRoom extends Room {
 				const distance = Math.sqrt(dx * dx + dy * dy);
 
 				// dist between where client sees target player vs where target player actually is
-				const TOLERATE_DISTANCE = 150;
+				const TOLERATE_DISTANCE = 50;
 
 				if (distance <= TOLERATE_DISTANCE) {
 
