@@ -74,15 +74,17 @@ export default class NetworkManager extends cc.Component {
 
         if (typeof window !== 'undefined' && window.location) {
             const currentHost = window.location.hostname;
-            if (currentHost && currentHost !== "") {
-                targetHost = currentHost;
+            // if (currentHost && currentHost !== "") {
+            //     targetHost = currentHost;
+            // }
+        if (currentHost && currentHost !== "localhost" && currentHost !== "127.0.0.1") {   
+                targetHost = "https://yo-battle.onrender.com"; 
             }
         }
         
         this.client = new ColyseusJS.Client({
             hostname: targetHost,           // server IP
-            port: 2567,                     // server Port
-            secure: false                   // 如果未來改用 wss/https 再設為 true
+            secure: true                  // 如果未來改用 wss/https 再設為 true
         });
         
         console.log(`[NetworkManager] Target Host: ${targetHost}`);
