@@ -34,6 +34,7 @@ export default class NetworkManager extends cc.Component {
     private room: any = null; 
     private callbacks: any = null;
     private localSessionId: string = "";
+    private connectedToRemote = false;
 
     // Map sessionId to cc.Node
     private playerNodes: Map<string, cc.Node> = new Map();
@@ -63,6 +64,13 @@ export default class NetworkManager extends cc.Component {
 
 
     protected start(): void {
+        // connectClient(false):    test on localhost
+        // connectClient(true):     test on remote server
+        this.connectClient(true);
+    }
+
+
+    connectClient(isRemote: boolean = false){
         const ColyseusJS = (window as any).Colyseus;
         
         if(!ColyseusJS){
@@ -70,22 +78,29 @@ export default class NetworkManager extends cc.Component {
             return;
         }
 
-        let targetHost = "yo-battle.onrender.com";
+        this.connectedToRemote = isRemote;
 
-        if (typeof window !== 'undefined' && window.location) {
-            const currentHost = window.location.hostname;
-            if (currentHost && currentHost !== "localhost" && currentHost !== "127.0.0.1") {
-                targetHost = "yo-battle.onrender.com";
-            }
+        const remoteHost = "yo-battle.onrender.com";
+        const localHost = "localhost"
+        
+        let targetHost = localHost;
+        let targetPort: number | undefined = 2567;
+        let isSecure = false;
+
+        if(isRemote){
+            targetHost = remoteHost;
+            targetPort = undefined;
+            isSecure = true;
         }
         
         this.client = new ColyseusJS.Client({
-            hostname: targetHost,           // server IP
-            port: 443,
-            secure: true                   // 如果未來改用 wss/https 再設為 true
+            hostname: targetHost,
+            port: targetPort,
+            secure: isSecure
         });
         
-        console.log(`[NetworkManager] Target Host: ${targetHost}`);
+        console.log(`Host: ${targetHost}, Port: ${targetPort}, isSecure: ${isSecure}, isRemote: ${isRemote}`);
+        
         if(!this.client) cc.warn("[NetworkManager] Failed to init client");
     }
 
@@ -377,7 +392,7 @@ export default class NetworkManager extends cc.Component {
             
             this.setupRoomListeners();
             this.sendToServer("C_connectedSignal");
-            
+
             debug(`Successfully connected! Local Session ID: ${this.localSessionId}`);
         }
         catch(e){
@@ -394,12 +409,11 @@ export default class NetworkManager extends cc.Component {
     }
 
 
-    /** @usage called at Join Game Scene when player clicked quit game button */
     public async quitServer(){
         if (this.quitPromise) {
             return this.quitPromise;
         }
-
+        
         this.quitPromise = this.performQuitServer();
         try {
             await this.quitPromise;
@@ -408,57 +422,65 @@ export default class NetworkManager extends cc.Component {
             this.quitPromise = null;
         }
     }
-
-
+    
+    
+    /** @usage called at Join Game Scene when player clicked quit game button */
     private async performQuitServer() {
         try {
+    		// FIXED: quit server logic
             if (!this.room) return;
+
             debug(`Leaving room: ${this.room.name} (Session ID: ${this.localSessionId})`);
             
             const roomToLeave = this.room;
 
-            // =========================================================================
-            // 🟢 核心黑魔法：強制閹割 Colyseus 內部的所有重連與狀態監聽器！
-            // =========================================================================
-            try {
-                // 1. 拔掉所有人為註冊的 State, Message 監聽（防止中途還有網路封包塞進來）
-                roomToLeave.removeAllListeners();
-                
-                // 2. 這是最關鍵的一槍：強行把 Colyseus 內建用來重連的監聽器全部清空！
-                // 在 Colyseus.js 中，內部偵測斷線重連通常綁在 .onLeave 或者是內部的 event emitter 上
-                if (roomToLeave.onLeave) {
-                    roomToLeave.onLeave.clear(); // 拔掉所有離場回呼，不讓它觸發任何後續邏輯
-                }
-                
-                // 3. 直接破壞底層的 connection 物件（強行關閉 WebSocket 且不觸發重連）
-                if ((roomToLeave as any).connection) {
-                    // 拔掉底層 WebSocket 的關閉與錯誤監聽器，這樣它死掉時就不會觸發 reconnection 迴圈
-                    (roomToLeave as any).connection.onclose = null;
-                    (roomToLeave as any).connection.onerror = null;
-                    
-                    // 強制關閉底層 Socket 房間
-                    (roomToLeave as any).connection.close();
-                }
-            } catch (err) {
-                cc.warn("嘗試暴力閹割 Colyseus 底層時噴錯，通常可忽略:", err);
-            }
-            // =========================================================================
+            if (this.connectedToRemote) {
+                if (roomToLeave) {
+                    roomToLeave.removeAllListeners(); // 拔掉外層所有監聽
 
-            // 3. 立刻斷開前端引用與大掃除，UI 直接放行換場景
+                    const internalRoom = roomToLeave as any;
+
+                    if (internalRoom._reconnectionAttempts !== undefined) {
+                        internalRoom._reconnectionAttempts = 15; // 填滿次數，讓它下次直接退出
+                    }
+                    
+                    if (internalRoom.reconnection) {
+                        internalRoom.reconnection.maxAttempts = 0; // 強制歸零
+                        internalRoom.reconnection.enabled = false;   // 關閉重連開關
+                        internalRoom.reconnection.attempts = 15;    // 偽裝目前嘗試次數
+                        internalRoom.reconnection.reset = () => {};
+                        internalRoom.reconnection.backoff = () => {};
+                    }
+
+                    try {
+                        if (roomToLeave.connection) {
+                            if (typeof roomToLeave.connection.close === "function") {
+                                roomToLeave.connection.close();
+                            } else if (roomToLeave.connection.ws) {
+                                roomToLeave.connection.ws.close();
+                            }
+                        }
+                    }
+                    catch(e) {
+                        cc.warn("關閉 Socket 異常 (可忽略):", e);
+                    }
+                }
+            }
+            else{
+                await roomToLeave.leave(true);
+            }
+
+            
+            // clean local things
             this.room = null; 
 
-            Array.from(this.playerNodes.keys()).forEach((sessionId) => {
-                this.destroyTrackedPlayerNode(sessionId);
-            });
+            Array.from(this.playerNodes.keys()).forEach((sessionId) => { this.destroyTrackedPlayerNode(sessionId); });
             this.pendingPlayers.clear();
             this.localSessionId = "";
             this.onMatchReadyCallback = null;
             this.callbacks = null;
-
-            // 4. 背景默默發送通知給後端，這時因為監聽器全拔了，就算它失敗或卡住，也絕對不會在 Console 噴重連 Log
-            roomToLeave.leave(true).catch(() => {});
-
-            debug("本地狀態已完全清空，且已物理中斷 Colyseus 重連定時器！");
+            
+            debug("Successfully quit server!");
         }
         catch (e) {
             cc.error("Failed to quit server:", e);

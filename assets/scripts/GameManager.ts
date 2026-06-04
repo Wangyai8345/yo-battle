@@ -59,6 +59,9 @@ export default class GameManager extends cc.Component {
     @property(cc.Label)
     heartLabel: cc.Label = null;
 
+    @property(cc.Label)
+    waitingLabel: cc.Label = null;
+
 
 
     public static instance: GameManager = null;
@@ -101,7 +104,16 @@ export default class GameManager extends cc.Component {
         // (maybe the other player quit or taking too long)
         // then terminate the game
         
-        const WAIT_TIME = 5;
+        const DISPLAY_WAITING_LABEL_TIME = 2;
+        const WAIT_TIME = 15;
+        
+        this.scheduleOnce(() => {
+            if(!this.isReady){
+                this.waitingLabel.node.active = true;
+                this.waitingLabel.string = 
+                `WAITING THE OTHER PLAYER...\n\nAuto quit after ${WAIT_TIME} seconds`;
+            }
+        }, DISPLAY_WAITING_LABEL_TIME);
         
         this.scheduleOnce(() => {
             if(!this.isReady){
@@ -245,6 +257,8 @@ export default class GameManager extends cc.Component {
 
     gameReady(){
         this.isReady = true;
+        this.waitingLabel.node.active = false;
+
         this.playerNodes.forEach((node) => {
             node.active = true;
         });

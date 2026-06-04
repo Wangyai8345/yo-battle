@@ -25,6 +25,7 @@ export default class JoinRoomScene extends cc.Component {
 
 
     private pending: boolean = false;
+    private matchReady: boolean = false;
 
 
 
@@ -58,21 +59,28 @@ export default class JoinRoomScene extends cc.Component {
         try {
             this.pending = true;
             this.joinButton.interactable = false;
-            this.quitButton.interactable = true;
+            this.quitButton.interactable = false;
             this.statusLabel.string = `Waiting other players...`;
 
             await NetworkManager.instance.connectToServer(
                 this.roomNameInput.string.trim(),
                 this.getSelectedCharacter(),
                 () => {
+                    this.matchReady = true;
                     this.quitButton.interactable = false;
                     this.statusLabel.string = `Entering game!`;
 
                     this.scheduleOnce(() => {
                         cc.director.loadScene(this.gameSceneName);
-                    }, 1)
+                    }, 1);
                 }
             );
+
+            this.scheduleOnce(() => {
+                if(this.quitButton && !this.matchReady){
+                    this.quitButton.interactable = true;
+                }
+            }, 1);
         }
         catch(error){
             this.pending = false;
@@ -88,7 +96,7 @@ export default class JoinRoomScene extends cc.Component {
             this.pending = false;
             this.statusLabel.string = "Enter room name";
 
-            NetworkManager.instance.quitServer();
+            await NetworkManager.instance.quitServer();
         }
         catch(error){
             this.statusLabel.string = `An error occured`;
