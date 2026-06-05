@@ -304,15 +304,6 @@ export default class GameManager extends cc.Component {
     }
 
 
-<<<<<<< HEAD
-    gameEnd() {
-        const winner = NetworkManager.instance.getRoomState().winner;
-        if (this.winnerLabel) this.winnerLabel.string = `Winner: ${winner}`;
-    }
-
-
-    gameTerminated() {
-=======
     gameEnd(){
         const state = NetworkManager.instance.getRoomState();
         const winner = state.winner;
@@ -336,7 +327,6 @@ export default class GameManager extends cc.Component {
     gameTerminated(){
         // 如果有 GameOverPanel 就不自動跳轉，讓玩家選 Again/Quit
         if (this.gameOverPanel && this.gameOverPanel.node.active) return;
->>>>>>> 82beb76 (Add GameOverPanel, camera follow, HP bar, avatar display, UI fixed layer)
         cc.director.loadScene("join_room_scene");
     }
 
