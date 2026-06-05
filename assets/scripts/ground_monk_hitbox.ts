@@ -1,4 +1,4 @@
-import GroundMonkController from "./GroundMonkController";
+import SharedHeroController from "./SharedHeroController";
 import NetworkManager from "./NetworkManager";
 import PlayerController from "./PlayerController";
 
@@ -25,7 +25,7 @@ export default class ground_monk_hitbox extends cc.Component {
     //     // if(otherCollider.node.name === "enemy"){
             
     //     if(this.isOtherPlayer(otherCollider)){
-    //         const controller = this.player.getComponent(GroundMonkController);
+    //         const controller = this.player.getComponent(SharedHeroController);
             
     //         const facingDir = controller.getFacingDir();
     //         const comboStep = controller.getComboStep();

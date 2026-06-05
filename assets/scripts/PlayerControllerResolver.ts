@@ -1,4 +1,5 @@
 import Arrowhero from "./Arrowhero";
+import Firehero from "./Firehero";
 import GroundMonkController from "./GroundMonkController";
 import Metalhero from "./Metalhero";
 import PlayerController from "./PlayerController";
@@ -14,6 +15,7 @@ export function resolvePlayerController(node: cc.Node | null): PlayerController 
         || node.getComponent(Windhero)
         || node.getComponent(Arrowhero)
         || node.getComponent(Metalhero)
+        || node.getComponent(Firehero)
         || node.getComponent(GroundMonkController)
     );
 

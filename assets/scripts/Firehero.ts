@@ -1,1081 +1,1364 @@
-import Fireball from "./Fireball";
+import NetworkManager from "./NetworkManager";
 import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
 
-type FireballState = {
-    node: cc.Node;
-    sprite: cc.Sprite;
-    direction: number;
-    frameTimer: number;
-    frameIndex: number;
-    lifeTimer: number;
-    frames: cc.SpriteFrame[];
-    frameInterval: number;
-    speed: number;
-    lifetime: number;
-    loopStartIndex: number;
-    loopEndIndex: number;
-    finalFrameIndex: number;
-    finalFrameHoldDuration: number;
-    enlargedFrameStartIndex: number;
-    scaleMultiplier: number;
-    frameScaleFactors: number[];
-    baseFrameScale: number;
-    currentSpeed: number;
-    startupSpeed: number;
-    accelerationDuration: number;
-    accelerationElapsed: number;
+type SkillSlot = "attack" | "skill2" | "skill3" | "defend" | "super";
+type WindClipActionName =
+    | "melee"
+    | "ranged"
+    | "skill3"
+    | "defend"
+    | "super-startup"
+    | "super-attack"
+    | "super-recovery";
+type TimedPhaseName = "teleport-out";
+
+type ControllerLockConfig = {
+    lockMovement: boolean;
+    clearMovement: boolean;
+    lockFacing: boolean;
 };
 
+type WindClipActionConfig = {
+    name: WindClipActionName;
+    clip: cc.AnimationClip | null;
+    lock: ControllerLockConfig;
+};
+
+type TimedPhaseState = {
+    name: TimedPhaseName;
+    delay: number;
+    elapsed: number;
+};
+
+type TimedPhaseStepResult = {
+    nextPhase: TimedPhaseState | null;
+    completedPhaseName: TimedPhaseName | null;
+};
+
+type WindSuperModel = {
+    originX: number;
+    originY: number;
+    originZ: number;
+    facing: number;
+    forwardDistance: number;
+};
+
+type WindTeleportTarget = {
+    x: number;
+    y: number;
+    z: number;
+};
+
+function clampPositiveDuration(value: number): number {
+    return Math.max(0, value);
+}
+
+function canStartWindAction(
+    currentClipAction: WindClipActionName | null,
+    pendingPhase: TimedPhaseState | null,
+    isDead: boolean,
+    isHit: boolean
+): boolean {
+    return !currentClipAction && !pendingPhase && !isDead && !isHit;
+}
+
+function createControllerLockConfig(
+    lockMovement: boolean,
+    clearMovement: boolean,
+    lockFacing: boolean
+): ControllerLockConfig {
+    return {
+        lockMovement,
+        clearMovement,
+        lockFacing,
+    };
+}
+
+function createWindClipActionConfig(
+    name: WindClipActionName,
+    clip: cc.AnimationClip | null,
+    lock: ControllerLockConfig
+): WindClipActionConfig {
+    return {
+        name,
+        clip,
+        lock,
+    };
+}
+
+function createTimedPhaseState(name: TimedPhaseName, delay: number): TimedPhaseState {
+    return {
+        name,
+        delay: clampPositiveDuration(delay),
+        elapsed: 0,
+    };
+}
+
+function advanceTimedPhase(state: TimedPhaseState, dt: number): TimedPhaseStepResult {
+    const next = {
+        ...state,
+        elapsed: state.elapsed + dt,
+    };
+
+    if (next.elapsed < next.delay) {
+        return {
+            nextPhase: next,
+            completedPhaseName: null,
+        };
+    }
+
+    return {
+        nextPhase: null,
+        completedPhaseName: next.name,
+    };
+}
+
+function createWindSuperModel(
+    position: cc.Vec3,
+    facing: number,
+    forwardDistance: number
+): WindSuperModel {
+    return {
+        originX: position.x,
+        originY: position.y,
+        originZ: position.z,
+        facing,
+        forwardDistance,
+    };
+}
+
+function createWindSuperForwardTarget(model: WindSuperModel): WindTeleportTarget {
+    return {
+        x: model.originX + (model.facing * model.forwardDistance),
+        y: model.originY,
+        z: model.originZ,
+    };
+}
+
+function createWindSuperOriginTarget(model: WindSuperModel): WindTeleportTarget {
+    return {
+        x: model.originX,
+        y: model.originY,
+        z: model.originZ,
+    };
+}
+
+function createWindMeleeConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "melee",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
+function createWindRangedConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "ranged",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
+function createWindDefendConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "defend",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
+
+function createWindSkill3Config(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "skill3",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
+function createWindSuperStartupConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "super-startup",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
+
+function createWindSuperAttackConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "super-attack",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
+function createWindSuperRecoveryConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "super-recovery",
+        clip,
+        createControllerLockConfig(true, true, true)
+    );
+}
+
 @ccclass
-export default class Firehero extends cc.Component {
-    @property({ type: cc.SpriteFrame })
-    attackFrame1: cc.SpriteFrame = null;
+export default class Firehero extends PlayerController {
+    private visualNode: cc.Node | null = null;
+    private visualSprite: cc.Sprite | null = null;
+    private sourceSprite: cc.Sprite | null = null;
 
-    @property({ type: cc.SpriteFrame })
-    attackFrame2: cc.SpriteFrame = null;
+    private readonly handleWindowBlur = () => {
+        this.resetTransientInputState();
+    };
 
-    @property({ type: cc.SpriteFrame })
-    attackFrame3: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    attackFrame4: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    attackFrame5: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    attackFrame6: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    attackFrame7: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    attackFrame8: cc.SpriteFrame = null;
+    private readonly handleVisibilityChange = () => {
+        if (typeof document !== "undefined" && document.hidden) {
+            this.resetTransientInputState();
+        }
+    };
 
     @property
-    attackFrameInterval: number = 0.08;
-
-    @property({ type: cc.SpriteFrame })
-    defendFrame1: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    defendFrame2: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    defendFrame3: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    defendFrame4: cc.SpriteFrame = null;
+    attackCooldown: number = 0.35;
 
     @property
-    defendFrameInterval: number = 0.1;
+    skill2Cooldown: number = 1.4;
 
     @property
-    defendFinalHoldDuration: number = 1;
-
-    @property({ type: cc.SpriteFrame })
-    defendHoldEffectFrame: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame1: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame2: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame3: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame4: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame5: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame6: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame7: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame8: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame9: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill2Frame10: cc.SpriteFrame = null;
+    skill3Cooldown: number = 2;
 
     @property
-    skill2FrameInterval: number = 0.08;
+    skill3RepeatInterval: number = 0.5;
 
     @property
-    skill3ThrowFrameInterval: number = 0.12;
+    defendCooldown: number = 1.2;
+
+    @property
+    superCooldown: number = 6;
+
+    @property
+    speed: number = 250;
+
+    @property
+    jumpSpeed: number = 500;
+
+    @property
+    groundAcceleration: number = 2200;
+
+    @property
+    groundDeceleration: number = 2600;
+
+    @property
+    airAcceleration: number = 1400;
+
+    @property
+    airDeceleration: number = 500;
+
+    @property
+    groundNodeName: string = "Platform";
+
+    @property({ type: cc.AnimationClip })
+    idleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    runClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    jumpUpClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    jumpDownClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    takeHitClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    deathClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    meleeAttackClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    rangedAttackClip: cc.AnimationClip = null;
+
+    @property
+    rangedAttackRepeatInterval: number = 0.5;
+
+    @property({ type: cc.AnimationClip })
+    skill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    defendClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    superAttackStartupClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
+    superAttackClip: cc.AnimationClip = null;
 
     @property({ type: cc.Prefab })
-    fireballPrefab: cc.Prefab = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame1: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame2: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame3: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame4: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame5: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame6: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame7: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame8: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame9: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame10: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame11: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    dragonfireFrame12: cc.SpriteFrame = null;
+    superProjectilePrefab: cc.Prefab = null;
 
     @property
-    dragonfireFrameInterval: number = 0.07;
+    superAttackTeleportDelay: number = 1;
 
     @property
-    dragonfireSpeed: number = 420;
+    superAttackForwardDistance: number = 600;
 
     @property
-    dragonfireLifetime: number = 2;
+    superAttackRepeatInterval: number = 0.5;
 
     @property
-    dragonfireScaleMultiplier: number = 100;
+    superProjectileSpawnOffsetX: number = 180;
 
     @property
-    dragonfireTargetHeight: number = 360;
+    superProjectileSpawnOffsetY: number = 40;
 
     @property
-    dragonfireLoopTargetHeight: number = 420;
-
-    @property({ type: cc.SpriteFrame })
-    skill3ChargeFrame: cc.SpriteFrame = null;
-
-    @property({ type: cc.SpriteFrame })
-    skill3ChargeSwirlFrame: cc.SpriteFrame = null;
-
-    @property([cc.SpriteFrame])
-    skill3ChargeEffectFrames: cc.SpriteFrame[] = [];
+    superProjectileDamage: number = 18;
 
     @property
-    skill3ChargeEffectFrameInterval: number = 0.08;
+    superProjectileKnockbackScale: number = 220;
 
     @property
-    skill3ChargeDelay: number = 0.18;
+    superProjectileLifetimeOverride: number = 0;
 
     @property
-    dragonfireStartupSpeed: number = 0;
+    attackSoundResource: string = "attack1";
 
     @property
-    dragonfireAccelerationDuration: number = 0.4;
+    rangedSoundResource: string = "attack2";
 
     @property
-    dragonfireFinalFrameHoldDuration: number = 0.1;
+    defendSoundResource: string = "dash";
 
     @property
-    skill3RecoveryDelay: number = 0.2;
-
-    @property({ type: cc.SpriteFrame })
-    skill3FlashFrame: cc.SpriteFrame = null;
+    skill3SoundResource: string = "attack2";
 
     @property
-    skill3FlashDuration: number = 0.5;
-
-    @property({ type: cc.Node })
-    shakeTarget: cc.Node = null;
+    superSoundResource: string = "attack2";
 
     @property
-    dragonfireShakeDuration: number = 0.2;
+    attackSfxVolume: number = 0.7;
 
     @property
-    dragonfireShakeStrength: number = 12;
+    superSfxVolume: number = 1;
 
-    private controller: PlayerController = null;
-    private sprite: cc.Sprite = null;
-    private attackFrames: cc.SpriteFrame[] = [];
-    private defendFrames: cc.SpriteFrame[] = [];
-    private skill2Frames: cc.SpriteFrame[] = [];
-    private dragonfireFrames: cc.SpriteFrame[] = [];
-    private attackFrameTimer: number = 0;
-    private attackFrameIndex: number = 0;
-    private defendFrameTimer: number = 0;
-    private defendFrameIndex: number = 0;
-    private defendFinalHoldTimer: number = 0;
-    private defendHoldEffectNode: cc.Node = null;
-    private defendHoldEffectSprite: cc.Sprite = null;
-    private skill2FrameTimer: number = 0;
-    private skill2FrameIndex: number = 0;
-    private skill3ChargeTimer: number = 0;
-    private skill3ChargeSwirlNode: cc.Node = null;
-    private skill3ChargeSwirlSprite: cc.Sprite = null;
-    private skill3ChargeSwirlAngle: number = 0;
-    private skill3ChargeEffectNode: cc.Node = null;
-    private skill3ChargeEffectSprite: cc.Sprite = null;
-    private skill3ChargeEffectTimer: number = 0;
-    private skill3ChargeEffectIndex: number = 0;
-    private skill3ChargeEffectFinished: boolean = false;
-    private skill3ChargeEffectEndTimer: number = 0;
-    private skill3Charging: boolean = false;
-    private skill3Flashing: boolean = false;
-    private skill3FlashTimer: number = 0;
-    private skill3Recovering: boolean = false;
-    private skill3RecoveryTimer: number = 0;
-    private isAttacking: boolean = false;
+    @property
+    defendDamageMultiplier: number = 0.2;
+
+    @property
+    hitRecoverTime: number = 0.25;
+
+    @property
+    airborneAnimationVelocityThreshold: number = 20;
+
+    @property
+    visualScale: number = 2.5;
+
+    @property
+    visualOffsetY: number = 100;
+
+    private moveInput: number = 0;
+    private onGround: boolean = true;
+    private groundContactCount: number = 0;
+    private currentAnim: string = "";
+    private leftHeld: boolean = false;
+    private rightHeld: boolean = false;
+    private facingDir: number = 1;
+    private lockedFacingDir: number = 1;
+    private facingLocked: boolean = false;
+    private directionInputLocked: boolean = false;
+    private movementLocked: boolean = false;
+    private animationLocked: boolean = false;
+    private attackCooldownRemaining: number = 0;
+    private skill2CooldownRemaining: number = 0;
+    private skill3CooldownRemaining: number = 0;
+    private defendCooldownRemaining: number = 0;
+    private superCooldownRemaining: number = 0;
+    private isDead: boolean = false;
+    private isHit: boolean = false;
     private isDefending: boolean = false;
-    private isCastingSkill2: boolean = false;
-    private isCastingSkill3: boolean = false;
-    private activeFireballs: FireballState[] = [];
-    private shakingNode: cc.Node = null;
-    private shakeOrigin: cc.Vec3 = null;
-    private shakeTimer: number = 0;
-    private shakeDuration: number = 0;
-    private shakeStrength: number = 0;
+    private currentClipAction: WindClipActionName | null = null;
+    private pendingPhase: TimedPhaseState | null = null;
+    private superModel: WindSuperModel | null = null;
+    private readonly beginRangedHitLoop = () => {
+        if (this.isDead || this.currentClipAction !== "ranged") {
+            return;
+        }
 
-    onLoad() {
-        this.controller = this.getComponent(PlayerController);
-        this.sprite = this.getComponent(cc.Sprite);
-        this.resolveShakeTarget();
-        this.attackFrames = [
-            this.attackFrame1,
-            this.attackFrame2,
-            this.attackFrame3,
-            this.attackFrame4,
-            this.attackFrame5,
-            this.attackFrame6,
-            this.attackFrame7,
-            this.attackFrame8,
-        ].filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.defendFrames = [
-            this.defendFrame1,
-            this.defendFrame2,
-            this.defendFrame3,
-            this.defendFrame4,
-        ].filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.skill2Frames = [
-            this.skill2Frame1,
-            this.skill2Frame2,
-            this.skill2Frame3,
-            this.skill2Frame4,
-            this.skill2Frame5,
-            this.skill2Frame6,
-            this.skill2Frame7,
-            this.skill2Frame8,
-            this.skill2Frame9,
-            this.skill2Frame10,
-        ].filter((frame): frame is cc.SpriteFrame => !!frame);
-        this.dragonfireFrames = [
-            this.dragonfireFrame1,
-            this.dragonfireFrame2,
-            this.dragonfireFrame3,
-            this.dragonfireFrame4,
-            this.dragonfireFrame5,
-            this.dragonfireFrame6,
-            this.dragonfireFrame7,
-            this.dragonfireFrame8,
-            this.dragonfireFrame9,
-            this.dragonfireFrame10,
-            this.dragonfireFrame11,
-            this.dragonfireFrame12,
-        ].filter((frame): frame is cc.SpriteFrame => !!frame);
+        this.triggerRangedHit();
+        this.schedule(this.triggerRangedHit, Math.max(0.05, this.rangedAttackRepeatInterval));
+    };
+    private readonly triggerRangedHit = () => {
+        if (this.isDead || this.currentClipAction !== "ranged") {
+            return;
+        }
 
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
+        this.spawnAttackHitBox(
+            "windRangedAttack",
+            cc.v2(180, 10),
+            cc.v2(220, 36),
+            0.15,
+            10,
+            120
+        );
+    };
+    private readonly triggerSuperAttackMeleeHit = () => {
+        if (this.isDead || this.currentClipAction !== "super-attack") {
+            return;
+        }
+
+        this.spawnDefaultMeleeHitBox("windSuperAttack");
+    };
+    private readonly triggerSkill3MeleeHit = () => {
+        if (this.isDead || this.currentClipAction !== "skill3") {
+            return;
+        }
+
+        this.spawnDefaultMeleeHitBox("windSkill3Attack");
+    };
+    private readonly hideAfterDeath = () => {
+        if (this.isDead) {
+            this.node.opacity = 0;
+        }
+    };
+
+    protected onLoad(): void {
+        super.onLoad();
+        this.ensureVisualPresentationNodes();
+        this.applyVisualPresentation();
+        this.configureClipWrapModes();
+        if (typeof window !== "undefined") {
+            window.addEventListener("blur", this.handleWindowBlur);
+        }
+        if (typeof document !== "undefined") {
+            document.addEventListener("visibilitychange", this.handleVisibilityChange);
+        }
     }
 
     onDestroy() {
-        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
-        this.clearDefendHoldEffect();
-        this.clearSkill3ChargeSwirl();
-        this.clearSkill3ChargeEffect();
+        this.clearAnimationFinishedListener(this.onClipFinished);
+        if (typeof window !== "undefined") {
+            window.removeEventListener("blur", this.handleWindowBlur);
+        }
+        if (typeof document !== "undefined") {
+            document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+        }
+        super.onDestroy();
     }
 
-    update(dt: number) {
-        this.updateShake(dt);
-        this.updateSkill3Recovery(dt);
-        this.updateAnimation(dt);
-        this.updateFireballs(dt);
+    protected lateUpdate(): void {
+        this.syncVisualSpriteFrame();
     }
 
-    onKeyDown(event: cc.Event.EventKeyboard) {
-        if (this.skill3Charging || this.skill3Flashing || this.skill3Recovering || this.isCastingSkill2 || this.isCastingSkill3) {
+    protected localUpdate(dt: number): void {
+        this.updateCooldowns(dt);
+        this.updatePendingPhase(dt);
+
+        if (!this.rb) {
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.q) {
-            this.startSkill3();
+        if (this.isDead || this.isHit) {
+            const velocity = this.rb.linearVelocity;
+            velocity.x = 0;
+            this.rb.linearVelocity = velocity;
+            if (!this.animationLocked) {
+                this.updateAnimation();
+            }
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.r) {
-            this.startSkill2();
+        const velocity = this.rb.linearVelocity;
+        velocity.x = this.updateHorizontalVelocity(velocity.x, dt);
+        this.rb.linearVelocity = velocity;
+
+        this.updateFacingFromVelocity(velocity.x);
+        this.applyFacingDirection();
+
+        if (!this.animationLocked) {
+            this.updateAnimation();
+        }
+    }
+
+    protected localOnKeyDown(event: cc.Event.EventKeyboard): void {
+        if (event.keyCode === cc.macro.KEY.a && !this.directionInputLocked) {
+            this.leftHeld = true;
+            this.refreshMoveInput();
+        }
+
+        if (event.keyCode === cc.macro.KEY.d && !this.directionInputLocked) {
+            this.rightHeld = true;
+            this.refreshMoveInput();
+        }
+
+        if (
+            !this.movementLocked &&
+            !this.isDead &&
+            !this.isHit &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.space) &&
+            this.onGround &&
+            this.rb
+        ) {
+            const velocity = this.rb.linearVelocity;
+            velocity.y = this.jumpSpeed;
+            this.rb.linearVelocity = velocity;
+            this.onGround = false;
+            this.groundContactCount = 0;
+            this.updateAnimation();
+        }
+
+        if (!canStartWindAction(this.currentClipAction, this.pendingPhase, this.isDead, this.isHit)) {
             return;
         }
 
         if (event.keyCode === cc.macro.KEY.e) {
-            this.startAttack();
+            this.useMelee();
+            return;
+        }
+
+        if (event.keyCode === cc.macro.KEY.r) {
+            this.useRanged();
+            return;
+        }
+
+        if (event.keyCode === cc.macro.KEY.c) {
+            this.useSkill3();
             return;
         }
 
         if (event.keyCode === cc.macro.KEY.f) {
-            this.startDefend();
+            this.useDefend();
+            return;
+        }
+
+        if (event.keyCode === cc.macro.KEY.q) {
+            this.useSuper();
         }
     }
 
-    private updateAnimation(dt: number) {
-        if (!this.sprite) {
+    protected localOnKeyUp(event: cc.Event.EventKeyboard): void {
+        if (event.keyCode === cc.macro.KEY.a && !this.directionInputLocked) {
+            this.leftHeld = false;
+            this.refreshMoveInput();
+        }
+
+        if (event.keyCode === cc.macro.KEY.d && !this.directionInputLocked) {
+            this.rightHeld = false;
+            this.refreshMoveInput();
+        }
+    }
+
+    public beAttacked(attackType: string, damage: number, knockback: cc.Vec2): void {
+        if (this.isDead) {
             return;
         }
 
-        if (this.isCastingSkill3) {
-            this.updateSkill3Animation(dt);
-            return;
-        }
-
-        if (this.isCastingSkill2) {
-            this.updateSkill2Animation(dt);
-            return;
-        }
-
+        let finalDamage = damage;
         if (this.isDefending) {
-            this.updateDefendAnimation(dt);
-            return;
+            finalDamage = Math.floor(finalDamage * this.defendDamageMultiplier);
+            if (finalDamage <= 0) {
+                return;
+            }
         }
 
-        if (this.isAttacking) {
-            this.updateAttackAnimation(dt);
+        this.deductHp(finalDamage);
+
+        if (this.hp > 0) {
+            this.enterHitState(knockback);
+        }
+
+        switch (attackType) {
+            case "windSuperAttack":
+                break;
+            default:
+                break;
         }
     }
 
-    private startAttack() {
-        if (this.isBusy() || this.attackFrames.length === 0) {
+    protected onDeath(): void {
+        if (this.isDead) {
             return;
         }
 
+        this.unschedule(this.hideAfterDeath);
+        this.clearAnimationFinishedListener(this.onClipFinished);
+        this.isDead = true;
+        this.isHit = false;
+        this.isDefending = false;
+        this.currentClipAction = null;
+        this.pendingPhase = null;
+        this.superModel = null;
+        this.stopRangedHitLoop();
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
+        this.movementLocked = true;
+        this.animationLocked = false;
+        this.directionInputLocked = true;
+        this.moveInput = 0;
+        this.leftHeld = false;
+        this.rightHeld = false;
+        this.node.opacity = 255;
+
+        if (this.rb) {
+            const velocity = this.rb.linearVelocity;
+            velocity.x = 0;
+            this.rb.linearVelocity = velocity;
+        }
+
+        this.currentAnim = "";
+        this.playAnimationClip(this.getDeathClip(), true);
+        this.scheduleDeathHide();
+    }
+
+    public onRestart(): void {
+        this.unschedule(this.hideAfterDeath);
+        this.isDead = false;
+        this.isHit = false;
+        this.isDefending = false;
+        this.currentClipAction = null;
+        this.pendingPhase = null;
+        this.superModel = null;
+        this.stopRangedHitLoop();
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
+        this.movementLocked = false;
+        this.animationLocked = false;
+        this.directionInputLocked = false;
+        this.facingLocked = false;
+        this.leftHeld = false;
+        this.rightHeld = false;
+        this.moveInput = 0;
+        this.onGround = true;
+        this.groundContactCount = 0;
+        this.node.opacity = 255;
+        this.attackCooldownRemaining = 0;
+        this.skill2CooldownRemaining = 0;
+        this.skill3CooldownRemaining = 0;
+        this.defendCooldownRemaining = 0;
+        this.superCooldownRemaining = 0;
+        this.currentAnim = "";
+
+        if (this.rb) {
+            this.rb.linearVelocity = cc.v2(0, 0);
+            if (!this.rb.awake) {
+                this.rb.awake = true;
+            }
+        }
+
+        this.updateAnimation();
+    }
+
+    onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
+        if (this.isGroundNode(otherCollider.node)) {
+            this.groundContactCount++;
+            this.onGround = true;
+            this.updateAnimation();
+        } else if (otherCollider.node.name === "Out Of Bound Trigger" && this.isLocal) {
+            this.deductHp(999);
+        }
+    }
+
+    onEndContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
+        if (!this.isGroundNode(otherCollider.node)) {
+            return;
+        }
+
+        this.groundContactCount = Math.max(0, this.groundContactCount - 1);
+        this.onGround = this.groundContactCount > 0;
+    }
+
+    public useMelee(): boolean {
         if (!this.tryUseCooldown("attack")) {
-            return;
+            return false;
         }
 
-        this.isAttacking = true;
-        this.attackFrameTimer = 0;
-        this.attackFrameIndex = 0;
-        this.lockController(false, false, false);
-        this.sprite.spriteFrame = this.attackFrames[0];
+        if (!this.startClipAction(createWindMeleeConfig(this.meleeAttackClip), this.attackSoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.scheduleAttackHitBox("windMeleeAttack", 72, 6, 88, 40, 0.12, 12, 150, 0.08);
+        return true;
     }
 
-    private updateAttackAnimation(dt: number) {
-        if (this.attackFrames.length === 0) {
-            this.finishAttack();
-            return;
+    public useRanged(): boolean {
+        if (!this.tryUseCooldown("skill2")) {
+            return false;
         }
 
-        this.attackFrameTimer += dt;
-        if (this.attackFrameTimer < this.attackFrameInterval) {
-            return;
+        if (!this.startClipAction(createWindRangedConfig(this.rangedAttackClip), this.rangedSoundResource, this.attackSfxVolume)) {
+            return false;
         }
 
-        this.attackFrameTimer = 0;
-        this.attackFrameIndex++;
-
-        if (this.attackFrameIndex >= this.attackFrames.length) {
-            this.finishAttack();
-            return;
-        }
-
-        this.sprite.spriteFrame = this.attackFrames[this.attackFrameIndex];
+        this.startRangedHitLoop();
+        return true;
     }
 
-    private finishAttack() {
-        this.isAttacking = false;
-        this.attackFrameIndex = 0;
-        this.unlockController();
-    }
-
-    private startDefend() {
-        if (this.isBusy() || this.defendFrames.length === 0) {
-            return;
+    public useSkill3(): boolean {
+        if (!this.tryUseCooldown("skill3")) {
+            return false;
         }
 
+        if (!this.startClipAction(createWindSkill3Config(this.skill3Clip), this.skill3SoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.startSkill3HitLoop();
+        return true;
+    }
+
+    public useDefend(): boolean {
         if (!this.tryUseCooldown("defend")) {
-            return;
+            return false;
         }
 
         this.isDefending = true;
-        this.defendFrameTimer = 0;
-        this.defendFrameIndex = 0;
-        this.defendFinalHoldTimer = 0;
-        this.clearDefendHoldEffect();
-        this.lockController(true, true, true);
-        this.sprite.spriteFrame = this.defendFrames[0];
+        return this.startClipAction(createWindDefendConfig(this.defendClip), this.defendSoundResource, this.attackSfxVolume);
     }
 
-    private updateDefendAnimation(dt: number) {
-        if (this.defendFrames.length === 0) {
-            this.finishDefend();
-            return;
+    public useSuper(): boolean {
+        if (!this.onGround || !this.tryUseCooldown("super")) {
+            return false;
         }
 
-        if (this.defendFrameIndex >= this.defendFrames.length - 1) {
-            this.sprite.spriteFrame = this.defendFrames[this.defendFrames.length - 1];
-            this.ensureDefendHoldEffect();
-            this.syncDefendHoldEffect();
-            this.defendFinalHoldTimer += dt;
-
-            if (this.defendFinalHoldTimer < this.defendFinalHoldDuration) {
-                return;
-            }
-
-            this.finishDefend();
-            return;
+        if (!this.startClipAction(
+            createWindSuperAttackConfig(this.superAttackClip),
+            this.superSoundResource,
+            this.superSfxVolume
+        )) {
+            return false;
         }
 
-        this.defendFrameTimer += dt;
-        if (this.defendFrameTimer < this.defendFrameInterval) {
-            return;
-        }
-
-        this.defendFrameTimer = 0;
-        this.defendFrameIndex++;
-        this.sprite.spriteFrame = this.defendFrames[this.defendFrameIndex];
+        this.startSuperAttackHitLoop();
+        return true;
     }
 
-    private finishDefend() {
-        this.isDefending = false;
-        this.defendFrameIndex = 0;
-        this.defendFinalHoldTimer = 0;
-        this.clearDefendHoldEffect();
+    private startClipAction(
+        config: WindClipActionConfig,
+        soundResource?: string,
+        soundVolume: number = 1
+    ): boolean {
+        if (!config.clip || !this.anim) {
+            return false;
+        }
+
+        this.currentClipAction = config.name;
+        this.applyControlLock(config.lock);
+
+        if (soundResource) {
+            NetworkManager.instance.playSoundEffect(soundResource, soundVolume);
+        }
+
+        if (!this.listenForAnimationFinishedOnce(this.onClipFinished)) {
+            return false;
+        }
+
+        this.playAnimationClip(config.clip, true);
+        return true;
+    }
+
+    private onClipFinished() {
+        const actionName = this.currentClipAction;
+        this.currentClipAction = null;
+
+        if (!actionName) {
+            return;
+        }
+
+        if (actionName === "super-attack") {
+            this.spawnSuperProjectile();
+            this.unlockController();
+            return;
+        }
+
+        if (actionName === "defend") {
+            this.isDefending = false;
+        }
+
         this.unlockController();
     }
 
-    private ensureDefendHoldEffect() {
-        if (!this.defendHoldEffectFrame || this.defendHoldEffectNode || !this.node.parent) {
-            return;
+    private beginTeleportOutPhase() {
+        if (!this.superModel) {
+            this.superModel = createWindSuperModel(this.node.position.clone(), this.getFacingDirection(), this.superAttackForwardDistance);
         }
 
-        this.defendHoldEffectNode = new cc.Node("DefendHoldEffect");
-        this.defendHoldEffectNode.parent = this.node.parent;
-        this.defendHoldEffectNode.zIndex = 1000;
-        this.defendHoldEffectSprite = this.defendHoldEffectNode.addComponent(cc.Sprite);
-        this.defendHoldEffectSprite.sizeMode = cc.Sprite.SizeMode.RAW;
-        this.defendHoldEffectSprite.spriteFrame = this.defendHoldEffectFrame;
-        this.defendHoldEffectNode.opacity = 220;
-        this.syncDefendHoldEffect();
+        this.pendingPhase = createTimedPhaseState("teleport-out", this.superAttackTeleportDelay);
+        this.node.opacity = 0;
     }
 
-    private syncDefendHoldEffect() {
-        if (!this.defendHoldEffectNode) {
+    private updatePendingPhase(dt: number) {
+        if (!this.pendingPhase) {
             return;
         }
 
-        const facingRight = this.getFacingRight();
-        const facing = facingRight ? 1 : -1;
-        this.defendHoldEffectNode.setPosition(this.node.x + (facing * 46), this.node.y + 4);
-        this.defendHoldEffectNode.scaleX = 1.05;
-        this.defendHoldEffectNode.scaleY = 1.05;
-        this.defendHoldEffectNode.angle = facingRight ? -45 : 135;
+        const step = advanceTimedPhase(this.pendingPhase, dt);
+        this.pendingPhase = step.nextPhase;
+
+        if (!step.completedPhaseName) {
+            return;
+        }
+
+        this.completeTimedPhase(step.completedPhaseName);
     }
 
-    private clearDefendHoldEffect() {
-        if (this.defendHoldEffectNode && cc.isValid(this.defendHoldEffectNode)) {
-            this.defendHoldEffectNode.destroy();
+    private completeTimedPhase(phaseName: TimedPhaseName) {
+        this.node.opacity = 255;
+
+        if (phaseName !== "teleport-out") {
+            return;
         }
 
-        this.defendHoldEffectNode = null;
-        this.defendHoldEffectSprite = null;
+        this.teleportForward();
+
+        if (!this.startClipAction(createWindSuperAttackConfig(this.superAttackClip), undefined, this.superSfxVolume)) {
+            this.teleportBackToOrigin();
+            this.clearSuperState();
+            this.unlockController();
+            return;
+        }
+
+        this.startSuperAttackHitLoop();
     }
 
-    private startSkill2() {
-        if (this.isBusy() || this.skill2Frames.length === 0) {
+    private finishSuperAttack() {
+        this.teleportBackToOrigin();
+
+        if (this.superAttackStartupClip && this.startClipAction(createWindSuperRecoveryConfig(this.superAttackStartupClip))) {
+            this.clearSuperState(false);
             return;
         }
 
-        if (!this.tryUseCooldown("skill2")) {
-            return;
-        }
-
-        this.isCastingSkill2 = true;
-        this.skill2FrameTimer = 0;
-        this.skill2FrameIndex = 0;
-        this.lockController(false, false, false);
-        this.sprite.spriteFrame = this.skill2Frames[0];
-    }
-
-    private updateSkill2Animation(dt: number) {
-        if (this.skill2Frames.length === 0) {
-            this.finishSkill2();
-            return;
-        }
-
-        this.skill2FrameTimer += dt;
-        if (this.skill2FrameTimer < this.skill2FrameInterval) {
-            return;
-        }
-
-        this.skill2FrameTimer = 0;
-        this.skill2FrameIndex++;
-
-        if (this.skill2FrameIndex >= this.skill2Frames.length) {
-            this.spawnFireball();
-            this.finishSkill2();
-            return;
-        }
-
-        this.sprite.spriteFrame = this.skill2Frames[this.skill2FrameIndex];
-    }
-
-    private finishSkill2() {
-        this.isCastingSkill2 = false;
-        this.skill2FrameIndex = 0;
+        this.clearSuperState();
         this.unlockController();
     }
 
-    private startSkill3() {
-        if (this.isBusy() || this.skill2Frames.length === 0) {
+    private spawnSuperProjectile() {
+        if (!this.superProjectilePrefab) {
             return;
         }
 
-        if (!this.tryUseCooldown("super")) {
-            return;
-        }
-
-        this.isCastingSkill3 = true;
-        this.skill3Charging = true;
-        this.skill2FrameTimer = 0;
-        this.skill2FrameIndex = 0;
-        this.skill3ChargeTimer = 0;
-        this.skill3ChargeEffectTimer = 0;
-        this.skill3ChargeEffectIndex = 0;
-        this.skill3ChargeEffectFinished = false;
-        this.skill3ChargeEffectEndTimer = 0;
-        this.skill3ChargeSwirlAngle = 0;
-        this.lockController(true, true, true);
-        this.ensureSkill3ChargeSwirl();
-        this.ensureSkill3ChargeEffect();
-        this.sprite.spriteFrame = this.skill3ChargeFrame || this.skill2Frames[0];
-    }
-
-    private updateSkill3Animation(dt: number) {
-        if (this.skill2Frames.length === 0) {
-            this.cancelSkill3();
-            return;
-        }
-
-        if (this.skill3Charging) {
-            this.updateSkill3Charge(dt);
-            return;
-        }
-
-        if (this.skill3Flashing) {
-            this.updateSkill3Flash(dt);
-            return;
-        }
-
-        this.skill2FrameTimer += dt;
-        if (this.skill2FrameTimer < this.skill3ThrowFrameInterval) {
-            return;
-        }
-
-        this.skill2FrameTimer = 0;
-        this.skill2FrameIndex++;
-
-        if (this.skill2FrameIndex >= this.skill2Frames.length) {
-            this.isCastingSkill3 = false;
-            this.skill2FrameIndex = 0;
-            this.spawnDragonfire();
-            this.skill3Recovering = true;
-            this.skill3RecoveryTimer = 0;
-            return;
-        }
-
-        this.sprite.spriteFrame = this.skill2Frames[this.skill2FrameIndex];
-    }
-
-    private cancelSkill3() {
-        this.isCastingSkill3 = false;
-        this.skill3Charging = false;
-        this.skill3Flashing = false;
-        this.clearSkill3ChargeSwirl();
-        this.clearSkill3ChargeEffect();
-        this.unlockController();
-    }
-
-    private updateSkill3Charge(dt: number) {
-        this.skill3ChargeTimer += dt;
-        this.updateSkill3ChargeSwirl(dt);
-        this.updateSkill3ChargeEffect(dt);
-        this.sprite.spriteFrame = this.skill3ChargeFrame || this.skill2Frames[0];
-
-        if (this.skill3ChargeTimer < this.skill3ChargeDelay) {
-            return;
-        }
-
-        this.clearSkill3ChargeSwirl();
-        this.clearSkill3ChargeEffect();
-        this.skill3Charging = false;
-        this.skill2FrameIndex = 0;
-        this.skill2FrameTimer = 0;
-        this.skill3ChargeTimer = 0;
-        this.skill3Flashing = true;
-        this.skill3FlashTimer = 0;
-        this.showSkill3Flash();
-    }
-
-    private ensureSkill3ChargeSwirl() {
-        if (!this.skill3ChargeSwirlFrame || this.skill3ChargeSwirlNode || !this.node.parent) {
-            return;
-        }
-
-        this.skill3ChargeSwirlNode = new cc.Node("Skill3ChargeSwirl");
-        this.skill3ChargeSwirlNode.parent = this.node.parent;
-        this.skill3ChargeSwirlNode.zIndex = 997;
-        this.skill3ChargeSwirlSprite = this.skill3ChargeSwirlNode.addComponent(cc.Sprite);
-        this.skill3ChargeSwirlSprite.sizeMode = cc.Sprite.SizeMode.RAW;
-        this.skill3ChargeSwirlSprite.spriteFrame = this.skill3ChargeSwirlFrame;
-        this.skill3ChargeSwirlNode.opacity = 170;
-        this.syncSkill3ChargeSwirlTransform();
-    }
-
-    private updateSkill3ChargeSwirl(dt: number) {
-        if (!this.skill3ChargeSwirlNode) {
-            return;
-        }
-
-        this.skill3ChargeSwirlAngle += dt * 180;
-        this.syncSkill3ChargeSwirlTransform();
-    }
-
-    private syncSkill3ChargeSwirlTransform() {
-        if (!this.skill3ChargeSwirlNode) {
-            return;
-        }
-
-        const facing = this.getFacingDirection();
-        this.skill3ChargeSwirlNode.setPosition(this.node.x + (facing * -28), this.node.y - 16);
-        this.skill3ChargeSwirlNode.scaleX = facing * 0.75;
-        this.skill3ChargeSwirlNode.scaleY = 0.75;
-        this.skill3ChargeSwirlNode.angle = -this.skill3ChargeSwirlAngle;
-    }
-
-    private clearSkill3ChargeSwirl() {
-        if (this.skill3ChargeSwirlNode && cc.isValid(this.skill3ChargeSwirlNode)) {
-            this.skill3ChargeSwirlNode.destroy();
-        }
-
-        this.skill3ChargeSwirlNode = null;
-        this.skill3ChargeSwirlSprite = null;
-        this.skill3ChargeSwirlAngle = 0;
-    }
-
-    private updateSkill3Flash(dt: number) {
-        this.skill3FlashTimer += dt;
-        this.sprite.spriteFrame = this.skill3ChargeFrame || this.skill2Frames[0];
-
-        if (this.skill3FlashTimer < this.skill3FlashDuration) {
-            return;
-        }
-
-        this.skill3Flashing = false;
-        this.skill3FlashTimer = 0;
-        this.skill2FrameIndex = 0;
-        this.skill2FrameTimer = 0;
-        this.sprite.spriteFrame = this.skill2Frames[0];
-    }
-
-    private ensureSkill3ChargeEffect() {
-        if (this.skill3ChargeEffectFrames.length === 0 || this.skill3ChargeEffectNode || !this.node.parent) {
-            return;
-        }
-
-        this.skill3ChargeEffectNode = new cc.Node("Skill3ChargeEffect");
-        this.skill3ChargeEffectNode.parent = this.node.parent;
-        this.skill3ChargeEffectNode.zIndex = 998;
-        this.skill3ChargeEffectSprite = this.skill3ChargeEffectNode.addComponent(cc.Sprite);
-        this.skill3ChargeEffectSprite.sizeMode = cc.Sprite.SizeMode.RAW;
-        this.skill3ChargeEffectSprite.spriteFrame = this.skill3ChargeEffectFrames[0];
-        this.skill3ChargeEffectNode.opacity = 180;
-        this.syncSkill3ChargeEffectTransform();
-    }
-
-    private updateSkill3ChargeEffect(dt: number) {
-        if (!this.skill3ChargeEffectNode || !this.skill3ChargeEffectSprite || this.skill3ChargeEffectFrames.length === 0) {
-            return;
-        }
-
-        this.syncSkill3ChargeEffectTransform();
-
-        if (!this.skill3ChargeEffectFinished) {
-            this.skill3ChargeEffectTimer += dt;
-
-            if (this.skill3ChargeEffectTimer >= this.skill3ChargeEffectFrameInterval) {
-                this.skill3ChargeEffectTimer = 0;
-
-                if (this.skill3ChargeEffectIndex < this.skill3ChargeEffectFrames.length - 1) {
-                    this.skill3ChargeEffectIndex++;
-                    this.skill3ChargeEffectSprite.spriteFrame = this.skill3ChargeEffectFrames[this.skill3ChargeEffectIndex];
-                } else {
-                    this.skill3ChargeEffectFinished = true;
-                    this.skill3ChargeEffectEndTimer = 0;
-                }
-            }
-            return;
-        }
-
-        this.skill3ChargeEffectEndTimer += dt;
-        if (this.skill3ChargeEffectEndTimer >= this.skill3ChargeEffectFrameInterval) {
-            this.clearSkill3ChargeEffect();
-        }
-    }
-
-    private syncSkill3ChargeEffectTransform() {
-        if (!this.skill3ChargeEffectNode) {
-            return;
-        }
-
-        const facing = this.getFacingDirection();
-        const offsetX = facing * -28;
-        const offsetY = -16;
-        const baseScale = this.skill3ChargeEffectIndex === 1 ? 0.42 : 0.6;
-        const interval = Math.max(0.001, this.skill3ChargeEffectFrameInterval);
-        const normalizedTime = this.skill3ChargeEffectTimer / interval;
-        const flashPhase = (Math.sin(normalizedTime * Math.PI * 4) + 1) * 0.5;
-        const opacity = 80 + Math.floor(flashPhase * 140);
-
-        this.skill3ChargeEffectNode.setPosition(this.node.x + offsetX, this.node.y + offsetY);
-        this.skill3ChargeEffectNode.scaleX = facing * baseScale;
-        this.skill3ChargeEffectNode.scaleY = baseScale;
-        this.skill3ChargeEffectNode.opacity = Math.max(40, opacity);
-    }
-
-    private clearSkill3ChargeEffect() {
-        if (this.skill3ChargeEffectNode && cc.isValid(this.skill3ChargeEffectNode)) {
-            this.skill3ChargeEffectNode.destroy();
-        }
-
-        this.skill3ChargeEffectNode = null;
-        this.skill3ChargeEffectSprite = null;
-        this.skill3ChargeEffectTimer = 0;
-        this.skill3ChargeEffectIndex = 0;
-        this.skill3ChargeEffectFinished = false;
-        this.skill3ChargeEffectEndTimer = 0;
-    }
-
-    private showSkill3Flash() {
-        if (!this.skill3FlashFrame || !this.node.parent) {
-            return;
-        }
-
-        const facingRight = this.getFacingRight();
-        const flashNode = new cc.Node("Skill3Flash");
-        flashNode.parent = this.node.parent;
-        flashNode.setPosition(this.node.x + (facingRight ? -28 : 28), this.node.y - 16);
-        flashNode.zIndex = 999;
-
-        const flashSprite = flashNode.addComponent(cc.Sprite);
-        flashSprite.spriteFrame = this.skill3FlashFrame;
-        flashSprite.sizeMode = cc.Sprite.SizeMode.RAW;
-
-        flashNode.scaleX = facingRight ? 2.7 : -2.7;
-        flashNode.scaleY = 2.7;
-        flashNode.opacity = 220;
-
-        cc.tween(flashNode)
-            .to(this.skill3FlashDuration, { opacity: 0 })
-            .call(() => {
-                if (cc.isValid(flashNode)) {
-                    flashNode.destroy();
-                }
-            })
-            .start();
-    }
-
-    private spawnFireball() {
-        if (!this.fireballPrefab || !this.node.parent) {
-            return;
-        }
-
-        const facing = this.getFacingDirection();
-        const fireballNode = cc.instantiate(this.fireballPrefab);
-        fireballNode.parent = this.node.parent;
-        fireballNode.setPosition(this.node.x + (facing * 70), this.node.y + 10);
-
-        const fireball = fireballNode.getComponent(Fireball);
-        if (!fireball) {
-            cc.warn("[Firehero] fireballPrefab is missing the Fireball component.");
-            fireballNode.destroy();
-            return;
-        }
-
-        fireball.launch(facing);
-    }
-
-    private spawnDragonfire() {
-        if (this.dragonfireFrames.length === 0 || !this.node.parent) {
-            return;
-        }
-
-        const facing = this.getFacingDirection();
-        const dragonfireNode = new cc.Node("Dragonfire");
-        dragonfireNode.parent = this.node.parent;
-        dragonfireNode.setPosition(this.node.x + (facing * 90), this.node.y + 10);
-
-        const dragonfireSprite = dragonfireNode.addComponent(cc.Sprite);
-        dragonfireSprite.spriteFrame = this.dragonfireFrames[0];
-        dragonfireSprite.sizeMode = cc.Sprite.SizeMode.RAW;
-
-        const dragonfireState: FireballState = {
-            node: dragonfireNode,
-            sprite: dragonfireSprite,
-            direction: facing,
-            frameTimer: 0,
-            frameIndex: 0,
-            lifeTimer: 0,
-            frames: this.dragonfireFrames,
-            frameInterval: this.dragonfireFrameInterval,
-            speed: this.dragonfireSpeed,
-            lifetime: this.dragonfireLifetime,
-            loopStartIndex: 8,
-            loopEndIndex: 10,
-            finalFrameIndex: 11,
-            finalFrameHoldDuration: this.dragonfireFinalFrameHoldDuration,
-            enlargedFrameStartIndex: 8,
-            scaleMultiplier: this.dragonfireScaleMultiplier,
-            frameScaleFactors: this.buildFrameScaleFactors(this.dragonfireFrames),
-            baseFrameScale: 1,
-            currentSpeed: this.dragonfireStartupSpeed,
-            startupSpeed: this.dragonfireStartupSpeed,
-            accelerationDuration: this.dragonfireAccelerationDuration,
-            accelerationElapsed: 0,
-        };
-
-        this.activeFireballs.push(dragonfireState);
-        this.applyFireballFrameTransform(dragonfireState);
-        this.startShake(this.dragonfireShakeDuration, this.dragonfireShakeStrength);
-    }
-
-    private updateFireballs(dt: number) {
-        for (let i = this.activeFireballs.length - 1; i >= 0; i--) {
-            const fireball = this.activeFireballs[i];
-
-            if (!cc.isValid(fireball.node)) {
-                this.activeFireballs.splice(i, 1);
-                continue;
-            }
-
-            fireball.lifeTimer += dt;
-            fireball.frameTimer += dt;
-
-            if (fireball.accelerationDuration <= 0) {
-                fireball.currentSpeed = fireball.speed;
-            } else {
-                fireball.accelerationElapsed = Math.min(
-                    fireball.accelerationElapsed + dt,
-                    fireball.accelerationDuration
-                );
-                const t = fireball.accelerationElapsed / fireball.accelerationDuration;
-                fireball.currentSpeed = fireball.startupSpeed + ((fireball.speed - fireball.startupSpeed) * t);
-            }
-
-            fireball.node.x += fireball.direction * fireball.currentSpeed * dt;
-
-            const shouldShowFinalFrame =
-                fireball.finalFrameIndex >= 0 &&
-                (fireball.lifetime - fireball.lifeTimer) <= fireball.finalFrameHoldDuration;
-
-            if (shouldShowFinalFrame) {
-                if (fireball.frameIndex !== fireball.finalFrameIndex) {
-                    fireball.frameIndex = fireball.finalFrameIndex;
-                    fireball.sprite.spriteFrame = fireball.frames[fireball.frameIndex];
-                    this.applyFireballFrameTransform(fireball);
-                }
-            } else if (fireball.frames.length > 0 && fireball.frameTimer >= fireball.frameInterval) {
-                fireball.frameTimer = 0;
-
-                if (fireball.frameIndex < fireball.loopStartIndex) {
-                    fireball.frameIndex++;
-                } else if (fireball.frameIndex < fireball.loopEndIndex) {
-                    fireball.frameIndex++;
-                } else if (fireball.frames.length > 1) {
-                    fireball.frameIndex = fireball.loopStartIndex;
-                }
-
-                fireball.sprite.spriteFrame = fireball.frames[fireball.frameIndex];
-                this.applyFireballFrameTransform(fireball);
-            }
-
-            if (fireball.lifeTimer >= fireball.lifetime) {
-                fireball.node.destroy();
-                this.activeFireballs.splice(i, 1);
-            }
-        }
-    }
-
-    private applyFireballFrameTransform(fireball: FireballState) {
-        const frameScaleFactor = fireball.frameScaleFactors[fireball.frameIndex] || 1;
-        const sourceHeight = 104 / frameScaleFactor;
-        let targetHeight = this.dragonfireLoopTargetHeight;
-
-        if (fireball.frameIndex < fireball.enlargedFrameStartIndex) {
-            const growthT = fireball.enlargedFrameStartIndex <= 0
-                ? 1
-                : fireball.frameIndex / fireball.enlargedFrameStartIndex;
-            targetHeight = this.dragonfireTargetHeight + ((this.dragonfireLoopTargetHeight - this.dragonfireTargetHeight) * growthT);
-        }
-
-        const scale = targetHeight / sourceHeight;
-        fireball.node.scaleX = fireball.direction * scale;
-        fireball.node.scaleY = scale;
-    }
-
-    private buildFrameScaleFactors(frames: cc.SpriteFrame[]) {
-        if (frames.length === 0) {
-            return [];
-        }
-
-        const originalSizes = frames.map((frame) => frame.getOriginalSize());
-        const maxWidth = Math.max(...originalSizes.map((size) => size.width));
-        const maxHeight = Math.max(...originalSizes.map((size) => size.height));
-
-        return originalSizes.map((size) => {
-            const width = Math.max(1, size.width);
-            const height = Math.max(1, size.height);
-            return Math.max(maxWidth / width, maxHeight / height);
+        const direction = this.getFacingDirection();
+        NetworkManager.instance.spawnPrefab(this.superProjectilePrefab.name, {
+            x: this.node.x + direction * this.superProjectileSpawnOffsetX,
+            y: this.node.y + this.superProjectileSpawnOffsetY,
+            direction,
+            attackType: "fireDragonAttack",
+            damage: this.superProjectileDamage,
+            kbScale: this.superProjectileKnockbackScale,
+            lifetime: this.getSuperProjectileLifetime(),
         });
     }
 
-    private resolveShakeTarget() {
-        if (this.shakeTarget && cc.isValid(this.shakeTarget)) {
-            this.shakingNode = this.shakeTarget;
-        } else {
-            const mainCameraNode = cc.find("Canvas/Main Camera") || cc.find("Main Camera");
-            if (mainCameraNode) {
-                this.shakingNode = mainCameraNode;
-            } else {
-                const camera = cc.director.getScene().getComponentInChildren(cc.Camera);
-                this.shakingNode = camera ? camera.node : null;
+    private teleportForward() {
+        if (!this.superModel) {
+            return;
+        }
+
+        this.teleportTo(createWindSuperForwardTarget(this.superModel));
+    }
+
+    private teleportBackToOrigin() {
+        if (!this.superModel) {
+            return;
+        }
+
+        this.teleportTo(createWindSuperOriginTarget(this.superModel));
+    }
+
+    private teleportTo(target: WindTeleportTarget) {
+        this.node.setPosition(target.x, target.y, target.z);
+        NetworkManager.instance.playerTeleport(target.x, target.y);
+
+        if (!this.rb) {
+            return;
+        }
+
+        this.rb.linearVelocity = cc.v2(0, 0);
+        this.rb.angularVelocity = 0;
+        this.rb.syncPosition(true);
+        this.rb.awake = true;
+    }
+
+    private clearSuperState(resetPhase: boolean = true) {
+        if (resetPhase) {
+            this.pendingPhase = null;
+        }
+        this.superModel = null;
+        this.node.opacity = 255;
+    }
+
+    private spawnDefaultMeleeHitBox(attackType: string) {
+        this.spawnAttackHitBox(
+            attackType,
+            cc.v2(72, 6),
+            cc.v2(88, 40),
+            0.12,
+            12,
+            150
+        );
+    }
+
+    private startSkill3HitLoop() {
+        this.stopSkill3HitLoop();
+        this.triggerSkill3MeleeHit();
+        this.schedule(this.triggerSkill3MeleeHit, Math.max(0.05, this.skill3RepeatInterval));
+    }
+
+    private startRangedHitLoop() {
+        this.stopRangedHitLoop();
+        this.scheduleOnce(this.beginRangedHitLoop, 0.1);
+    }
+
+    private stopRangedHitLoop() {
+        this.unschedule(this.beginRangedHitLoop);
+        this.unschedule(this.triggerRangedHit);
+    }
+
+    private stopSkill3HitLoop() {
+        this.unschedule(this.triggerSkill3MeleeHit);
+    }
+
+    private startSuperAttackHitLoop() {
+        this.stopSuperAttackHitLoop();
+        this.triggerSuperAttackMeleeHit();
+        this.schedule(this.triggerSuperAttackMeleeHit, Math.max(0.05, this.superAttackRepeatInterval));
+    }
+
+    private stopSuperAttackHitLoop() {
+        this.unschedule(this.triggerSuperAttackMeleeHit);
+    }
+
+    private scheduleAttackHitBox(
+        attackType: string,
+        centerX: number,
+        centerY: number,
+        width: number,
+        height: number,
+        duration: number,
+        damage: number,
+        kbScale: number,
+        delay: number
+    ) {
+        this.scheduleOnce(() => {
+            if (this.isDead) {
+                return;
+            }
+
+            this.spawnAttackHitBox(
+                attackType,
+                cc.v2(centerX, centerY),
+                cc.v2(width, height),
+                duration,
+                damage,
+                kbScale
+            );
+        }, Math.max(0, delay));
+    }
+
+    private enterHitState(knockback: cc.Vec2) {
+        this.clearAnimationFinishedListener(this.onClipFinished);
+        this.currentClipAction = null;
+        this.pendingPhase = null;
+        this.isDefending = false;
+        this.stopRangedHitLoop();
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
+        this.animationLocked = true;
+        this.movementLocked = true;
+        this.directionInputLocked = true;
+        this.isHit = true;
+
+        this.applyKnockback(knockback);
+        this.currentAnim = "";
+        this.playAnimationClip(this.takeHitClip, true);
+
+        this.unschedule(this.exitHitState);
+        this.scheduleOnce(this.exitHitState, this.hitRecoverTime);
+    }
+
+    private exitHitState() {
+        if (this.isDead) {
+            return;
+        }
+
+        this.isHit = false;
+        this.movementLocked = false;
+        this.animationLocked = false;
+        this.directionInputLocked = false;
+        this.currentAnim = "";
+        this.updateAnimation();
+    }
+
+    private applyKnockback(knockback: cc.Vec2) {
+        if (!this.rb) {
+            return;
+        }
+
+        const velocity = this.rb.linearVelocity;
+        velocity.x = knockback.x;
+        velocity.y = Math.max(velocity.y, knockback.y);
+        this.rb.linearVelocity = velocity;
+        this.rb.awake = true;
+    }
+
+    private updateAnimation() {
+        if (this.currentClipAction) {
+            return;
+        }
+
+        if (this.isDead) {
+            this.playAnimationClip(this.getDeathClip());
+            return;
+        }
+
+        if (this.isHit) {
+            this.playAnimationClip(this.takeHitClip);
+            return;
+        }
+
+        if (!this.onGround) {
+            const verticalVelocity = this.rb ? this.rb.linearVelocity.y : 0;
+            if (Math.abs(verticalVelocity) < this.airborneAnimationVelocityThreshold) {
+                this.playAnimationClip(this.moveInput === 0 ? this.idleClip : this.runClip);
+                return;
+            }
+            this.playAnimationClip(verticalVelocity >= 0 ? this.jumpUpClip : this.jumpDownClip);
+            return;
+        }
+
+        this.playAnimationClip(this.moveInput === 0 ? this.idleClip : this.runClip);
+    }
+
+    private configureClipWrapModes() {
+        this.setClipWrapMode(this.idleClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.runClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.jumpUpClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.jumpDownClip, cc.WrapMode.Loop);
+        this.setClipWrapMode(this.meleeAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.rangedAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.skill3Clip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.defendClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.superAttackStartupClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.superAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.takeHitClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.getDeathClip(), cc.WrapMode.Normal);
+    }
+
+    private setClipWrapMode(clip: cc.AnimationClip | null, wrapMode: cc.WrapMode) {
+        if (!clip) {
+            return;
+        }
+
+        clip.wrapMode = wrapMode;
+    }
+
+    private ensureVisualPresentationNodes() {
+        this.sourceSprite = this.node.getComponent(cc.Sprite);
+        if (!this.sourceSprite) {
+            return;
+        }
+
+        let visualNode = this.node.getChildByName("Visual");
+        if (!visualNode) {
+            visualNode = new cc.Node("Visual");
+            visualNode.parent = this.node;
+            visualNode.setSiblingIndex(0);
+        }
+
+        let visualSprite = visualNode.getComponent(cc.Sprite);
+        if (!visualSprite) {
+            visualSprite = visualNode.addComponent(cc.Sprite);
+        }
+
+        this.visualNode = visualNode;
+        this.visualSprite = visualSprite;
+        this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        this.visualSprite.type = this.sourceSprite.type;
+        this.visualSprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        this.visualSprite.trim = false;
+
+        this.sourceSprite.enabled = false;
+    }
+
+    private getVisualNode(): cc.Node | null {
+        return this.visualNode;
+    }
+
+    private applyVisualPresentation() {
+        const visualNode = this.getVisualNode();
+        if (!visualNode) {
+            return;
+        }
+
+        const sprite = this.visualSprite || visualNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            return;
+        }
+
+        visualNode.y = this.visualOffsetY;
+        visualNode.scaleX = this.visualScale;
+        visualNode.scaleY = this.visualScale;
+
+        sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        sprite.trim = false;
+    }
+
+    private syncVisualSpriteFrame() {
+        if (!this.sourceSprite || !this.visualSprite) {
+            return;
+        }
+
+        if (this.visualSprite.spriteFrame !== this.sourceSprite.spriteFrame) {
+            this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        }
+    }
+
+    private getDeathClip(): cc.AnimationClip | null {
+        return this.deathClip || this.idleClip;
+    }
+
+    private getSuperProjectileLifetime(): number {
+        if (this.superProjectileLifetimeOverride > 0) {
+            return this.superProjectileLifetimeOverride;
+        }
+
+        if (!this.superProjectilePrefab || !this.superProjectilePrefab.data) {
+            return 1;
+        }
+
+        const animation = this.superProjectilePrefab.data.getComponent(cc.Animation);
+        if (!animation) {
+            return 1;
+        }
+
+        const clip = animation.defaultClip || animation.getClips()[0];
+        if (!clip) {
+            return 1;
+        }
+
+        return this.getClipPlaybackDuration(clip);
+    }
+
+    private scheduleDeathHide() {
+        const deathClip = this.getDeathClip();
+        if (!deathClip) {
+            this.hideAfterDeath();
+            return;
+        }
+
+        this.scheduleOnce(this.hideAfterDeath, this.getClipPlaybackDuration(deathClip));
+    }
+
+    private getClipPlaybackDuration(clip: cc.AnimationClip): number {
+        const speed = Math.abs(clip.speed || 1);
+        return Math.max(0.05, clip.duration / speed);
+    }
+
+    private playAnimationClip(clip: cc.AnimationClip | null, forceReplay: boolean = false): boolean {
+        if (!clip) {
+            return false;
+        }
+
+        if (this.currentAnim === clip.name && !forceReplay) {
+            return true;
+        }
+
+        if (forceReplay) {
+            if (this.isLocal) {
+                NetworkManager.instance.stopAnimation(clip.name);
+            } else if (this.anim) {
+                this.anim.stop(clip.name);
             }
         }
 
-        if (this.shakingNode) {
-            this.shakeOrigin = this.shakingNode.position.clone();
+        this.currentAnim = clip.name;
+        if (this.isLocal) {
+            NetworkManager.instance.playAnimation(clip.name);
+        } else if (this.anim) {
+            this.anim.play(clip.name);
+        }
+        return true;
+    }
+
+    private updateHorizontalVelocity(currentX: number, dt: number): number {
+        if (this.movementLocked) {
+            return this.onGround ? 0 : currentX;
+        }
+
+        const targetX = this.moveInput * this.speed;
+        const hasInput = this.moveInput !== 0;
+        const acceleration = this.onGround
+            ? (hasInput ? this.groundAcceleration : this.groundDeceleration)
+            : (hasInput ? this.airAcceleration : this.airDeceleration);
+
+        return this.moveTowards(currentX, targetX, acceleration * dt);
+    }
+
+    private moveTowards(current: number, target: number, maxDelta: number): number {
+        if (current < target) {
+            return Math.min(current + maxDelta, target);
+        }
+
+        if (current > target) {
+            return Math.max(current - maxDelta, target);
+        }
+
+        return target;
+    }
+
+    private refreshMoveInput() {
+        if (this.leftHeld === this.rightHeld) {
+            this.moveInput = 0;
+        } else if (this.leftHeld) {
+            this.moveInput = -1;
+        } else {
+            this.moveInput = 1;
+        }
+
+        if (!this.facingLocked && this.moveInput !== 0) {
+            this.facingDir = this.moveInput > 0 ? 1 : -1;
+            this.applyFacingDirection();
         }
     }
 
-    private startShake(duration: number, strength: number) {
-        if (!this.shakingNode) {
-            this.resolveShakeTarget();
-        }
-
-        if (!this.shakingNode) {
+    private updateFacingFromVelocity(velocityX: number) {
+        if (this.movementLocked || this.facingLocked) {
             return;
         }
 
-        this.shakeOrigin = this.shakingNode.position.clone();
-        this.shakeDuration = duration;
-        this.shakeStrength = strength;
-        this.shakeTimer = duration;
+        if (Math.abs(velocityX) > 1) {
+            this.facingDir = velocityX > 0 ? 1 : -1;
+        } else if (this.moveInput !== 0) {
+            this.facingDir = this.moveInput > 0 ? 1 : -1;
+        }
     }
 
-    private updateShake(dt: number) {
-        if (!this.shakingNode) {
-            return;
-        }
-
-        let strength = 0;
-
-        if (this.shakeTimer > 0) {
-            this.shakeTimer = Math.max(0, this.shakeTimer - dt);
-            const progress = this.shakeDuration > 0 ? this.shakeTimer / this.shakeDuration : 0;
-            strength = Math.max(strength, this.shakeStrength * progress);
-        }
-
-        if (strength <= 0) {
-            this.shakingNode.setPosition(this.shakeOrigin.x, this.shakeOrigin.y);
-            return;
-        }
-
-        const offsetX = (Math.random() * 2 - 1) * strength;
-        const offsetY = (Math.random() * 2 - 1) * strength;
-        this.shakingNode.setPosition(this.shakeOrigin.x + offsetX, this.shakeOrigin.y + offsetY);
+    private applyFacingDirection() {
+        const direction = this.getFacingDirection();
+        this.node.scaleX = Math.abs(this.node.scaleX) * direction;
     }
 
-    private updateSkill3Recovery(dt: number) {
-        if (!this.skill3Recovering) {
-            return;
-        }
-
-        this.skill3RecoveryTimer += dt;
-        if (this.skill3RecoveryTimer < this.skill3RecoveryDelay) {
-            return;
-        }
-
-        this.skill3Recovering = false;
-        this.skill3RecoveryTimer = 0;
-        this.unlockController();
+    private getFacingDirection(): number {
+        return this.facingLocked ? this.lockedFacingDir : this.facingDir;
     }
 
-    private lockController(lockMovement: boolean, clearMovement: boolean, lockFacing: boolean) {
-        if (!this.controller) {
+    private clearMovementInput() {
+        this.leftHeld = false;
+        this.rightHeld = false;
+        this.moveInput = 0;
+    }
+
+    private resetTransientInputState() {
+        if (!this.isLocal) {
             return;
         }
 
-        if (clearMovement) {
-            this.controller.clearMovementInput();
+        this.clearMovementInput();
+
+        if (this.rb && !this.movementLocked) {
+            const velocity = this.rb.linearVelocity;
+            velocity.x = 0;
+            this.rb.linearVelocity = velocity;
+        }
+    }
+
+    private applyControlLock(lock: ControllerLockConfig) {
+        if (lock.clearMovement) {
+            this.clearMovementInput();
         }
 
-        this.controller.setMovementLocked(lockMovement);
-        this.controller.setAnimationLocked(true);
-        this.controller.setDirectionInputLocked(lockFacing);
-        if (lockFacing) {
-            this.controller.lockFacing();
+        this.movementLocked = lock.lockMovement;
+        this.animationLocked = true;
+        this.directionInputLocked = lock.lockFacing;
+        if (lock.lockFacing) {
+            this.facingLocked = true;
+            this.lockedFacingDir = this.facingDir;
         }
     }
 
     private unlockController() {
-        if (!this.controller) {
-            return;
+        this.clearAnimationFinishedListener(this.onClipFinished);
+        this.currentClipAction = null;
+        this.pendingPhase = null;
+        this.stopRangedHitLoop();
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
+        this.node.opacity = 255;
+        this.isDefending = false;
+        this.movementLocked = false;
+        this.animationLocked = false;
+        this.directionInputLocked = false;
+        this.facingLocked = false;
+        this.currentAnim = "";
+        this.updateAnimation();
+    }
+
+    private updateCooldowns(dt: number) {
+        this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
+        this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
+        this.skill3CooldownRemaining = Math.max(0, this.skill3CooldownRemaining - dt);
+        this.defendCooldownRemaining = Math.max(0, this.defendCooldownRemaining - dt);
+        this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
+    }
+
+    private tryUseCooldown(slot: SkillSlot): boolean {
+        const remaining = this.getCooldownRemaining(slot);
+        if (remaining > 0) {
+            return false;
         }
 
-        this.controller.setMovementLocked(false);
-        this.controller.setAnimationLocked(false);
-        this.controller.setDirectionInputLocked(false);
-        this.controller.unlockFacing();
-        this.controller.refreshVisual();
+        this.setCooldownRemaining(slot, this.getCooldownDuration(slot));
+        return true;
     }
 
-    private isBusy() {
-        return this.isAttacking || this.isDefending || this.isCastingSkill2 || this.isCastingSkill3 || this.skill3Recovering;
+    private getCooldownDuration(slot: SkillSlot): number {
+        switch (slot) {
+            case "attack":
+                return Math.max(0, this.attackCooldown);
+            case "skill2":
+                return Math.max(0, this.skill2Cooldown);
+            case "skill3":
+                return Math.max(0, this.skill3Cooldown);
+            case "defend":
+                return Math.max(0, this.defendCooldown);
+            case "super":
+                return Math.max(0, this.superCooldown);
+        }
     }
 
-    private getFacingDirection() {
-        return this.controller ? this.controller.getFacingDirection() : 1;
+    private getCooldownRemaining(slot: SkillSlot): number {
+        switch (slot) {
+            case "attack":
+                return this.attackCooldownRemaining;
+            case "skill2":
+                return this.skill2CooldownRemaining;
+            case "skill3":
+                return this.skill3CooldownRemaining;
+            case "defend":
+                return this.defendCooldownRemaining;
+            case "super":
+                return this.superCooldownRemaining;
+        }
     }
 
-    private getFacingRight() {
-        return this.controller ? this.controller.isFacingRight() : true;
-    }
-
-    private tryUseCooldown(slot: "attack" | "skill2" | "defend" | "super") {
-        return this.controller ? this.controller.tryUseSkillCooldown(slot) : true;
+    private setCooldownRemaining(slot: SkillSlot, value: number) {
+        switch (slot) {
+            case "attack":
+                this.attackCooldownRemaining = value;
+                return;
+            case "skill2":
+                this.skill2CooldownRemaining = value;
+                return;
+            case "skill3":
+                this.skill3CooldownRemaining = value;
+                return;
+            case "defend":
+                this.defendCooldownRemaining = value;
+                return;
+            case "super":
+                this.superCooldownRemaining = value;
+                return;
+        }
     }
 }

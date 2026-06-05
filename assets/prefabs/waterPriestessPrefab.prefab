@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "ground_monk",
+    "_name": "water_priestess",
     "_objFlags": 0,
     "_parent": null,
     "_children": [
@@ -185,7 +185,7 @@
     "_dstBlendFactor": 771,
     "_spriteFrame": null,
     "_type": 0,
-    "_sizeMode": 1,
+    "_sizeMode": 0,
     "_fillType": 0,
     "_fillCenter": {
       "__type__": "cc.Vec2",
@@ -799,47 +799,47 @@
     },
     "_enabled": true,
     "_defaultClip": {
-      "__uuid__": "06cfb1f1-a050-45f4-b734-cb25efc810c6"
+      "__uuid__": "b2b10b96-241c-4964-ad1d-563934853463"
     },
     "_clips": [
       {
-        "__uuid__": "a8214abc-b344-4101-8c7e-0f4b54ab3d26"
+        "__uuid__": "b2b10b96-241c-4964-ad1d-563934853463"
       },
       {
-        "__uuid__": "451e156a-299f-48db-a719-4675368b6e44"
+        "__uuid__": "d4344a3c-0dcc-42ff-b52d-c54f22b61eae"
       },
       {
-        "__uuid__": "58e8bb74-1735-4eb7-a2f9-bd490d7b79e8"
+        "__uuid__": "3039eca7-367a-4806-9b6f-ce61486d3e6c"
       },
       {
-        "__uuid__": "897acfcc-c5c8-4d1f-95e4-5641a95af1d2"
+        "__uuid__": "e28efec0-1e2c-4066-98b5-83ed8eb5d069"
       },
       {
-        "__uuid__": "024a8da3-d80b-4477-9600-343230513974"
+        "__uuid__": "be22544f-3da9-4180-82fa-abfc56c90fd2"
       },
       {
-        "__uuid__": "0bf14988-cad0-4588-92e4-32f368d48875"
+        "__uuid__": "55e0de08-5b01-453a-9110-0b9e74efc5a5"
       },
       {
-        "__uuid__": "06cfb1f1-a050-45f4-b734-cb25efc810c6"
+        "__uuid__": "cf14102f-121b-4445-9f64-c7e46fbcbc3c"
       },
       {
-        "__uuid__": "74e5edc8-898a-4948-86f0-dfdc1b71c439"
+        "__uuid__": "b061aeaf-1af2-4a79-81b2-acdce3f8db9e"
       },
       {
-        "__uuid__": "bfd58708-a75b-4ad2-87e0-6369960861f1"
+        "__uuid__": "55243425-b392-4c85-b22a-97811f3dede6"
       },
       {
-        "__uuid__": "3a9202bd-4f2e-473d-b08a-4200c50818b3"
+        "__uuid__": "cae3ea9e-dfe8-4bf2-9ffa-c805a4b3a427"
       },
       {
-        "__uuid__": "0aabb33f-ae83-4aeb-bf3b-2b3f547bf151"
+        "__uuid__": "823e1dd7-3a49-4072-8d87-ca76dca93b58"
       },
       {
-        "__uuid__": "2bec7632-a318-4eb4-b64b-61523557cc5a"
+        "__uuid__": "f6387196-9cba-4f52-b852-1347e854770d"
       },
       {
-        "__uuid__": "568dd8e6-a1c2-453b-9f26-e87352d818d7"
+        "__uuid__": "41fb943f-cc62-47a3-ad02-ec181d12365d"
       }
     ],
     "playOnLoad": true,
@@ -862,7 +862,7 @@
     "_dstBlendFactor": 771,
     "_spriteFrame": null,
     "_type": 0,
-    "_sizeMode": 1,
+    "_sizeMode": 0,
     "_fillType": 0,
     "_fillCenter": {
       "__type__": "cc.Vec2",
@@ -896,8 +896,8 @@
     },
     "_size": {
       "__type__": "cc.Size",
-      "width": 25,
-      "height": 34
+      "width": 75,
+      "height": 120
     },
     "_id": ""
   },
@@ -943,11 +943,11 @@
     "groundNodeName": "Platform",
     "switchPresetByNumberKey": true,
     "animIdle": "idle",
-    "animRun": "run",
+    "animRun": "walk",
     "animJump": "j_up",
     "animJumpDown": "j_down",
-    "animDash": "roll",
-    "animAttack": "1_atk",
+    "animDash": "surf",
+    "animAttack": "atk",
     "animAttack2": "2_atk",
     "animAttack3": "3_atk",
     "animJumpAttack": "air_atk",
@@ -968,7 +968,7 @@
     "attack2SfxResource": "attack2",
     "dashSfxResource": "dash",
     "priestessSpecialSfxResource": "water_priestess技能",
-    "monkSpecialSfxResource": "attack2",
+    "monkSpecialSfxResource": "",
     "attackSfxVolume": 0.7,
     "specialAttackSfxVolume": 3,
     "attackSfxCooldown": 0.12,

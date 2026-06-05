@@ -820,7 +820,12 @@
     "groundMonkPrefab": {
       "__uuid__": "84c7e85a-7b8b-4d86-87f5-25f74c10b693"
     },
-    "waterPriestessPrefab": null,
+    "waterPriestessPrefab": {
+      "__uuid__": "bb16dc37-89e7-4ae9-82ef-418cbf9e285f"
+    },
+    "fireKnightPrefab": {
+      "__uuid__": "e02548b6-6b27-4900-a4d3-814131a462bc"
+    },
     "windHeroPrefab": {
       "__uuid__": "bbc34c21-16c1-41eb-a1a4-73552ff19eca"
     },
@@ -841,6 +846,9 @@
     },
     "arrowBeamPrefab": {
       "__uuid__": "a9b73e75-3c70-46dc-bfc0-813225d85593"
+    },
+    "dragonProjectilePrefab": {
+      "__uuid__": "781dd62e-37f2-41db-a26e-d8033e4ef5a1"
     },
     "map0Prefab": {
       "__uuid__": "60989b87-b716-4f68-8f6d-1842a8211584"
@@ -6314,74 +6322,13 @@
     "_id": "0eUTj5UoJGI4V3lEESv+4m"
   },
   {
-    "__type__": "c8a5dI8B9ZATo7871dCbC63",
+    "__type__": "cc.Component",
     "_name": "",
     "_objFlags": 0,
     "node": {
       "__id__": 132
     },
     "_enabled": true,
-    "attackFrame1": null,
-    "attackFrame2": null,
-    "attackFrame3": null,
-    "attackFrame4": null,
-    "attackFrame5": null,
-    "attackFrame6": null,
-    "attackFrame7": null,
-    "attackFrame8": null,
-    "attackFrameInterval": 0.08,
-    "defendFrame1": null,
-    "defendFrame2": null,
-    "defendFrame3": null,
-    "defendFrame4": null,
-    "defendFrameInterval": 0.1,
-    "defendFinalHoldDuration": 1,
-    "defendHoldEffectFrame": null,
-    "skill2Frame1": null,
-    "skill2Frame2": null,
-    "skill2Frame3": null,
-    "skill2Frame4": null,
-    "skill2Frame5": null,
-    "skill2Frame6": null,
-    "skill2Frame7": null,
-    "skill2Frame8": null,
-    "skill2Frame9": null,
-    "skill2Frame10": null,
-    "skill2FrameInterval": 0.08,
-    "skill3ThrowFrameInterval": 0.12,
-    "fireballPrefab": null,
-    "dragonfireFrame1": null,
-    "dragonfireFrame2": null,
-    "dragonfireFrame3": null,
-    "dragonfireFrame4": null,
-    "dragonfireFrame5": null,
-    "dragonfireFrame6": null,
-    "dragonfireFrame7": null,
-    "dragonfireFrame8": null,
-    "dragonfireFrame9": null,
-    "dragonfireFrame10": null,
-    "dragonfireFrame11": null,
-    "dragonfireFrame12": null,
-    "dragonfireFrameInterval": 0.07,
-    "dragonfireSpeed": 420,
-    "dragonfireLifetime": 2,
-    "dragonfireScaleMultiplier": 100,
-    "dragonfireTargetHeight": 360,
-    "dragonfireLoopTargetHeight": 420,
-    "skill3ChargeFrame": null,
-    "skill3ChargeSwirlFrame": null,
-    "skill3ChargeEffectFrames": [],
-    "skill3ChargeEffectFrameInterval": 0.08,
-    "skill3ChargeDelay": 0.18,
-    "dragonfireStartupSpeed": 0,
-    "dragonfireAccelerationDuration": 0.4,
-    "dragonfireFinalFrameHoldDuration": 0.1,
-    "skill3RecoveryDelay": 0.2,
-    "skill3FlashFrame": null,
-    "skill3FlashDuration": 0.5,
-    "shakeTarget": null,
-    "dragonfireShakeDuration": 0.2,
-    "dragonfireShakeStrength": 12,
     "_id": "75cQZ+8V5I6I0hS8RAAOLg"
   },
   {

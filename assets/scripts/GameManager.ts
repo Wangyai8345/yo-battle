@@ -3,22 +3,26 @@ import AudioManager from "./AudioManager";
 import NetworkManager, { GAMESTATE } from "./NetworkManager";
 import PlayerController from "./PlayerController";
 import { resolvePlayerController } from "./PlayerControllerResolver";
+import DragonProjectile from "./DragonProjectile";
 import ProjectileController from "./ProjectileController";
 import UIManager from "./managers/UIManager";
 
 
-const {ccclass, property} = cc._decorator;
+const { ccclass, property } = cc._decorator;
 
 
 
 @ccclass
 export default class GameManager extends cc.Component {
-    
+
     @property(cc.Prefab)
     groundMonkPrefab: cc.Prefab = null;
 
     @property(cc.Prefab)
     waterPriestessPrefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    fireKnightPrefab: cc.Prefab = null;
 
     @property(cc.Prefab)
     windHeroPrefab: cc.Prefab = null;
@@ -28,10 +32,10 @@ export default class GameManager extends cc.Component {
 
     @property(cc.Prefab)
     metalHeroPrefab: cc.Prefab = null;
-    
+
     @property(cc.Prefab)
     attackHitBoxPrefab: cc.Prefab = null;
-    
+
     @property(cc.Prefab)
     exampleProjectilePrefab: cc.Prefab = null;
 
@@ -40,6 +44,9 @@ export default class GameManager extends cc.Component {
 
     @property(cc.Prefab)
     arrowBeamPrefab: cc.Prefab = null;
+
+    @property(cc.Prefab)
+    dragonProjectilePrefab: cc.Prefab = null;
 
     @property(cc.Prefab)
     map0Prefab: cc.Prefab = null;
@@ -52,10 +59,10 @@ export default class GameManager extends cc.Component {
 
     @property(cc.Label)
     timerLabel: cc.Label = null;
-   
+
     @property(cc.Label)
     winnerLabel: cc.Label = null;
-    
+
     @property(cc.Label)
     heartLabel: cc.Label = null;
 
@@ -74,11 +81,11 @@ export default class GameManager extends cc.Component {
     onLoad() {
         let physicsManager = cc.director.getPhysicsManager();
         physicsManager.enabled = true;
-        
+
         if (GameManager.instance === null) {
             GameManager.instance = this;
         }
-        else{
+        else {
             this.node.destroy();
             return;
         }
@@ -97,26 +104,26 @@ export default class GameManager extends cc.Component {
         AudioManager.playMusic('BGM');
         this.setAutoQuitSchedule();
     }
-    
-    
-    setAutoQuitSchedule(){
+
+
+    setAutoQuitSchedule() {
         // If after WAIT_TIME seconds not ready
         // (maybe the other player quit or taking too long)
         // then terminate the game
-        
+
         const DISPLAY_WAITING_LABEL_TIME = 2;
         const WAIT_TIME = 15;
-        
+
         this.scheduleOnce(() => {
-            if(!this.isReady){
+            if (!this.isReady) {
                 this.waitingLabel.node.active = true;
-                this.waitingLabel.string = 
-                `WAITING THE OTHER PLAYER...\n\nAuto quit after ${WAIT_TIME} seconds`;
+                this.waitingLabel.string =
+                    `WAITING THE OTHER PLAYER...\n\nAuto quit after ${WAIT_TIME} seconds`;
             }
         }, DISPLAY_WAITING_LABEL_TIME);
-        
+
         this.scheduleOnce(() => {
-            if(!this.isReady){
+            if (!this.isReady) {
                 cc.warn(`Auto quit triggered`);
                 NetworkManager.instance.terminateAndReturnToLobby();
             }
@@ -124,12 +131,15 @@ export default class GameManager extends cc.Component {
     }
 
 
-    getPlayerPrefab(character: string){
-        switch(character){
+    getPlayerPrefab(character: string) {
+        switch (character) {
             case "ground_monk":
                 return this.groundMonkPrefab;
             case "water_priestess":
                 return this.waterPriestessPrefab || this.groundMonkPrefab;
+            case "fire_knight":
+            case "fire_hero":
+                return this.fireKnightPrefab || this.groundMonkPrefab;
             case "wind":
             case "wind_hero":
             case "wind_hashashin":
@@ -155,7 +165,7 @@ export default class GameManager extends cc.Component {
     }
 
 
-    spawnPlayer(player: any, sessionId: string, isLocal: boolean): cc.Node{
+    spawnPlayer(player: any, sessionId: string, isLocal: boolean): cc.Node {
         let playerNode = cc.instantiate(this.getPlayerPrefab(player.character));
 
         this.playerNodes.push(playerNode);
@@ -164,9 +174,9 @@ export default class GameManager extends cc.Component {
         playerNode.active = false;
 
         playerNode.name = `P${player.id}`;
-        
+
         playerNode.parent = cc.find("Canvas");
-        
+
         playerNode.setPosition(player.x, player.y);
 
         // Player Name Label
@@ -177,7 +187,7 @@ export default class GameManager extends cc.Component {
         label.fontSize = 14;
         labelNode.parent = playerNode;
         labelNode.setPosition(0, 30, 0);
-        
+
         // HP Label
         let labelNode2 = new cc.Node('HP Label');
         labelNode2.color = cc.color(0, 0, 0);
@@ -200,11 +210,11 @@ export default class GameManager extends cc.Component {
         controller.hp = player.hp;
         // 初始化血條
         if (UIManager.instance) UIManager.instance.updateHP(player.id - 1, player.hp, 100);
-        
+
         // Set rb to Static if nonlocal
-        if(!isLocal){
+        if (!isLocal) {
             let rb = playerNode.getComponent(cc.RigidBody);
-            if(rb){
+            if (rb) {
                 rb.active = false;
                 rb.type = cc.RigidBodyType.Kinematic;
                 rb.active = true;
@@ -217,18 +227,18 @@ export default class GameManager extends cc.Component {
     }
 
 
-    spawnMap(mapName: string){
+    spawnMap(mapName: string) {
         console.log(`Spawned Map: ${mapName}`);
 
         let mapPrefab: cc.Prefab = null;
-        switch(mapName){
+        switch (mapName) {
             case "map0": mapPrefab = this.map0Prefab; break;
             case "map1": mapPrefab = this.map1Prefab; break;
             case "map2": mapPrefab = this.map2Prefab; break;
             default: mapPrefab = this.map0Prefab; break;
         }
 
-        if(mapPrefab){
+        if (mapPrefab) {
             const mapNode = cc.instantiate(mapPrefab);
             mapNode.parent = cc.find("Canvas");
             mapNode.setPosition(0, 0);
@@ -238,12 +248,12 @@ export default class GameManager extends cc.Component {
     }
 
 
-    updateTimer(timer: number){
-        if(this.timerLabel) this.timerLabel.string = timer.toString();
+    updateTimer(timer: number) {
+        if (this.timerLabel) this.timerLabel.string = timer.toString();
     }
 
 
-    updateHeartLabel(){
+    updateHeartLabel() {
         let str: string = ''
         this.playerNodes.forEach((node) => {
             let controller = this.resolvePlayerController(node);
@@ -251,11 +261,11 @@ export default class GameManager extends cc.Component {
                 str += `P${controller.id}: ${controller.heart}❤️ `;
             }
         })
-        if(this.heartLabel) this.heartLabel.string = str;
+        if (this.heartLabel) this.heartLabel.string = str;
     }
 
 
-    gameReady(){
+    gameReady() {
         this.isReady = true;
         this.waitingLabel.node.active = false;
 
@@ -263,9 +273,9 @@ export default class GameManager extends cc.Component {
             node.active = true;
         });
     }
-    
 
-    gameStart(){
+
+    gameStart() {
         this.playerNodes.forEach((node) => {
             const controller = this.resolvePlayerController(node);
             if (controller) {
@@ -276,7 +286,7 @@ export default class GameManager extends cc.Component {
     }
 
 
-    gameBreak(){
+    gameBreak() {
         this.playerNodes.forEach((node) => {
             const controller = this.resolvePlayerController(node);
             if (controller) {
@@ -286,18 +296,18 @@ export default class GameManager extends cc.Component {
     }
 
 
-    gameEnd(){
+    gameEnd() {
         const winner = NetworkManager.instance.getRoomState().winner;
-        if(this.winnerLabel) this.winnerLabel.string = `Winner: ${winner}`;
+        if (this.winnerLabel) this.winnerLabel.string = `Winner: ${winner}`;
     }
 
 
-    gameTerminated(){
+    gameTerminated() {
         cc.director.loadScene("join_room_scene");
     }
 
 
-    handleSpawnPrefab(prefabName: string, infos: any){
+    handleSpawnPrefab(prefabName: string, infos: any) {
         // prefabName is the same as NetworkManager.instance.spawnPrefab(prefabName)
         // Every infos contains
         // .uid: the unique id for this prefab
@@ -314,13 +324,16 @@ export default class GameManager extends cc.Component {
         const arrowBeamPrefabName = this.arrowBeamPrefab
             ? this.arrowBeamPrefab.name
             : "arrowBeamPrefab";
+        const dragonProjectilePrefabName = this.dragonProjectilePrefab
+            ? this.dragonProjectilePrefab.name
+            : "dragonProjectilePrefab";
 
-        switch(prefabName){
+        switch (prefabName) {
             case exampleProjectilePrefabName:
                 node = cc.instantiate(this.exampleProjectilePrefab);
-                
+
                 node.setPosition(infos.x, infos.y);
-                
+
                 let rb = node.getComponent(cc.RigidBody);
                 if (rb) {
                     rb.linearVelocity = cc.v2(300, 0);
@@ -413,22 +426,68 @@ export default class GameManager extends cc.Component {
                 }
 
                 break;
-                
+
+            case dragonProjectilePrefabName:
+                if (!this.dragonProjectilePrefab) {
+                    cc.warn("[GameManager] dragonProjectilePrefab is not assigned");
+                    break;
+                }
+
+                node = cc.instantiate(this.dragonProjectilePrefab);
+                node.setPosition(infos.x, infos.y);
+                node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
+
+                const dragonRb = node.getComponent(cc.RigidBody);
+                if (dragonRb) {
+                    dragonRb.gravityScale = 0;
+                    dragonRb.enabledContactListener = true;
+                    dragonRb.linearVelocity = cc.v2(0, 0);
+                    dragonRb.awake = true;
+                }
+
+                const dragonProjectile = node.getComponent(DragonProjectile);
+                if (dragonProjectile) {
+                    dragonProjectile.destroyOnAnimationFinished = false;
+                    dragonProjectile.launch(infos.direction || 1);
+                }
+
+                const dragonController = node.getComponent(ProjectileController);
+                if (dragonController) {
+                    dragonController.initialize(
+                        infos.isLocal,
+                        infos.uid,
+                        infos.attackType || "fireDragonAttack",
+                        infos.damage || 0,
+                        infos.kbScale || 0,
+                        infos.lifetime || 1
+                    );
+                }
+
+                if (infos.isLocal && infos.lifetime > 0) {
+                    this.scheduleOnce(() => {
+                        if (this.prefabNodes.has(infos.uid)) {
+                            NetworkManager.instance.destroyPrefab(infos.uid);
+                        }
+                    }, infos.lifetime);
+                }
+
+                break;
+
             // TODO: more prefabs types
-                
+
             default:
                 break;
         }
-        
-        if(node){
+
+        if (node) {
             this.prefabNodes.set(infos.uid, node);
             cc.find("Canvas").addChild(node);
         }
     }
 
 
-    handleDestroyPrefab(prefabId: string){
-        if(this.prefabNodes.has(prefabId)){
+    handleDestroyPrefab(prefabId: string) {
+        if (this.prefabNodes.has(prefabId)) {
             const node = this.prefabNodes.get(prefabId);
             if (node && cc.isValid(node, true)) {
                 node.destroy();

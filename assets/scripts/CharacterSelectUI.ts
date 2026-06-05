@@ -1,11 +1,11 @@
-import GroundMonkController from './GroundMonkController';
+import SharedHeroController from './SharedHeroController';
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class CharacterSelectUI extends cc.Component {
-    // @property(GroundMonkController)
-    // player: GroundMonkController = null;
+    // @property(SharedHeroController)
+    // player: SharedHeroController = null;
 
     // @property(cc.Button)
     // monkButton: cc.Button = null;

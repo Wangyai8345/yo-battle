@@ -1,12 +1,12 @@
-import GroundMonkController from './GroundMonkController';
+import SharedHeroController from './SharedHeroController';
 import Damageable from './Damageable';
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class AttackHitbox extends cc.Component {
-    // @property(GroundMonkController)
-    // owner: GroundMonkController = null;
+    // @property(SharedHeroController)
+    // owner: SharedHeroController = null;
 
     // @property
     // damagePerHit: number = 20;

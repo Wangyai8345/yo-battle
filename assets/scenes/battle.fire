@@ -600,8 +600,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 60,
-      "height": 44
+      "width": 120,
+      "height": 120
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -619,8 +619,8 @@
         0,
         0,
         1,
-        2,
-        2,
+        1,
+        1,
         2
       ]
     },
@@ -21045,6 +21045,8 @@
     },
     "_enabled": true,
     "groundMonkPrefab": null,
+    "waterPriestessPrefab": null,
+    "fireKnightPrefab": null,
     "windHeroPrefab": null,
     "arrowHeroPrefab": null,
     "metalHeroPrefab": null,
@@ -21058,6 +21060,7 @@
     "timerLabel": null,
     "winnerLabel": null,
     "heartLabel": null,
+    "waitingLabel": null,
     "_id": "d1l/C9/mZJwJfESmC5cgj5"
   },
   {

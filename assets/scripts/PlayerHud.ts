@@ -1,11 +1,11 @@
-import GroundMonkController from './GroundMonkController';
+import SharedHeroController from './SharedHeroController';
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class PlayerHud extends cc.Component {
-    // @property(GroundMonkController)
-    // player: GroundMonkController = null;
+    // @property(SharedHeroController)
+    // player: SharedHeroController = null;
 
     // @property(cc.ProgressBar)
     // hpBar: cc.ProgressBar = null;

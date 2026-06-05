@@ -14,6 +14,7 @@ export default class ProjectileController extends cc.Component {
     protected damage: number = 0;
     protected kbScale: number = 0;
     protected lifetime: number = 5;
+    protected hitSessionIds: Set<string> = new Set<string>();
     
     protected rb: cc.RigidBody = null;
 
@@ -71,6 +72,11 @@ export default class ProjectileController extends cc.Component {
 
         // Hit other player!
         if (otherPlayer && !otherPlayer.isLocal) {
+            if (this.hitSessionIds.has(otherPlayer.sessionId)) {
+                return;
+            }
+
+            this.hitSessionIds.add(otherPlayer.sessionId);
             // console.log(`Projectile hit ${otherPlayer.sessionId}`)
             
             let fromPos = selfCollider.node.convertToWorldSpaceAR(cc.Vec2.ZERO);
@@ -87,16 +93,31 @@ export default class ProjectileController extends cc.Component {
                 kbVec.y
             );
 
-            // DON'T WRITE this.node.destroy();
-            NetworkManager.instance.destroyPrefab(this.uid);
+            if (!this.shouldPierceTargets()) {
+                NetworkManager.instance.destroyPrefab(this.uid);
+            }
         }
         
         // TODO: 
         // Currently, this prefab will be destroyed if it hits anything else that's not player
         // but it should only be destroyed if hitting floor or wall
         else if (!otherPlayer) {
-            NetworkManager.instance.destroyPrefab(this.uid);
+            if (!this.shouldIgnoreObstacleCollision(otherCollider)) {
+                NetworkManager.instance.destroyPrefab(this.uid);
+            }
         }
 
+    }
+
+    protected shouldPierceTargets(): boolean {
+        return this.isDragonProjectile();
+    }
+
+    protected shouldIgnoreObstacleCollision(_otherCollider: cc.PhysicsCollider): boolean {
+        return this.isDragonProjectile();
+    }
+
+    private isDragonProjectile(): boolean {
+        return this.attackType === "fireDragonAttack";
     }
 }
