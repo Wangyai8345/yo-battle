@@ -212,7 +212,13 @@
       },
       {
         "__uuid__": "186d36ea-f337-49e8-9d42-9e797505264b"
-      }
+      },
+      {
+        "__uuid__": "994ba6aa-41b2-43d8-8e54-edb52ca766c6"
+      },
+      null,
+      null,
+      null
     ],
     "playOnLoad": false,
     "_id": ""
@@ -227,6 +233,8 @@
     "_enabled": true,
     "attackCooldown": 0.35,
     "skill2Cooldown": 1.4,
+    "skill3Cooldown": 2,
+    "skill3RepeatInterval": 0.5,
     "defendCooldown": 1.2,
     "superCooldown": 6,
     "speed": 250,
@@ -260,20 +268,19 @@
     "rangedAttackClip": {
       "__uuid__": "91aeaf8f-3820-4267-b8d0-d6644bae244e"
     },
+    "skill3Clip": {
+      "__uuid__": "994ba6aa-41b2-43d8-8e54-edb52ca766c6"
+    },
     "defendClip": {
       "__uuid__": "8fff7035-0afe-46ce-8065-9a533271b305"
-    },
-    "superAttackStartupClip": {
-      "__uuid__": "6a811a63-6b0f-40dc-bf7a-c0cad17ec62e"
     },
     "superAttackClip": {
       "__uuid__": "726c6657-6151-43ed-9d8a-e837790002fe"
     },
-    "superAttackTeleportDelay": 1,
-    "superAttackForwardDistance": 600,
     "attackSoundResource": "attack1",
     "rangedSoundResource": "attack2",
     "defendSoundResource": "dash",
+    "skill3SoundResource": "attack2",
     "superSoundResource": "attack2",
     "attackSfxVolume": 0.7,
     "superSfxVolume": 1,

@@ -3,10 +3,11 @@ import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
 
-type SkillSlot = "attack" | "skill2" | "defend" | "super";
+type SkillSlot = "attack" | "skill2" | "skill3" | "defend" | "super";
 type WindClipActionName =
     | "melee"
     | "ranged"
+    | "skill3"
     | "defend"
     | "super-startup"
     | "super-attack"
@@ -168,6 +169,14 @@ function createWindDefendConfig(clip: cc.AnimationClip | null): WindClipActionCo
     );
 }
 
+function createWindSkill3Config(clip: cc.AnimationClip | null): WindClipActionConfig {
+    return createWindClipActionConfig(
+        "skill3",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
 function createWindSuperStartupConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
     return createWindClipActionConfig(
         "super-startup",
@@ -180,7 +189,7 @@ function createWindSuperAttackConfig(clip: cc.AnimationClip | null): WindClipAct
     return createWindClipActionConfig(
         "super-attack",
         clip,
-        createControllerLockConfig(true, true, true)
+        createControllerLockConfig(false, false, false)
     );
 }
 
@@ -209,6 +218,12 @@ export default class Windhero extends PlayerController {
 
     @property
     skill2Cooldown: number = 1.4;
+
+    @property
+    skill3Cooldown: number = 2;
+
+    @property
+    skill3RepeatInterval: number = 0.5;
 
     @property
     defendCooldown: number = 1.2;
@@ -262,6 +277,9 @@ export default class Windhero extends PlayerController {
     rangedAttackClip: cc.AnimationClip = null;
 
     @property({ type: cc.AnimationClip })
+    skill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
     defendClip: cc.AnimationClip = null;
 
     @property({ type: cc.AnimationClip })
@@ -277,6 +295,9 @@ export default class Windhero extends PlayerController {
     superAttackForwardDistance: number = 600;
 
     @property
+    superAttackRepeatInterval: number = 0.5;
+
+    @property
     attackSoundResource: string = "attack1";
 
     @property
@@ -284,6 +305,9 @@ export default class Windhero extends PlayerController {
 
     @property
     defendSoundResource: string = "dash";
+
+    @property
+    skill3SoundResource: string = "attack2";
 
     @property
     superSoundResource: string = "attack2";
@@ -303,6 +327,12 @@ export default class Windhero extends PlayerController {
     @property
     airborneAnimationVelocityThreshold: number = 20;
 
+    @property
+    visualScale: number = 1.15;
+
+    @property
+    visualOffsetY: number = -16;
+
     private moveInput: number = 0;
     private onGround: boolean = true;
     private groundContactCount: number = 0;
@@ -317,6 +347,7 @@ export default class Windhero extends PlayerController {
     private animationLocked: boolean = false;
     private attackCooldownRemaining: number = 0;
     private skill2CooldownRemaining: number = 0;
+    private skill3CooldownRemaining: number = 0;
     private defendCooldownRemaining: number = 0;
     private superCooldownRemaining: number = 0;
     private isDead: boolean = false;
@@ -325,6 +356,20 @@ export default class Windhero extends PlayerController {
     private currentClipAction: WindClipActionName | null = null;
     private pendingPhase: TimedPhaseState | null = null;
     private superModel: WindSuperModel | null = null;
+    private readonly triggerSuperAttackMeleeHit = () => {
+        if (this.isDead || this.currentClipAction !== "super-attack") {
+            return;
+        }
+
+        this.spawnDefaultMeleeHitBox("windSuperAttack");
+    };
+    private readonly triggerSkill3MeleeHit = () => {
+        if (this.isDead || this.currentClipAction !== "skill3") {
+            return;
+        }
+
+        this.spawnDefaultMeleeHitBox("windSkill3Attack");
+    };
     private readonly hideAfterDeath = () => {
         if (this.isDead) {
             this.node.opacity = 0;
@@ -333,6 +378,7 @@ export default class Windhero extends PlayerController {
 
     protected onLoad(): void {
         super.onLoad();
+        this.applyVisualPresentation();
         this.configureClipWrapModes();
         if (typeof window !== "undefined") {
             window.addEventListener("blur", this.handleWindowBlur);
@@ -424,6 +470,11 @@ export default class Windhero extends PlayerController {
             return;
         }
 
+        if (event.keyCode === cc.macro.KEY.c) {
+            this.useSkill3();
+            return;
+        }
+
         if (event.keyCode === cc.macro.KEY.f) {
             this.useDefend();
             return;
@@ -486,6 +537,8 @@ export default class Windhero extends PlayerController {
         this.currentClipAction = null;
         this.pendingPhase = null;
         this.superModel = null;
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
         this.movementLocked = true;
         this.animationLocked = false;
         this.directionInputLocked = true;
@@ -513,6 +566,8 @@ export default class Windhero extends PlayerController {
         this.currentClipAction = null;
         this.pendingPhase = null;
         this.superModel = null;
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
         this.movementLocked = false;
         this.animationLocked = false;
         this.directionInputLocked = false;
@@ -525,6 +580,7 @@ export default class Windhero extends PlayerController {
         this.node.opacity = 255;
         this.attackCooldownRemaining = 0;
         this.skill2CooldownRemaining = 0;
+        this.skill3CooldownRemaining = 0;
         this.defendCooldownRemaining = 0;
         this.superCooldownRemaining = 0;
         this.currentAnim = "";
@@ -581,6 +637,19 @@ export default class Windhero extends PlayerController {
         }
 
         this.scheduleAttackHitBox("windRangedAttack", 180, 10, 220, 36, 0.15, 10, 120, 0.1);
+        return true;
+    }
+
+    public useSkill3(): boolean {
+        if (!this.tryUseCooldown("skill3")) {
+            return false;
+        }
+
+        if (!this.startClipAction(createWindSkill3Config(this.skill3Clip), this.skill3SoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.startSkill3HitLoop();
         return true;
     }
 
@@ -696,7 +765,7 @@ export default class Windhero extends PlayerController {
             return;
         }
 
-        this.scheduleAttackHitBox("windSuperAttack", 100, 10, 180, 72, 0.18, 22, 240, 0.05);
+        this.startSuperAttackHitLoop();
     }
 
     private finishSuperAttack() {
@@ -749,6 +818,37 @@ export default class Windhero extends PlayerController {
         this.node.opacity = 255;
     }
 
+    private spawnDefaultMeleeHitBox(attackType: string) {
+        this.spawnAttackHitBox(
+            attackType,
+            cc.v2(72, 6),
+            cc.v2(88, 40),
+            0.12,
+            12,
+            150
+        );
+    }
+
+    private startSkill3HitLoop() {
+        this.stopSkill3HitLoop();
+        this.triggerSkill3MeleeHit();
+        this.schedule(this.triggerSkill3MeleeHit, Math.max(0.05, this.skill3RepeatInterval));
+    }
+
+    private stopSkill3HitLoop() {
+        this.unschedule(this.triggerSkill3MeleeHit);
+    }
+
+    private startSuperAttackHitLoop() {
+        this.stopSuperAttackHitLoop();
+        this.triggerSuperAttackMeleeHit();
+        this.schedule(this.triggerSuperAttackMeleeHit, Math.max(0.05, this.superAttackRepeatInterval));
+    }
+
+    private stopSuperAttackHitLoop() {
+        this.unschedule(this.triggerSuperAttackMeleeHit);
+    }
+
     private scheduleAttackHitBox(
         attackType: string,
         centerX: number,
@@ -781,6 +881,8 @@ export default class Windhero extends PlayerController {
         this.currentClipAction = null;
         this.pendingPhase = null;
         this.isDefending = false;
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
         this.animationLocked = true;
         this.movementLocked = true;
         this.directionInputLocked = true;
@@ -854,6 +956,7 @@ export default class Windhero extends PlayerController {
         this.setClipWrapMode(this.jumpDownClip, cc.WrapMode.Loop);
         this.setClipWrapMode(this.meleeAttackClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.rangedAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.skill3Clip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.defendClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.superAttackStartupClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.superAttackClip, cc.WrapMode.Normal);
@@ -867,6 +970,28 @@ export default class Windhero extends PlayerController {
         }
 
         clip.wrapMode = wrapMode;
+    }
+
+    private getVisualNode(): cc.Node | null {
+        return this.node.getChildByName("Visual");
+    }
+
+    private applyVisualPresentation() {
+        const visualNode = this.getVisualNode();
+        if (!visualNode) {
+            return;
+        }
+
+        visualNode.y = this.visualOffsetY;
+        visualNode.scaleX = this.visualScale;
+        visualNode.scaleY = this.visualScale;
+
+        const sprite = visualNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            return;
+        }
+
+        sprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
     }
 
     private getDeathClip(): cc.AnimationClip | null {
@@ -1014,6 +1139,8 @@ export default class Windhero extends PlayerController {
         this.clearAnimationFinishedListener(this.onClipFinished);
         this.currentClipAction = null;
         this.pendingPhase = null;
+        this.stopSkill3HitLoop();
+        this.stopSuperAttackHitLoop();
         this.node.opacity = 255;
         this.isDefending = false;
         this.movementLocked = false;
@@ -1027,6 +1154,7 @@ export default class Windhero extends PlayerController {
     private updateCooldowns(dt: number) {
         this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
         this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
+        this.skill3CooldownRemaining = Math.max(0, this.skill3CooldownRemaining - dt);
         this.defendCooldownRemaining = Math.max(0, this.defendCooldownRemaining - dt);
         this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
     }
@@ -1047,6 +1175,8 @@ export default class Windhero extends PlayerController {
                 return Math.max(0, this.attackCooldown);
             case "skill2":
                 return Math.max(0, this.skill2Cooldown);
+            case "skill3":
+                return Math.max(0, this.skill3Cooldown);
             case "defend":
                 return Math.max(0, this.defendCooldown);
             case "super":
@@ -1060,6 +1190,8 @@ export default class Windhero extends PlayerController {
                 return this.attackCooldownRemaining;
             case "skill2":
                 return this.skill2CooldownRemaining;
+            case "skill3":
+                return this.skill3CooldownRemaining;
             case "defend":
                 return this.defendCooldownRemaining;
             case "super":
@@ -1074,6 +1206,9 @@ export default class Windhero extends PlayerController {
                 return;
             case "skill2":
                 this.skill2CooldownRemaining = value;
+                return;
+            case "skill3":
+                this.skill3CooldownRemaining = value;
                 return;
             case "defend":
                 this.defendCooldownRemaining = value;

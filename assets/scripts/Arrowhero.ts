@@ -3,10 +3,11 @@ import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
 
-type SkillSlot = "attack" | "skill2" | "defend" | "super";
+type SkillSlot = "attack" | "skill2" | "skill3" | "defend" | "super";
 type ArrowClipActionName =
     | "melee"
     | "ranged"
+    | "skill3"
     | "defend"
     | "super-startup"
     | "super-charge"
@@ -80,6 +81,14 @@ function createArrowDefendConfig(clip: cc.AnimationClip | null): ArrowClipAction
     );
 }
 
+function createArrowSkill3Config(clip: cc.AnimationClip | null): ArrowClipActionConfig {
+    return createArrowClipActionConfig(
+        "skill3",
+        clip,
+        createControllerLockConfig(false, false, false)
+    );
+}
+
 function createArrowSuperStartupConfig(clip: cc.AnimationClip | null): ArrowClipActionConfig {
     return createArrowClipActionConfig(
         "super-startup",
@@ -106,6 +115,8 @@ function createArrowSuperReleaseConfig(clip: cc.AnimationClip | null): ArrowClip
 
 @ccclass
 export default class Arrowhero extends PlayerController {
+    private static readonly SKILL3_ARROW_ANGLES: number[] = [67.5, 45, 22.5];
+
     private readonly handleWindowBlur = () => {
         this.resetTransientInputState();
     };
@@ -121,6 +132,9 @@ export default class Arrowhero extends PlayerController {
 
     @property
     skill2Cooldown: number = 1.2;
+
+    @property
+    skill3Cooldown: number = 2;
 
     @property
     defendCooldown: number = 1.2;
@@ -174,6 +188,9 @@ export default class Arrowhero extends PlayerController {
     rangedAttackClip: cc.AnimationClip = null;
 
     @property({ type: cc.AnimationClip })
+    skill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
     defendClip: cc.AnimationClip = null;
 
     @property({ type: cc.AnimationClip })
@@ -196,6 +213,9 @@ export default class Arrowhero extends PlayerController {
 
     @property
     rangedSoundResource: string = "attack2";
+
+    @property
+    skill3SoundResource: string = "attack2";
 
     @property
     defendSoundResource: string = "dash";
@@ -237,6 +257,24 @@ export default class Arrowhero extends PlayerController {
     rangedProjectileKnockback: number = 120;
 
     @property
+    skill3ProjectileSpeed: number = 900;
+
+    @property
+    skill3ProjectileLifetime: number = 0.8;
+
+    @property
+    skill3ProjectileDamage: number = 10;
+
+    @property
+    skill3ProjectileKnockback: number = 120;
+
+    @property
+    skill3ProjectileSpawnDelay: number = 0.12;
+
+    @property
+    skill3ProjectileSpawnSpacing: number = 28;
+
+    @property
     superBeamOffsetX: number = 600;
 
     @property
@@ -260,6 +298,12 @@ export default class Arrowhero extends PlayerController {
     @property
     airborneAnimationVelocityThreshold: number = 20;
 
+    @property
+    visualScale: number = 1.15;
+
+    @property
+    visualOffsetY: number = -16;
+
     private moveInput: number = 0;
     private onGround: boolean = true;
     private groundContactCount: number = 0;
@@ -274,6 +318,7 @@ export default class Arrowhero extends PlayerController {
     private animationLocked: boolean = false;
     private attackCooldownRemaining: number = 0;
     private skill2CooldownRemaining: number = 0;
+    private skill3CooldownRemaining: number = 0;
     private defendCooldownRemaining: number = 0;
     private superCooldownRemaining: number = 0;
     private isDead: boolean = false;
@@ -288,6 +333,7 @@ export default class Arrowhero extends PlayerController {
 
     protected onLoad(): void {
         super.onLoad();
+        this.applyVisualPresentation();
         this.configureClipWrapModes();
         if (typeof window !== "undefined") {
             window.addEventListener("blur", this.handleWindowBlur);
@@ -375,6 +421,11 @@ export default class Arrowhero extends PlayerController {
 
         if (event.keyCode === cc.macro.KEY.r) {
             this.useRanged();
+            return;
+        }
+
+        if (event.keyCode === cc.macro.KEY.c) {
+            this.useSkill3();
             return;
         }
 
@@ -475,6 +526,7 @@ export default class Arrowhero extends PlayerController {
         this.node.opacity = 255;
         this.attackCooldownRemaining = 0;
         this.skill2CooldownRemaining = 0;
+        this.skill3CooldownRemaining = 0;
         this.defendCooldownRemaining = 0;
         this.superCooldownRemaining = 0;
         this.currentAnim = "";
@@ -546,6 +598,35 @@ export default class Arrowhero extends PlayerController {
                 );
             }
         }, 0.12);
+
+        return true;
+    }
+
+    public useSkill3(): boolean {
+        if (!this.tryUseCooldown("skill3")) {
+            return false;
+        }
+
+        if (!this.startClipAction(createArrowSkill3Config(this.skill3Clip), this.skill3SoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.scheduleOnce(() => {
+            if (this.isDead) {
+                return;
+            }
+
+            if (!this.spawnSkill3ProjectileSpread()) {
+                this.spawnAttackHitBox(
+                    "arrowSkill3Attack",
+                    cc.v2(this.rangedHitboxDistance, 80),
+                    cc.v2(360, 180),
+                    0.12,
+                    this.skill3ProjectileDamage,
+                    this.skill3ProjectileKnockback
+                );
+            }
+        }, Math.max(0, this.skill3ProjectileSpawnDelay));
 
         return true;
     }
@@ -685,6 +766,39 @@ export default class Arrowhero extends PlayerController {
         return true;
     }
 
+    private spawnSkill3ProjectileSpread(): boolean {
+        if (!this.rangedProjectilePrefab) {
+            cc.warn("[Arrowhero] rangedProjectilePrefab is not assigned");
+            return false;
+        }
+
+        const direction = this.getFacingDirection();
+        Arrowhero.SKILL3_ARROW_ANGLES.forEach((angleDeg, index) => {
+            const radians = angleDeg * Math.PI / 180;
+            const vx = Math.cos(radians) * this.skill3ProjectileSpeed * direction;
+            const vy = Math.sin(radians) * this.skill3ProjectileSpeed;
+            const displayAngle = direction >= 0 ? angleDeg : 180 - angleDeg;
+            const spawnOffset = this.skill3ProjectileSpawnSpacing * (index + 1);
+            const spawnX = this.node.x + direction * this.rangedSpawnOffsetX + Math.cos(radians) * spawnOffset * direction;
+            const spawnY = this.node.y + this.rangedSpawnOffsetY + Math.sin(radians) * spawnOffset;
+
+            NetworkManager.instance.spawnPrefab(this.rangedProjectilePrefab.name, {
+                x: spawnX,
+                y: spawnY,
+                direction,
+                speed: Math.abs(vx),
+                vy,
+                angle: displayAngle,
+                lifetime: this.skill3ProjectileLifetime,
+                damage: this.skill3ProjectileDamage,
+                kbScale: this.skill3ProjectileKnockback,
+                attackType: "arrowSkill3Attack",
+            });
+        });
+
+        return true;
+    }
+
     private spawnSuperBeamPrefab(): boolean {
         if (!this.superBeamPrefab) {
             cc.warn("[Arrowhero] superBeamPrefab is not assigned");
@@ -806,6 +920,7 @@ export default class Arrowhero extends PlayerController {
         this.setClipWrapMode(this.jumpDownClip, cc.WrapMode.Loop);
         this.setClipWrapMode(this.meleeAttackClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.rangedAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.skill3Clip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.defendClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.superAttackStartClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.superAttackChargeClip, cc.WrapMode.Normal);
@@ -820,6 +935,28 @@ export default class Arrowhero extends PlayerController {
         }
 
         clip.wrapMode = wrapMode;
+    }
+
+    private getVisualNode(): cc.Node | null {
+        return this.node.getChildByName("Visual");
+    }
+
+    private applyVisualPresentation() {
+        const visualNode = this.getVisualNode();
+        if (!visualNode) {
+            return;
+        }
+
+        visualNode.y = this.visualOffsetY;
+        visualNode.scaleX = this.visualScale;
+        visualNode.scaleY = this.visualScale;
+
+        const sprite = visualNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            return;
+        }
+
+        sprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
     }
 
     private getTakeHitClip(): cc.AnimationClip | null {
@@ -982,6 +1119,7 @@ export default class Arrowhero extends PlayerController {
     private updateCooldowns(dt: number) {
         this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
         this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
+        this.skill3CooldownRemaining = Math.max(0, this.skill3CooldownRemaining - dt);
         this.defendCooldownRemaining = Math.max(0, this.defendCooldownRemaining - dt);
         this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
     }
@@ -1002,6 +1140,8 @@ export default class Arrowhero extends PlayerController {
                 return Math.max(0, this.attackCooldown);
             case "skill2":
                 return Math.max(0, this.skill2Cooldown);
+            case "skill3":
+                return Math.max(0, this.skill3Cooldown);
             case "defend":
                 return Math.max(0, this.defendCooldown);
             case "super":
@@ -1015,6 +1155,8 @@ export default class Arrowhero extends PlayerController {
                 return this.attackCooldownRemaining;
             case "skill2":
                 return this.skill2CooldownRemaining;
+            case "skill3":
+                return this.skill3CooldownRemaining;
             case "defend":
                 return this.defendCooldownRemaining;
             case "super":
@@ -1029,6 +1171,9 @@ export default class Arrowhero extends PlayerController {
                 return;
             case "skill2":
                 this.skill2CooldownRemaining = value;
+                return;
+            case "skill3":
+                this.skill3CooldownRemaining = value;
                 return;
             case "defend":
                 this.defendCooldownRemaining = value;

@@ -62,6 +62,11 @@ export default class ProjectileController extends cc.Component {
         // Only handle bullets that are shot by yourself
         if(!this.isLocal) return;
 
+        // Ignore projectile-vs-projectile collisions so multi-shot attacks do not self-destruct on spawn.
+        if (otherCollider.node.getComponent(ProjectileController)) {
+            return;
+        }
+
         let otherPlayer = resolvePlayerController(otherCollider.node);
 
         // Hit other player!

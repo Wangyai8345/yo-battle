@@ -822,13 +822,13 @@
     },
     "waterPriestessPrefab": null,
     "windHeroPrefab": {
-      "__uuid__": "3bc929c9-272f-48af-baba-b4decb417c6c"
+      "__uuid__": "bbc34c21-16c1-41eb-a1a4-73552ff19eca"
     },
     "arrowHeroPrefab": {
-      "__uuid__": "d75000fa-1f72-4160-9c64-3c5417070a3b"
+      "__uuid__": "0260713a-edd6-44df-a692-ccfcee459a18"
     },
     "metalHeroPrefab": {
-      "__uuid__": "78e76f6a-8dc9-4025-9c13-4890457bd8b2"
+      "__uuid__": "9625dfd3-5024-4478-8cd6-a1f35be23608"
     },
     "attackHitBoxPrefab": {
       "__uuid__": "3b55b450-af29-4e15-b0f3-53801018bf03"

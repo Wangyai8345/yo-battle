@@ -348,6 +348,7 @@ export default class GameManager extends cc.Component {
                 node.active = true;
                 node.setPosition(infos.x, infos.y);
                 node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
+                node.angle = infos.angle || 0;
 
                 let arrowRb = node.getComponent(cc.RigidBody);
                 if (arrowRb) {

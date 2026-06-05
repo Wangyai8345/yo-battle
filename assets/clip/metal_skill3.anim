@@ -1,11 +1,11 @@
 {
   "__type__": "cc.AnimationClip",
-  "_name": "metal_range",
+  "_name": "metal_skill3",
   "_objFlags": 0,
   "_native": "",
   "_duration": 0.3,
   "sample": 60,
-  "speed": 0.6,
+  "speed": 0.3,
   "wrapMode": 1,
   "curveData": {
     "comps": {
@@ -104,13 +104,13 @@
           {
             "frame": 0.25,
             "value": {
-              "__uuid__": "a97257c1-1a0b-4c69-9c44-08a9f5a357d4"
+              "__uuid__": "274a9dd1-bfa6-431b-93ae-8b1a8e2f455d"
             }
           },
           {
             "frame": 0.26666666666666666,
             "value": {
-              "__uuid__": "274a9dd1-bfa6-431b-93ae-8b1a8e2f455d"
+              "__uuid__": "a97257c1-1a0b-4c69-9c44-08a9f5a357d4"
             }
           },
           {

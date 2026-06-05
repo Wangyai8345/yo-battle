@@ -3,15 +3,13 @@ import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
 
-type SkillSlot = "attack" | "skill2" | "defend" | "super";
+type SkillSlot = "attack" | "skill2" | "skill3" | "defend" | "super";
 type WindClipActionName =
     | "melee"
     | "ranged"
+    | "skill3"
     | "defend"
-    | "super-startup"
-    | "super-attack"
-    | "super-recovery";
-type TimedPhaseName = "teleport-out";
+    | "super-attack";
 
 type ControllerLockConfig = {
     lockMovement: boolean;
@@ -25,42 +23,12 @@ type WindClipActionConfig = {
     lock: ControllerLockConfig;
 };
 
-type TimedPhaseState = {
-    name: TimedPhaseName;
-    delay: number;
-    elapsed: number;
-};
-
-type TimedPhaseStepResult = {
-    nextPhase: TimedPhaseState | null;
-    completedPhaseName: TimedPhaseName | null;
-};
-
-type WindSuperModel = {
-    originX: number;
-    originY: number;
-    originZ: number;
-    facing: number;
-    forwardDistance: number;
-};
-
-type WindTeleportTarget = {
-    x: number;
-    y: number;
-    z: number;
-};
-
-function clampPositiveDuration(value: number): number {
-    return Math.max(0, value);
-}
-
 function canStartWindAction(
     currentClipAction: WindClipActionName | null,
-    pendingPhase: TimedPhaseState | null,
     isDead: boolean,
     isHit: boolean
 ): boolean {
-    return !currentClipAction && !pendingPhase && !isDead && !isHit;
+    return !currentClipAction && !isDead && !isHit;
 }
 
 function createControllerLockConfig(
@@ -84,63 +52,6 @@ function createWindClipActionConfig(
         name,
         clip,
         lock,
-    };
-}
-
-function createTimedPhaseState(name: TimedPhaseName, delay: number): TimedPhaseState {
-    return {
-        name,
-        delay: clampPositiveDuration(delay),
-        elapsed: 0,
-    };
-}
-
-function advanceTimedPhase(state: TimedPhaseState, dt: number): TimedPhaseStepResult {
-    const next = {
-        ...state,
-        elapsed: state.elapsed + dt,
-    };
-
-    if (next.elapsed < next.delay) {
-        return {
-            nextPhase: next,
-            completedPhaseName: null,
-        };
-    }
-
-    return {
-        nextPhase: null,
-        completedPhaseName: next.name,
-    };
-}
-
-function createWindSuperModel(
-    position: cc.Vec3,
-    facing: number,
-    forwardDistance: number
-): WindSuperModel {
-    return {
-        originX: position.x,
-        originY: position.y,
-        originZ: position.z,
-        facing,
-        forwardDistance,
-    };
-}
-
-function createWindSuperForwardTarget(model: WindSuperModel): WindTeleportTarget {
-    return {
-        x: model.originX + (model.facing * model.forwardDistance),
-        y: model.originY,
-        z: model.originZ,
-    };
-}
-
-function createWindSuperOriginTarget(model: WindSuperModel): WindTeleportTarget {
-    return {
-        x: model.originX,
-        y: model.originY,
-        z: model.originZ,
     };
 }
 
@@ -168,25 +79,17 @@ function createWindDefendConfig(clip: cc.AnimationClip | null): WindClipActionCo
     );
 }
 
-function createWindSuperStartupConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
+function createWindSkill3Config(clip: cc.AnimationClip | null): WindClipActionConfig {
     return createWindClipActionConfig(
-        "super-startup",
+        "skill3",
         clip,
-        createControllerLockConfig(true, true, true)
+        createControllerLockConfig(false, false, false)
     );
 }
 
 function createWindSuperAttackConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
     return createWindClipActionConfig(
         "super-attack",
-        clip,
-        createControllerLockConfig(true, true, true)
-    );
-}
-
-function createWindSuperRecoveryConfig(clip: cc.AnimationClip | null): WindClipActionConfig {
-    return createWindClipActionConfig(
-        "super-recovery",
         clip,
         createControllerLockConfig(true, true, true)
     );
@@ -209,6 +112,12 @@ export default class Metalhero extends PlayerController {
 
     @property
     skill2Cooldown: number = 1.4;
+
+    @property
+    skill3Cooldown: number = 2;
+
+    @property
+    skill3RepeatInterval: number = 0.5;
 
     @property
     defendCooldown: number = 1.2;
@@ -262,19 +171,13 @@ export default class Metalhero extends PlayerController {
     rangedAttackClip: cc.AnimationClip = null;
 
     @property({ type: cc.AnimationClip })
+    skill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip })
     defendClip: cc.AnimationClip = null;
 
     @property({ type: cc.AnimationClip })
-    superAttackStartupClip: cc.AnimationClip = null;
-
-    @property({ type: cc.AnimationClip })
     superAttackClip: cc.AnimationClip = null;
-
-    @property
-    superAttackTeleportDelay: number = 1;
-
-    @property
-    superAttackForwardDistance: number = 600;
 
     @property
     attackSoundResource: string = "attack1";
@@ -284,6 +187,9 @@ export default class Metalhero extends PlayerController {
 
     @property
     defendSoundResource: string = "dash";
+
+    @property
+    skill3SoundResource: string = "attack2";
 
     @property
     superSoundResource: string = "attack2";
@@ -302,6 +208,12 @@ export default class Metalhero extends PlayerController {
 
     @property
     airborneAnimationVelocityThreshold: number = 20;
+
+    @property
+    visualScale: number = 1.15;
+
+    @property
+    visualOffsetY: number = -16;
 
     private moveInput: number = 0;
     private onGround: boolean = true;
@@ -323,8 +235,49 @@ export default class Metalhero extends PlayerController {
     private isHit: boolean = false;
     private isDefending: boolean = false;
     private currentClipAction: WindClipActionName | null = null;
-    private pendingPhase: TimedPhaseState | null = null;
-    private superModel: WindSuperModel | null = null;
+    private skill3CooldownRemaining: number = 0;
+    private readonly triggerSuperAttackDamage = () => {
+        if (this.isDead || this.currentClipAction !== "super-attack") {
+            return;
+        }
+
+        this.spawnAttackHitBox(
+            "metalSuperAttack",
+            cc.v2(108, 10),
+            cc.v2(220, 84),
+            0.18,
+            18,
+            180
+        );
+    };
+    private readonly triggerSuperAttackFinisher = () => {
+        if (this.isDead || this.currentClipAction !== "super-attack") {
+            return;
+        }
+
+        this.spawnAttackHitBox(
+            "metalSuperAttackFinisher",
+            cc.v2(48, -64),
+            cc.v2(340, 180),
+            0.2,
+            0,
+            1500
+        );
+    };
+    private readonly triggerSkill3Damage = () => {
+        if (this.isDead || this.currentClipAction !== "skill3") {
+            return;
+        }
+
+        this.spawnAttackHitBox(
+            "metalSkill3Attack",
+            cc.v2(180, 10),
+            cc.v2(220, 36),
+            0.15,
+            10,
+            120
+        );
+    };
     private readonly hideAfterDeath = () => {
         if (this.isDead) {
             this.node.opacity = 0;
@@ -333,6 +286,7 @@ export default class Metalhero extends PlayerController {
 
     protected onLoad(): void {
         super.onLoad();
+        this.applyVisualPresentation();
         this.configureClipWrapModes();
         if (typeof window !== "undefined") {
             window.addEventListener("blur", this.handleWindowBlur);
@@ -355,7 +309,6 @@ export default class Metalhero extends PlayerController {
 
     protected localUpdate(dt: number): void {
         this.updateCooldowns(dt);
-        this.updatePendingPhase(dt);
 
         if (!this.rb) {
             return;
@@ -410,7 +363,7 @@ export default class Metalhero extends PlayerController {
             this.updateAnimation();
         }
 
-        if (!canStartWindAction(this.currentClipAction, this.pendingPhase, this.isDead, this.isHit)) {
+        if (!canStartWindAction(this.currentClipAction, this.isDead, this.isHit)) {
             return;
         }
 
@@ -421,6 +374,11 @@ export default class Metalhero extends PlayerController {
 
         if (event.keyCode === cc.macro.KEY.r) {
             this.useRanged();
+            return;
+        }
+
+        if (event.keyCode === cc.macro.KEY.c) {
+            this.useSkill3();
             return;
         }
 
@@ -484,8 +442,8 @@ export default class Metalhero extends PlayerController {
         this.isHit = false;
         this.isDefending = false;
         this.currentClipAction = null;
-        this.pendingPhase = null;
-        this.superModel = null;
+        this.stopSkill3Loop();
+        this.stopSuperAttackLoop();
         this.movementLocked = true;
         this.animationLocked = false;
         this.directionInputLocked = true;
@@ -511,8 +469,8 @@ export default class Metalhero extends PlayerController {
         this.isHit = false;
         this.isDefending = false;
         this.currentClipAction = null;
-        this.pendingPhase = null;
-        this.superModel = null;
+        this.stopSkill3Loop();
+        this.stopSuperAttackLoop();
         this.movementLocked = false;
         this.animationLocked = false;
         this.directionInputLocked = false;
@@ -525,6 +483,7 @@ export default class Metalhero extends PlayerController {
         this.node.opacity = 255;
         this.attackCooldownRemaining = 0;
         this.skill2CooldownRemaining = 0;
+        this.skill3CooldownRemaining = 0;
         this.defendCooldownRemaining = 0;
         this.superCooldownRemaining = 0;
         this.currentAnim = "";
@@ -584,6 +543,19 @@ export default class Metalhero extends PlayerController {
         return true;
     }
 
+    public useSkill3(): boolean {
+        if (!this.tryUseCooldown("skill3")) {
+            return false;
+        }
+
+        if (!this.startClipAction(createWindSkill3Config(this.skill3Clip), this.skill3SoundResource, this.attackSfxVolume)) {
+            return false;
+        }
+
+        this.startSkill3Loop();
+        return true;
+    }
+
     public useDefend(): boolean {
         if (!this.tryUseCooldown("defend")) {
             return false;
@@ -598,13 +570,16 @@ export default class Metalhero extends PlayerController {
             return false;
         }
 
-        this.superModel = createWindSuperModel(this.node.position.clone(), this.getFacingDirection(), this.superAttackForwardDistance);
-
-        return this.startClipAction(
-            createWindSuperStartupConfig(this.superAttackStartupClip),
+        if (!this.startClipAction(
+            createWindSuperAttackConfig(this.superAttackClip),
             this.superSoundResource,
             this.superSfxVolume
-        );
+        )) {
+            return false;
+        }
+
+        this.startSuperAttackLoop();
+        return true;
     }
 
     private startClipAction(
@@ -639,11 +614,6 @@ export default class Metalhero extends PlayerController {
             return;
         }
 
-        if (actionName === "super-startup") {
-            this.beginTeleportOutPhase();
-            return;
-        }
-
         if (actionName === "super-attack") {
             this.finishSuperAttack();
             return;
@@ -656,97 +626,30 @@ export default class Metalhero extends PlayerController {
         this.unlockController();
     }
 
-    private beginTeleportOutPhase() {
-        if (!this.superModel) {
-            this.superModel = createWindSuperModel(this.node.position.clone(), this.getFacingDirection(), this.superAttackForwardDistance);
-        }
-
-        this.pendingPhase = createTimedPhaseState("teleport-out", this.superAttackTeleportDelay);
-        this.node.opacity = 0;
-    }
-
-    private updatePendingPhase(dt: number) {
-        if (!this.pendingPhase) {
-            return;
-        }
-
-        const step = advanceTimedPhase(this.pendingPhase, dt);
-        this.pendingPhase = step.nextPhase;
-
-        if (!step.completedPhaseName) {
-            return;
-        }
-
-        this.completeTimedPhase(step.completedPhaseName);
-    }
-
-    private completeTimedPhase(phaseName: TimedPhaseName) {
-        this.node.opacity = 255;
-
-        if (phaseName !== "teleport-out") {
-            return;
-        }
-
-        this.teleportForward();
-
-        if (!this.startClipAction(createWindSuperAttackConfig(this.superAttackClip), undefined, this.superSfxVolume)) {
-            this.teleportBackToOrigin();
-            this.clearSuperState();
-            this.unlockController();
-            return;
-        }
-
-        this.scheduleAttackHitBox("windSuperAttack", 100, 10, 180, 72, 0.18, 22, 240, 0.05);
-    }
-
     private finishSuperAttack() {
-        this.teleportBackToOrigin();
-
-        if (this.superAttackStartupClip && this.startClipAction(createWindSuperRecoveryConfig(this.superAttackStartupClip))) {
-            this.clearSuperState(false);
-            return;
-        }
-
-        this.clearSuperState();
+        this.stopSuperAttackLoop();
         this.unlockController();
     }
 
-    private teleportForward() {
-        if (!this.superModel) {
-            return;
-        }
-
-        this.teleportTo(createWindSuperForwardTarget(this.superModel));
+    private startSkill3Loop() {
+        this.stopSkill3Loop();
+        this.triggerSkill3Damage();
+        this.schedule(this.triggerSkill3Damage, Math.max(0.05, this.skill3RepeatInterval));
     }
 
-    private teleportBackToOrigin() {
-        if (!this.superModel) {
-            return;
-        }
-
-        this.teleportTo(createWindSuperOriginTarget(this.superModel));
+    private stopSkill3Loop() {
+        this.unschedule(this.triggerSkill3Damage);
     }
 
-    private teleportTo(target: WindTeleportTarget) {
-        this.node.setPosition(target.x, target.y, target.z);
-        NetworkManager.instance.playerTeleport(target.x, target.y);
-
-        if (!this.rb) {
-            return;
-        }
-
-        this.rb.linearVelocity = cc.v2(0, 0);
-        this.rb.angularVelocity = 0;
-        this.rb.syncPosition(true);
-        this.rb.awake = true;
+    private startSuperAttackLoop() {
+        this.stopSuperAttackLoop();
+        this.triggerSuperAttackDamage();
+        this.triggerSuperAttackFinisher();
     }
 
-    private clearSuperState(resetPhase: boolean = true) {
-        if (resetPhase) {
-            this.pendingPhase = null;
-        }
-        this.superModel = null;
-        this.node.opacity = 255;
+    private stopSuperAttackLoop() {
+        this.unschedule(this.triggerSuperAttackDamage);
+        this.unschedule(this.triggerSuperAttackFinisher);
     }
 
     private scheduleAttackHitBox(
@@ -779,8 +682,9 @@ export default class Metalhero extends PlayerController {
     private enterHitState(knockback: cc.Vec2) {
         this.clearAnimationFinishedListener(this.onClipFinished);
         this.currentClipAction = null;
-        this.pendingPhase = null;
         this.isDefending = false;
+        this.stopSkill3Loop();
+        this.stopSuperAttackLoop();
         this.animationLocked = true;
         this.movementLocked = true;
         this.directionInputLocked = true;
@@ -854,8 +758,8 @@ export default class Metalhero extends PlayerController {
         this.setClipWrapMode(this.jumpDownClip, cc.WrapMode.Loop);
         this.setClipWrapMode(this.meleeAttackClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.rangedAttackClip, cc.WrapMode.Normal);
+        this.setClipWrapMode(this.skill3Clip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.defendClip, cc.WrapMode.Normal);
-        this.setClipWrapMode(this.superAttackStartupClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.superAttackClip, cc.WrapMode.Normal);
         this.setClipWrapMode(this.getTakeHitClip(), cc.WrapMode.Normal);
         this.setClipWrapMode(this.getDeathClip(), cc.WrapMode.Normal);
@@ -867,6 +771,28 @@ export default class Metalhero extends PlayerController {
         }
 
         clip.wrapMode = wrapMode;
+    }
+
+    private getVisualNode(): cc.Node | null {
+        return this.node.getChildByName("Visual");
+    }
+
+    private applyVisualPresentation() {
+        const visualNode = this.getVisualNode();
+        if (!visualNode) {
+            return;
+        }
+
+        visualNode.y = this.visualOffsetY;
+        visualNode.scaleX = this.visualScale;
+        visualNode.scaleY = this.visualScale;
+
+        const sprite = visualNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            return;
+        }
+
+        sprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
     }
 
     private getTakeHitClip(): cc.AnimationClip | null {
@@ -1017,7 +943,8 @@ export default class Metalhero extends PlayerController {
     private unlockController() {
         this.clearAnimationFinishedListener(this.onClipFinished);
         this.currentClipAction = null;
-        this.pendingPhase = null;
+        this.stopSkill3Loop();
+        this.stopSuperAttackLoop();
         this.node.opacity = 255;
         this.isDefending = false;
         this.movementLocked = false;
@@ -1031,6 +958,7 @@ export default class Metalhero extends PlayerController {
     private updateCooldowns(dt: number) {
         this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
         this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
+        this.skill3CooldownRemaining = Math.max(0, this.skill3CooldownRemaining - dt);
         this.defendCooldownRemaining = Math.max(0, this.defendCooldownRemaining - dt);
         this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
     }
@@ -1051,6 +979,8 @@ export default class Metalhero extends PlayerController {
                 return Math.max(0, this.attackCooldown);
             case "skill2":
                 return Math.max(0, this.skill2Cooldown);
+            case "skill3":
+                return Math.max(0, this.skill3Cooldown);
             case "defend":
                 return Math.max(0, this.defendCooldown);
             case "super":
@@ -1064,6 +994,8 @@ export default class Metalhero extends PlayerController {
                 return this.attackCooldownRemaining;
             case "skill2":
                 return this.skill2CooldownRemaining;
+            case "skill3":
+                return this.skill3CooldownRemaining;
             case "defend":
                 return this.defendCooldownRemaining;
             case "super":
@@ -1078,6 +1010,9 @@ export default class Metalhero extends PlayerController {
                 return;
             case "skill2":
                 this.skill2CooldownRemaining = value;
+                return;
+            case "skill3":
+                this.skill3CooldownRemaining = value;
                 return;
             case "defend":
                 this.defendCooldownRemaining = value;

@@ -1,79 +1,81 @@
 {
-  "__type__": "cc.AnimationClip",
-  "_name": "arrow_melee",
-  "_objFlags": 0,
-  "_native": "",
-  "_duration": 0.16666666666666666,
-  "sample": 60,
-  "speed": 0.5,
-  "wrapMode": 1,
-  "curveData": {
-    "comps": {
-      "cc.Sprite": {
-        "spriteFrame": [
-          {
-            "frame": 0,
-            "value": {
-              "__uuid__": "55386b49-ae06-4cfb-a06f-9eabe57109f9"
-            }
-          },
-          {
-            "frame": 0.016666666666666666,
-            "value": {
-              "__uuid__": "7265982c-7e47-4245-91aa-0f3f379f0433"
-            }
-          },
-          {
-            "frame": 0.03333333333333333,
-            "value": {
-              "__uuid__": "cfad69d7-f8de-46b9-bb12-6cd2aa7c1ab5"
-            }
-          },
-          {
-            "frame": 0.05,
-            "value": {
-              "__uuid__": "6e571c15-9a9c-4b82-aaeb-d0c234db5dd8"
-            }
-          },
-          {
-            "frame": 0.06666666666666667,
-            "value": {
-              "__uuid__": "3693e526-6bc2-4977-a408-9d6a4f63d0cd"
-            }
-          },
-          {
-            "frame": 0.08333333333333333,
-            "value": {
-              "__uuid__": "134451a8-e2af-43e7-9af4-4b4b7ddcce59"
-            }
-          },
-          {
-            "frame": 0.1,
-            "value": {
-              "__uuid__": "c21939a8-c364-4e80-bc7d-f75311e92917"
-            }
-          },
-          {
-            "frame": 0.11666666666666667,
-            "value": {
-              "__uuid__": "dd79949b-d151-478b-aab6-2385a4d8ebd6"
-            }
-          },
-          {
-            "frame": 0.13333333333333333,
-            "value": {
-              "__uuid__": "60bd26fa-54bc-45b4-85bb-d7600b1793e4"
-            }
-          },
-          {
-            "frame": 0.15,
-            "value": {
-              "__uuid__": "b79c0007-269d-459c-97ab-83bf344848a1"
-            }
-          }
-        ]
-      }
-    }
-  },
-  "events": []
+    "__type__":  "cc.AnimationClip",
+    "_name":  "arrow_melee",
+    "_objFlags":  0,
+    "_native":  "",
+    "_duration":  0.16666666666666666,
+    "sample":  60,
+    "speed":  0.5,
+    "wrapMode":  1,
+    "curveData":  {
+                      "comps":  {
+                                    "cc.Sprite":  {
+                                                      "spriteFrame":  [
+                                                                          {
+                                                                              "frame":  0,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "55386b49-ae06-4cfb-a06f-9eabe57109f9"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.016666666666666666,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "7265982c-7e47-4245-91aa-0f3f379f0433"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.03333333333333333,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "cfad69d7-f8de-46b9-bb12-6cd2aa7c1ab5"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.05,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "6e571c15-9a9c-4b82-aaeb-d0c234db5dd8"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.06666666666666667,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "3693e526-6bc2-4977-a408-9d6a4f63d0cd"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.08333333333333333,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "134451a8-e2af-43e7-9af4-4b4b7ddcce59"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.1,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "c21939a8-c364-4e80-bc7d-f75311e92917"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.11666666666666667,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "dd79949b-d151-478b-aab6-2385a4d8ebd6"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.13333333333333333,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "60bd26fa-54bc-45b4-85bb-d7600b1793e4"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.15,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "b79c0007-269d-459c-97ab-83bf344848a1"
+                                                                                        }
+                                                                          }
+                                                                      ]
+                                                  }
+                                }
+                  },
+    "events":  [
+
+               ]
 }
