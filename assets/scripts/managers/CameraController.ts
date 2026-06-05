@@ -9,6 +9,15 @@ export default class CameraController extends cc.Component {
     @property(cc.Node)
     p2: cc.Node = null;
 
+    /** 動態尋找 P1/P2 節點（server 動態生成的角色） */
+    private _findPlayers() {
+        if (this.p1 && this.p2) return;
+        const canvas = cc.find('Canvas');
+        if (!canvas) return;
+        if (!this.p1) this.p1 = canvas.getChildByName('P1');
+        if (!this.p2) this.p2 = canvas.getChildByName('P2');
+    }
+
     @property
     maxZoom: number = 1.8;
 
@@ -50,6 +59,7 @@ export default class CameraController extends cc.Component {
     }
 
     update(dt: number) {
+        this._findPlayers();
         if (!this.p1 || !this._cam) return;
 
         const p1Pos = this.p1.getPosition();

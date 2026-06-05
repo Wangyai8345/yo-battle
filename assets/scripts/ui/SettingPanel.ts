@@ -43,6 +43,8 @@ export default class SettingPanel extends cc.Component {
         this._isInBattle = true;
         if (this.titleLabel) this.titleLabel.string = 'PAUSED';
         this.node.active = true;
+        this.node.setSiblingIndex(this.node.parent.childrenCount - 1);
+        this._setPlayersVisible(false);
         this._syncSliders();
         cc.director.pause();
     }
@@ -80,6 +82,17 @@ export default class SettingPanel extends cc.Component {
         if (this.sfxValueLabel) this.sfxValueLabel.string = Math.round(vol * 100) + '%';
     }
 
+    /** 隱藏/顯示所有玩家角色節點 */
+    private _setPlayersVisible(visible: boolean) {
+        const canvas = cc.find('Canvas');
+        if (!canvas) return;
+        canvas.children.forEach(child => {
+            if (child.name === 'P1' || child.name === 'P2') {
+                child.opacity = visible ? 255 : 0;
+            }
+        });
+    }
+
     /** 繼續遊戲（戰鬥中用） */
     onResumeClick() {
         if (this._isInBattle) cc.director.resume();
@@ -88,7 +101,10 @@ export default class SettingPanel extends cc.Component {
 
     /** 關閉設定（回原本畫面） */
     onCloseClick() {
-        if (this._isInBattle) cc.director.resume();
+        if (this._isInBattle) {
+            cc.director.resume();
+            this._setPlayersVisible(true);
+        }
         this.node.active = false;
     }
 

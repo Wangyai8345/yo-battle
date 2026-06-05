@@ -6,6 +6,7 @@ import { resolvePlayerController } from "./PlayerControllerResolver";
 import DragonProjectile from "./DragonProjectile";
 import ProjectileController from "./ProjectileController";
 import UIManager from "./managers/UIManager";
+import GameOverPanel from "./ui/GameOverPanel";
 
 
 const { ccclass, property } = cc._decorator;
@@ -68,6 +69,9 @@ export default class GameManager extends cc.Component {
 
     @property(cc.Label)
     waitingLabel: cc.Label = null;
+
+    @property(GameOverPanel)
+    gameOverPanel: GameOverPanel = null;
 
 
 
@@ -209,8 +213,12 @@ export default class GameManager extends cc.Component {
         controller.id = player.id;
         controller.hp = player.hp;
         // 初始化血條
-        if (UIManager.instance) UIManager.instance.updateHP(player.id - 1, player.hp, 100);
-
+        if (UIManager.instance) {
+            UIManager.instance.updateHP(player.id - 1, player.hp, 100);
+            // 設定角色頭像
+            const panel = player.id === 1 ? UIManager.instance.p1Panel : UIManager.instance.p2Panel;
+            if (panel) panel.setAvatar(player.character);
+        }
         // Set rb to Static if nonlocal
         if (!isLocal) {
             let rb = playerNode.getComponent(cc.RigidBody);
@@ -296,6 +304,7 @@ export default class GameManager extends cc.Component {
     }
 
 
+<<<<<<< HEAD
     gameEnd() {
         const winner = NetworkManager.instance.getRoomState().winner;
         if (this.winnerLabel) this.winnerLabel.string = `Winner: ${winner}`;
@@ -303,6 +312,31 @@ export default class GameManager extends cc.Component {
 
 
     gameTerminated() {
+=======
+    gameEnd(){
+        const state = NetworkManager.instance.getRoomState();
+        const winner = state.winner;
+
+        // 找贏家的角色 Prefab
+        let winnerPrefab: cc.Prefab = null;
+        state.players.forEach((player: any) => {
+            if (player.name === winner) {
+                winnerPrefab = this.getPlayerPrefab(player.character);
+            }
+        });
+
+        if (this.gameOverPanel) {
+            this.gameOverPanel.show(winner, winnerPrefab);
+        } else {
+            if(this.winnerLabel) this.winnerLabel.string = `Winner: ${winner}`;
+        }
+    }
+
+
+    gameTerminated(){
+        // 如果有 GameOverPanel 就不自動跳轉，讓玩家選 Again/Quit
+        if (this.gameOverPanel && this.gameOverPanel.node.active) return;
+>>>>>>> 82beb76 (Add GameOverPanel, camera follow, HP bar, avatar display, UI fixed layer)
         cc.director.loadScene("join_room_scene");
     }
 
