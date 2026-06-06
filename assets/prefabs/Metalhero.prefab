@@ -287,6 +287,8 @@
     "defendDamageMultiplier": 0.2,
     "hitRecoverTime": 0.25,
     "airborneAnimationVelocityThreshold": 20,
+    "visualScale": 2.5,
+    "visualOffsetY": 100,
     "_id": ""
   },
   {

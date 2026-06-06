@@ -1399,8 +1399,8 @@
     "superBeamKnockback": 260,
     "superBeamDamageDelay": 0.06,
     "airborneAnimationVelocityThreshold": 20,
-    "visualScale": 1.15,
-    "visualOffsetY": -16,
+    "visualScale": 2.97,
+    "visualOffsetY": 100,
     "_id": "e0G0udO9hLwYTrz190Ndz/"
   },
   {
@@ -1703,8 +1703,8 @@
     "defendDamageMultiplier": 0.2,
     "hitRecoverTime": 0.25,
     "airborneAnimationVelocityThreshold": 20,
-    "visualScale": 1.15,
-    "visualOffsetY": -16,
+    "visualScale": 2.5,
+    "visualOffsetY": 100,
     "_id": "3cddVxoDVBuZ7ZtL8hfcGu"
   },
   {
@@ -1945,8 +1945,8 @@
     "defendDamageMultiplier": 0.2,
     "hitRecoverTime": 0.25,
     "airborneAnimationVelocityThreshold": 20,
-    "visualScale": 1.15,
-    "visualOffsetY": -16,
+    "visualScale": 2.5,
+    "visualOffsetY": 100,
     "_id": "7d1ra5a5VJsLxKcEX7t1d2"
   },
   {

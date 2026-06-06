@@ -246,6 +246,8 @@
         "skill3Knockback":  220,
         "skill3HitDelay":  0.12,
         "airborneAnimationVelocityThreshold":  20,
+        "visualScale":  2.97,
+        "visualOffsetY":  120,
         "_id":  ""
     },
     {

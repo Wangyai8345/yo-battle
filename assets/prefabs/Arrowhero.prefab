@@ -263,8 +263,8 @@
     "superBeamKnockback": 260,
     "superBeamDamageDelay": 0.06,
     "airborneAnimationVelocityThreshold": 20,
-    "visualScale": 1.15,
-    "visualOffsetY": -16,
+    "visualScale": 2.5,
+    "visualOffsetY": 100,
     "_id": ""
   },
   {

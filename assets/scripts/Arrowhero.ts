@@ -116,6 +116,9 @@ function createArrowSuperReleaseConfig(clip: cc.AnimationClip | null): ArrowClip
 @ccclass
 export default class Arrowhero extends PlayerController {
     private static readonly SKILL3_ARROW_ANGLES: number[] = [67.5, 45, 22.5];
+    private visualNode: cc.Node | null = null;
+    private visualSprite: cc.Sprite | null = null;
+    private sourceSprite: cc.Sprite | null = null;
 
     private readonly handleWindowBlur = () => {
         this.resetTransientInputState();
@@ -299,10 +302,10 @@ export default class Arrowhero extends PlayerController {
     airborneAnimationVelocityThreshold: number = 20;
 
     @property
-    visualScale: number = 1.15;
+    visualScale: number = 2.5;
 
     @property
-    visualOffsetY: number = -16;
+    visualOffsetY: number = 100;
 
     private moveInput: number = 0;
     private onGround: boolean = true;
@@ -333,6 +336,7 @@ export default class Arrowhero extends PlayerController {
 
     protected onLoad(): void {
         super.onLoad();
+        this.ensureVisualPresentationNodes();
         this.applyVisualPresentation();
         this.configureClipWrapModes();
         if (typeof window !== "undefined") {
@@ -352,6 +356,10 @@ export default class Arrowhero extends PlayerController {
             document.removeEventListener("visibilitychange", this.handleVisibilityChange);
         }
         super.onDestroy();
+    }
+
+    protected lateUpdate(): void {
+        this.syncVisualSpriteFrame();
     }
 
     protected localUpdate(dt: number): void {
@@ -937,8 +945,36 @@ export default class Arrowhero extends PlayerController {
         clip.wrapMode = wrapMode;
     }
 
+    private ensureVisualPresentationNodes() {
+        this.sourceSprite = this.node.getComponent(cc.Sprite);
+        if (!this.sourceSprite) {
+            return;
+        }
+
+        let visualNode = this.node.getChildByName("Visual");
+        if (!visualNode) {
+            visualNode = new cc.Node("Visual");
+            visualNode.parent = this.node;
+            visualNode.setSiblingIndex(0);
+        }
+
+        let visualSprite = visualNode.getComponent(cc.Sprite);
+        if (!visualSprite) {
+            visualSprite = visualNode.addComponent(cc.Sprite);
+        }
+
+        this.visualNode = visualNode;
+        this.visualSprite = visualSprite;
+        this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        this.visualSprite.type = this.sourceSprite.type;
+        this.visualSprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        this.visualSprite.trim = false;
+
+        this.sourceSprite.enabled = false;
+    }
+
     private getVisualNode(): cc.Node | null {
-        return this.node.getChildByName("Visual");
+        return this.visualNode;
     }
 
     private applyVisualPresentation() {
@@ -956,7 +992,18 @@ export default class Arrowhero extends PlayerController {
             return;
         }
 
-        sprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+        sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        sprite.trim = false;
+    }
+
+    private syncVisualSpriteFrame() {
+        if (!this.sourceSprite || !this.visualSprite) {
+            return;
+        }
+
+        if (this.visualSprite.spriteFrame !== this.sourceSprite.spriteFrame) {
+            this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        }
     }
 
     private getTakeHitClip(): cc.AnimationClip | null {
