@@ -815,7 +815,7 @@
     "defendCooldown": 1.2,
     "superCooldown": 6,
     "speed": 250,
-    "jumpSpeed": 600,
+    "jumpSpeed": 650,
     "groundAcceleration": 2200,
     "groundDeceleration": 2600,
     "airAcceleration": 1400,

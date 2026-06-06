@@ -3,6 +3,7 @@ import NetworkManager from './NetworkManager';
 import PlayerController from './PlayerController';
 
 const { ccclass, property } = cc._decorator;
+type ClipLike = cc.AnimationClip | string | null | undefined;
 
 // enum CharacterPreset {
 //     Custom = 0,
@@ -34,53 +35,92 @@ export default class GroundMonkController extends PlayerController {
     @property
     groundNodeName: string = 'Platform';
 
+    @property({ type: cc.AnimationClip, displayName: 'Idle Clip' })
+    idleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Run Clip' })
+    runClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Jump Up Clip' })
+    jumpClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Jump Down Clip' })
+    jumpDownClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Dash Clip' })
+    dashClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Attack 1 Clip' })
+    attackClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Attack 2 Clip' })
+    attack2Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Attack 3 Clip' })
+    attack3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Jump Attack Clip' })
+    jumpAttackClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Special Attack Clip' })
+    specialAttackClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Defend Clip' })
+    defendClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Take Hit Clip' })
+    takeHitClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: 'Death Clip' })
+    deathClip: cc.AnimationClip = null;
+
     // @property({ type: cc.Enum(CharacterPreset) })
     // characterPreset: CharacterPreset = CharacterPreset.Custom;
 
     @property
     switchPresetByNumberKey: boolean = true;
 
-    @property
-    animIdle: string = 'idle';
+    @property({ visible: false })
+    animIdle: string = '';
 
-    @property
-    animRun: string = 'run';
+    @property({ visible: false })
+    animRun: string = '';
 
-    @property
-    animJump: string = 'j_up';
+    @property({ visible: false })
+    animJump: string = '';
 
-    @property
-    animJumpDown: string = 'j_down';
+    @property({ visible: false })
+    animJumpDown: string = '';
 
-    @property
-    animDash: string = 'roll';
+    @property({ visible: false })
+    animDash: string = '';
 
-    @property
-    animAttack: string = '1_atk';
+    @property({ visible: false })
+    animAttack: string = '';
 
-    @property
-    animAttack2: string = '2_atk';
+    @property({ visible: false })
+    animAttack2: string = '';
 
-    @property
-    animAttack3: string = '3_atk';
+    @property({ visible: false })
+    animAttack3: string = '';
 
-    @property
-    animJumpAttack: string = 'air_atk';
+    @property({ visible: false })
+    animJumpAttack: string = '';
 
-    @property
-    animSpecialAttack: string = 'sp_atk';
+    @property({ visible: false })
+    animSpecialAttack: string = '';
 
-    @property
-    animDefend: string = 'defend';
+    @property({ visible: false })
+    animDefend: string = '';
 
     @property({ tooltip: '防禦時受到的傷害比例，0=完全擋下，0.3=只吃 30% 傷害' })
     defendDamageMultiplier: number = 0;
 
-    @property
-    animTakeHit: string = 'take_hit';
+    @property({ visible: false })
+    animTakeHit: string = '';
 
-    @property
-    animDeath: string = 'death';
+    @property({ visible: false })
+    animDeath: string = '';
 
     @property
     maxHp: number = 100;
@@ -101,19 +141,19 @@ export default class GroundMonkController extends PlayerController {
     respawnPoint: cc.Node = null;
 
     @property
-    attack1SfxResource: string = 'attack1';
+    attack1SfxResource: string = '';
 
     @property
-    attack2SfxResource: string = 'attack2';
+    attack2SfxResource: string = '';
 
     @property
-    dashSfxResource: string = 'dash';
+    dashSfxResource: string = '';
 
     @property
-    priestessSpecialSfxResource: string = 'water_priestess技能';
+    priestessSpecialSfxResource: string = '';
 
     @property
-    monkSpecialSfxResource: string = 'ground_monk——special——attack';
+    monkSpecialSfxResource: string = '';
 
     @property
     attackSfxVolume: number = 0.7;
@@ -128,10 +168,10 @@ export default class GroundMonkController extends PlayerController {
     dashSfxCooldown: number = 0.1;
 
     @property({ tooltip: '視覺縮放倍率，用來對齊其他角色大小' })
-    visualScale: number = 2.5;
+    visualScale: number = 3.142857142857143;
 
     @property({ tooltip: '視覺 Y 軸偏移（往下為負）' })
-    visualOffsetY: number = 140;
+    visualOffsetY: number = 120;
 
     @property({ tooltip: '此角色使用第幾個手柄（0 = 第一個，1 = 第二個，-1 = 停用手柄）' })
     gamepadIndex: number = -1;
@@ -196,6 +236,7 @@ export default class GroundMonkController extends PlayerController {
 
     onLoad() {
         super.onLoad();
+        this.ensureAnimationClipsRegistered();
         this.baseScaleX = Math.abs(this.node.scaleX);
 
         // 套用視覺縮放與位移
@@ -343,22 +384,22 @@ export default class GroundMonkController extends PlayerController {
     }
 
     updateAnimation() {
-        const activeAirAttackClip = this.getExistingAnimClip(this.animJumpAttack, 'air_atk', this.animAttack);
-        const activeJumpUpClip = this.getExistingAnimClip(this.animJump, 'j_up', 'jump');
-        const activeJumpDownClip = this.getExistingAnimClip(this.animJumpDown, 'j_down', activeJumpUpClip, 'jump');
+        const activeAirAttackClip = this.getExistingAnimClip(this.jumpAttackClip, this.animJumpAttack, 'air_atk', this.attackClip, this.animAttack);
+        const activeJumpUpClip = this.getExistingAnimClip(this.jumpClip, this.animJump, 'j_up', 'jump');
+        const activeJumpDownClip = this.getExistingAnimClip(this.jumpDownClip, this.animJumpDown, 'j_down', activeJumpUpClip, 'jump');
 
         if (this.isDead) {
-            this.playAnim(this.getExistingAnimClip(this.animDeath, 'death'));
+            this.playAnim(this.getExistingAnimClip(this.deathClip, this.animDeath, 'death'));
             return;
         }
 
         if (this.isHit) {
-            this.playAnim(this.getExistingAnimClip(this.animTakeHit, 'take_hit'));
+            this.playAnim(this.getExistingAnimClip(this.takeHitClip, this.animTakeHit, 'take_hit'));
             return;
         }
 
         if (this.isDefending) {
-            this.playAnim(this.getExistingAnimClip(this.animDefend, 'defend'));
+            this.playAnim(this.getExistingAnimClip(this.defendClip, this.animDefend, 'defend'));
             return;
         }
 
@@ -367,7 +408,7 @@ export default class GroundMonkController extends PlayerController {
         }
 
         if (this.isDashing) {
-            this.playAnim(this.getExistingAnimClip(this.animDash, 'roll', 'dash'));
+            this.playAnim(this.getExistingAnimClip(this.dashClip, this.animDash, 'roll', 'dash'));
         } else if (!this.onGround || (this.rb && this.rb.linearVelocity.y < -50)) {
             // 第二個條件：Box2D EndContact 有時會慢 1~2 幀，靠垂直速度判定「正在下落」當作空中
             if (!activeAirAttackClip || this.currentAnim !== activeAirAttackClip) {
@@ -382,9 +423,9 @@ export default class GroundMonkController extends PlayerController {
                 this.playAnim(airborneClip);
             }
         } else if (this.moveDir !== 0) {
-            this.playAnim(this.getExistingAnimClip(this.animRun, 'run'));
+            this.playAnim(this.getExistingAnimClip(this.runClip, this.animRun, 'run'));
         } else {
-            this.playAnim(this.getExistingAnimClip(this.animIdle, 'idle'));
+            this.playAnim(this.getExistingAnimClip(this.idleClip, this.animIdle, 'idle'));
         }
 
 
@@ -414,20 +455,6 @@ export default class GroundMonkController extends PlayerController {
         //     }
         // }
 
-        // TODO: delete this
-        if (event.keyCode === cc.macro.KEY.l) {
-            this.takeDamage(this.debugHitDamage);
-            return;
-        }
-
-        // TODO: delete this
-        if (event.keyCode === cc.macro.KEY.p) {
-            NetworkManager.instance.spawnPrefab("exampleProjectilePrefab", {
-                x: this.node.x,
-                y: this.node.y,
-            });
-            return;
-        }
 
         if (
             !this.isDead &&
@@ -436,7 +463,7 @@ export default class GroundMonkController extends PlayerController {
             !this.isDefending &&
             !this.isAttacking &&
             !this.isAirAttacking &&
-            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up || event.keyCode === cc.macro.KEY.space) &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up) &&
             this.onGround &&
             this.rb
         ) {
@@ -462,16 +489,19 @@ export default class GroundMonkController extends PlayerController {
         }
         if (event.keyCode === cc.macro.KEY.space) {
             // 不直接跳，先丟進 buffer；update 會根據 onGround / coyote 判斷實際是否起跳
-            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
-        }
-        if (event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.q || event.keyCode === cc.macro.KEY.g) {
             this.dash();
         }
-        if (event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
-            this.requestDirectionalAttack();
-        }
-        if (event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
+        if (event.keyCode === cc.macro.KEY.q) {
             this.requestSpecialAttack();
+        }
+        if (event.keyCode === cc.macro.KEY.e) {
+            this.requestAttackStep(1);
+        }
+        if (event.keyCode === cc.macro.KEY.r) {
+            this.requestAttackStep(2);
+        }
+        if (event.keyCode === cc.macro.KEY.c) {
+            this.requestAttackStep(3);
         }
         if (event.keyCode === cc.macro.KEY.f) {
             this.startDefend();
@@ -493,9 +523,6 @@ export default class GroundMonkController extends PlayerController {
         if (event.keyCode === cc.macro.KEY.d) {
             this.rightPressed = false;
             this.refreshMoveDir();
-        }
-        if (event.keyCode === cc.macro.KEY.f) {
-            this.stopDefend();
         }
     }
 
@@ -591,16 +618,48 @@ export default class GroundMonkController extends PlayerController {
 
 
     requestDirectionalAttack() {
+        this.requestAttackStep(1);
+    }
+
+    requestAttackStep(step: number) {
         if (this.isDead || this.isHit || this.isDashing || this.isDefending) {
             return;
         }
 
         if (!this.onGround) {
-            const airAttackClip = this.getExistingAnimClip(this.animJumpAttack, 'air_atk', this.animAttack);
+            const airAttackClip = this.getExistingAnimClip(this.jumpAttackClip, this.animJumpAttack, 'air_atk', this.attackClip, this.animAttack);
             if (!airAttackClip) {
                 this.updateAnimation();
                 return;
             }
+            this.spawnAttackHitBox(
+                "groundMonkAirAttackLeft",
+                cc.v2(-70, 0),
+                cc.v2(100, 36),
+                0.12,
+                3,
+                120
+            );
+            this.spawnAttackHitBox(
+                "groundMonkAirAttackRight",
+                cc.v2(70, 0),
+                cc.v2(100, 36),
+                0.12,
+                3,
+                120
+            );
+
+            this.isAirAttacking = true;
+            this.attackToken++;
+            this.playAttackSfx(2);
+            this.playAnim(airAttackClip, true);
+
+            this.anim.once('finished', () => {
+                this.isAirAttacking = false;
+                this.currentAnim = '';
+                this.updateAnimation();
+            });
+            return;
 
             //啟動空中普攻碰撞箱(top)---------------------------------------------------
             // const Collider = this.airAttackHitBox.getComponent(cc.PhysicsBoxCollider);
@@ -651,6 +710,17 @@ export default class GroundMonkController extends PlayerController {
             });
             return;
         }
+
+        const normalizedStep = step <= 1 ? 1 : (step === 2 ? 2 : 3);
+        const overrideClip = this.upPressed
+            ? this.getExistingAnimClip('up_atk')
+            : (this.downPressed ? this.getExistingAnimClip('down_atk') : '');
+        const clipName = overrideClip || this.getComboClip(normalizedStep);
+        const duration = this.startAttackPlayback(normalizedStep, clipName);
+        const attackPlaybackToken = this.attackPlaybackToken;
+
+        this.triggerGroundAttackPattern(normalizedStep, attackPlaybackToken, duration);
+        return;
 
         console.log("use normal attack");
         //啟動地面普攻碰撞箱(top)---------------------------------------------------
@@ -730,7 +800,7 @@ export default class GroundMonkController extends PlayerController {
                 return;
             }
 
-            this.startComboStep(1);
+            this.startComboStep(step);
             return;
         }
 
@@ -742,18 +812,120 @@ export default class GroundMonkController extends PlayerController {
                 return;
             }
 
-            this.startComboStep(1);
+            this.startComboStep(step);
             return;
         }
 
-        if (!this.isAttacking) {
-            this.startComboStep(1);
+        this.startComboStep(step);
+    }
+
+    private triggerGroundAttackPattern(step: number, playbackToken: number, duration: number) {
+        if (step === 1) {
+            this.spawnFacingHitBox("groundMonkAttack1", 84, 8, 104, 44, 0.12, 2, 180);
             return;
         }
 
-        if (this.comboStep < 3) {
-            this.startComboStep(this.comboStep + 1);
+        if (step === 2) {
+            for (let delay = 0; delay < Math.max(duration, 0.01); delay += 0.25) {
+                this.scheduleFacingHitBox(
+                    "groundMonkAttack2",
+                    150,
+                    8,
+                    230,
+                    48,
+                    0.1,
+                    3,
+                    180,
+                    delay,
+                    playbackToken
+                );
+            }
+            return;
         }
+
+        for (let i = 0; i < 3; i++) {
+            this.scheduleFacingHitBox(
+                `groundMonkAttack3_${i + 1}`,
+                92,
+                6,
+                118,
+                48,
+                0.12,
+                2,
+                0,
+                i * 0.25,
+                playbackToken
+            );
+        }
+
+        const finisherDelay = Math.max(0, duration - 0.5);
+        this.scheduleFacingHitBox(
+            "groundMonkAttack3Finisher",
+            150,
+            -8,
+            300,
+            128,
+            0.14,
+            5,
+            3000,
+            finisherDelay,
+            playbackToken
+        );
+    }
+
+    private spawnFacingHitBox(
+        attackType: string,
+        centerX: number,
+        centerY: number,
+        width: number,
+        height: number,
+        duration: number,
+        damage: number,
+        kbScale: number
+    ) {
+        this.spawnAttackHitBox(
+            attackType,
+            cc.v2(centerX, centerY),
+            cc.v2(width, height),
+            duration,
+            damage,
+            kbScale
+        );
+    }
+
+    private scheduleFacingHitBox(
+        attackType: string,
+        centerX: number,
+        centerY: number,
+        width: number,
+        height: number,
+        duration: number,
+        damage: number,
+        kbScale: number,
+        delay: number,
+        playbackToken: number
+    ) {
+        this.scheduleOnce(() => {
+            if (
+                this.isDead
+                || !cc.isValid(this.node)
+                || this.attackPlaybackToken !== playbackToken
+                || !this.isAttacking
+            ) {
+                return;
+            }
+
+            this.spawnFacingHitBox(
+                attackType,
+                centerX,
+                centerY,
+                width,
+                height,
+                duration,
+                damage,
+                kbScale
+            );
+        }, Math.max(0, delay));
     }
 
     refreshMoveDir() {
@@ -775,7 +947,7 @@ export default class GroundMonkController extends PlayerController {
             return;
         }
 
-        const clip = this.getExistingAnimClip(this.animDefend, 'defend');
+        const clip = this.getExistingAnimClip(this.defendClip, this.animDefend, 'defend');
         if (!clip) {
             return;
         }
@@ -815,6 +987,11 @@ export default class GroundMonkController extends PlayerController {
             this.rb.linearVelocity = v;
         }
         this.playAnim(clip, true);
+
+        const defendState = this.anim ? this.anim.getAnimationState(clip) : null;
+        const defendDuration = defendState ? defendState.duration / Math.max(defendState.speed || 1, 0.01) : 0.3;
+        this.unschedule(this.stopDefend);
+        this.scheduleOnce(this.stopDefend, Math.max(defendDuration, 0.05) + 0.02);
     }
 
     stopDefend() {
@@ -839,7 +1016,7 @@ export default class GroundMonkController extends PlayerController {
             return;
         }
 
-        const clip = this.getExistingAnimClip(this.animSpecialAttack, 'sp_atk');
+        const clip = this.getExistingAnimClip(this.specialAttackClip, this.animSpecialAttack, 'sp_atk');
         if (!clip) {
             return;
         }
@@ -892,14 +1069,6 @@ export default class GroundMonkController extends PlayerController {
         //     }, 0.8);
 
         // FIXED: new hit box logic
-        this.spawnAttackHitBox(
-            "groundMonkSpecialAttack",
-            cc.v2(10, 0),
-            cc.v2(40, 34),
-            0.8,
-            5,
-            200
-        )
 
 
         //啟動特殊攻擊碰撞箱(bottom)--------------------------------------------------------------------
@@ -907,6 +1076,19 @@ export default class GroundMonkController extends PlayerController {
         const playbackToken = this.attackPlaybackToken;
         const state = this.anim ? this.anim.getAnimationState(clip) : null;
         const duration = state ? state.duration / Math.max(state.speed || 1, 0.01) : 0.5;
+
+        this.scheduleFacingHitBox(
+            "groundMonkSpecialAttack",
+            118,
+            14,
+            320,
+            180,
+            0.1,
+            5,
+            2200,
+            Math.max(0, duration - 0.5),
+            playbackToken
+        );
 
         this.unschedule(this.onAttackStepTimeout);
         this.anim.off('finished', this.onAttackAnimFinished, this);
@@ -940,7 +1122,7 @@ export default class GroundMonkController extends PlayerController {
         this.rb.gravityScale = 0;
 
         this.playDashSfx();
-        this.playAnim(this.getExistingAnimClip(this.animDash, 'roll', 'dash'), true);
+        this.playAnim(this.getExistingAnimClip(this.dashClip, this.animDash, 'roll', 'dash'), true);
 
         let v = this.rb.linearVelocity;
         v.x = this.facingDir * this.dashSpeed;
@@ -1066,8 +1248,21 @@ export default class GroundMonkController extends PlayerController {
         return !!animName && !!this.anim && this.anim.getClips().some((clip) => clip && clip.name === animName);
     }
 
-    getExistingAnimClip(...names: string[]): string {
-        for (const name of names) {
+    private getClipName(clipLike: ClipLike): string {
+        if (!clipLike) {
+            return '';
+        }
+
+        if (typeof clipLike === 'string') {
+            return clipLike;
+        }
+
+        return clipLike.name || '';
+    }
+
+    getExistingAnimClip(...names: ClipLike[]): string {
+        for (const entry of names) {
+            const name = this.getClipName(entry);
             if (this.hasAnimClip(name)) {
                 return name;
             }
@@ -1143,13 +1338,17 @@ export default class GroundMonkController extends PlayerController {
     }
 
     startComboStep(step: number) {
+        const clipName = this.getComboClip(step);
+        this.startAttackPlayback(step, clipName);
+    }
+
+    private startAttackPlayback(step: number, clipName: string): number {
         this.isAttacking = true;
         this.comboStep = step;
         this.comboQueued = false;
         this.attackToken++;
         this.attackPlaybackToken++;
 
-        const clipName = this.getComboClip(step);
         this.playAttackSfx(step);
         this.playAnim(clipName, true);
 
@@ -1166,6 +1365,7 @@ export default class GroundMonkController extends PlayerController {
             }
             this.onAttackStepTimeout();
         }, Math.max(duration, 0.05) + 0.05);
+        return duration;
     }
 
     onAttackStepTimeout() {
@@ -1191,12 +1391,12 @@ export default class GroundMonkController extends PlayerController {
 
     getComboClip(step: number): string {
         if (step === 1) {
-            return this.getExistingAnimClip(this.animAttack, '1_atk', 'atk', 'attack', this.animAttack2, this.animAttack3);
+            return this.getExistingAnimClip(this.attackClip, this.animAttack, '1_atk', 'atk', 'attack', this.attack2Clip, this.animAttack2, this.attack3Clip, this.animAttack3);
         }
         if (step === 2) {
-            return this.getExistingAnimClip(this.animAttack2, '2_atk', this.animAttack, '1_atk', this.animAttack3);
+            return this.getExistingAnimClip(this.attack2Clip, this.animAttack2, '2_atk', this.attackClip, this.animAttack, '1_atk', this.attack3Clip, this.animAttack3);
         }
-        return this.getExistingAnimClip(this.animAttack3, '3_atk', this.animAttack2, '2_atk', this.animAttack, '1_atk');
+        return this.getExistingAnimClip(this.attack3Clip, this.animAttack3, '3_atk', this.attack2Clip, this.animAttack2, '2_atk', this.attackClip, this.animAttack, '1_atk');
     }
 
     private ensureVisualPresentationNodes() {
@@ -1260,6 +1460,39 @@ export default class GroundMonkController extends PlayerController {
         }
     }
 
+    private ensureAnimationClipsRegistered() {
+        if (!this.anim) {
+            return;
+        }
+
+        const configuredClips = [
+            this.idleClip,
+            this.runClip,
+            this.jumpClip,
+            this.jumpDownClip,
+            this.dashClip,
+            this.attackClip,
+            this.attack2Clip,
+            this.attack3Clip,
+            this.jumpAttackClip,
+            this.specialAttackClip,
+            this.defendClip,
+            this.takeHitClip,
+            this.deathClip,
+        ];
+
+        configuredClips.forEach((clip) => {
+            if (!clip) {
+                return;
+            }
+
+            const alreadyRegistered = this.anim.getClips().some((existingClip) => existingClip && existingClip.name === clip.name);
+            if (!alreadyRegistered) {
+                this.anim.addClip(clip, clip.name);
+            }
+        });
+    }
+
     takeDamage(amount: number) {
         if (this.isDead || amount <= 0) {
             return;
@@ -1289,7 +1522,7 @@ export default class GroundMonkController extends PlayerController {
         this.isHit = true;
 
         this.anim.off('finished', this.onAttackAnimFinished, this);
-        this.playAnim(this.animTakeHit);
+        this.playAnim(this.getExistingAnimClip(this.takeHitClip, this.animTakeHit, 'take_hit'));
 
         this.unschedule(this.exitHitState);
         this.scheduleOnce(this.exitHitState, this.hitRecoverTime);
@@ -1324,7 +1557,7 @@ export default class GroundMonkController extends PlayerController {
             this.rb.linearVelocity = v;
         }
 
-        this.playAnim(this.animDeath);
+        this.playAnim(this.getExistingAnimClip(this.deathClip, this.animDeath, 'death'));
 
         // if (this.autoRespawn) {
         //     this.unschedule(this.respawn);
@@ -1437,19 +1670,42 @@ export default class GroundMonkController extends PlayerController {
 
     // FIXED: implement PlayerController
     beAttacked(attackType: string, damage: number, knockback: cc.Vec2) {
-        // TODO: if this player have defend system, make damage lower
+        if (this.isDead) {
+            return;
+        }
+
+        if (this.isDefending) {
+            damage = Math.floor(damage * this.defendDamageMultiplier);
+            if (damage <= 0) {
+                return;
+            }
+        }
+
         this.deductHp(damage);
 
-        // TODO: write a knockback function
-        console.log(`You got knockbacked by (${knockback.x}, ${knockback.y})`)
+        if (this.hp > 0) {
+            this.applyKnockback(knockback);
+            this.enterHitState();
+        }
 
-        // TODO: if there're some special attackType, handle it here
         switch (attackType) {
             case "groundMonkAirAttack":
                 break
             default:
                 break
         }
+    }
+
+    private applyKnockback(knockback: cc.Vec2) {
+        if (!this.rb) {
+            return;
+        }
+
+        const velocity = this.rb.linearVelocity;
+        velocity.x = knockback.x;
+        velocity.y = Math.max(velocity.y, knockback.y);
+        this.rb.linearVelocity = velocity;
+        this.rb.awake = true;
     }
 
 

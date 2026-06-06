@@ -64,8 +64,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 24,
-      "height": 34
+      "width": 120,
+      "height": 120
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -860,9 +860,11 @@
     ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
-    "_spriteFrame": null,
+    "_spriteFrame": {
+      "__uuid__": "59bb5dd4-0161-430f-b334-221eaecac9bb"
+    },
     "_type": 0,
-    "_sizeMode": 1,
+    "_sizeMode": 0,
     "_fillType": 0,
     "_fillCenter": {
       "__type__": "cc.Vec2",
@@ -896,8 +898,8 @@
     },
     "_size": {
       "__type__": "cc.Size",
-      "width": 25,
-      "height": 34
+      "width": 75,
+      "height": 120
     },
     "_id": ""
   },
@@ -911,7 +913,7 @@
     "_enabled": true,
     "_type": 2,
     "_allowSleep": true,
-    "_gravityScale": 1,
+    "_gravityScale": 3,
     "_linearDamping": 0,
     "_angularDamping": 0,
     "_linearVelocity": {
@@ -927,7 +929,7 @@
     "_id": ""
   },
   {
-    "__type__": "07595hKlrJCvqmdRFPl5QA+",
+    "__type__": "b4e07qjcMhBLKEZmnXlY7g9",
     "_name": "",
     "_objFlags": 0,
     "node": {
@@ -935,27 +937,51 @@
     },
     "_enabled": true,
     "speed": 250,
-    "jumpSpeed": 450,
-    "fallGravityScale": 7,
-    "jumpGravityScale": 4,
+    "jumpSpeed": 650,
+    "fallGravityScale": 3,
+    "jumpGravityScale": 3,
     "fastFallGravityScale": 20,
     "dashSpeed": 1000,
     "groundNodeName": "Platform",
-    "idleClip": null,
-    "runClip": null,
-    "jumpClip": null,
-    "jumpDownClip": null,
-    "dashClip": null,
-    "attackClip": null,
-    "attack2Clip": null,
-    "attack3Clip": null,
-    "jumpAttackClip": null,
-    "specialAttackClip": null,
-    "skill3Clip": null,
-    "superClip": null,
-    "defendClip": null,
-    "takeHitClip": null,
-    "deathClip": null,
+    "idleClip": {
+      "__uuid__": "06cfb1f1-a050-45f4-b734-cb25efc810c6"
+    },
+    "runClip": {
+      "__uuid__": "bfd58708-a75b-4ad2-87e0-6369960861f1"
+    },
+    "jumpClip": {
+      "__uuid__": "a8214abc-b344-4101-8c7e-0f4b54ab3d26"
+    },
+    "jumpDownClip": {
+      "__uuid__": "0aabb33f-ae83-4aeb-bf3b-2b3f547bf151"
+    },
+    "dashClip": {
+      "__uuid__": "74e5edc8-898a-4948-86f0-dfdc1b71c439"
+    },
+    "attackClip": {
+      "__uuid__": "451e156a-299f-48db-a719-4675368b6e44"
+    },
+    "attack2Clip": {
+      "__uuid__": "58e8bb74-1735-4eb7-a2f9-bd490d7b79e8"
+    },
+    "attack3Clip": {
+      "__uuid__": "897acfcc-c5c8-4d1f-95e4-5641a95af1d2"
+    },
+    "jumpAttackClip": {
+      "__uuid__": "024a8da3-d80b-4477-9600-343230513974"
+    },
+    "specialAttackClip": {
+      "__uuid__": "2bec7632-a318-4eb4-b64b-61523557cc5a"
+    },
+    "defendClip": {
+      "__uuid__": "568dd8e6-a1c2-453b-9f26-e87352d818d7"
+    },
+    "takeHitClip": {
+      "__uuid__": "3a9202bd-4f2e-473d-b08a-4200c50818b3"
+    },
+    "deathClip": {
+      "__uuid__": "0bf14988-cad0-4588-92e4-32f368d48875"
+    },
     "switchPresetByNumberKey": true,
     "animIdle": "idle",
     "animRun": "run",
@@ -967,8 +993,6 @@
     "animAttack3": "3_atk",
     "animJumpAttack": "air_atk",
     "animSpecialAttack": "sp_atk",
-    "animSkill3": "3_atk",
-    "animSuper": "sp_atk",
     "animDefend": "defend",
     "defendDamageMultiplier": 0,
     "animTakeHit": "take_hit",
@@ -983,24 +1007,14 @@
     "attack2SfxResource": "attack2",
     "dashSfxResource": "dash",
     "priestessSpecialSfxResource": "water_priestess技能",
-    "monkSpecialSfxResource": "attack2",
+    "monkSpecialSfxResource": "ground_monk——special——attack",
     "attackSfxVolume": 0.7,
     "specialAttackSfxVolume": 3,
     "attackSfxCooldown": 0.12,
     "dashSfxCooldown": 0.1,
-    "skill2Cooldown": 1.2,
-    "skill3Cooldown": 2,
-    "defendCooldown": 1.2,
-    "superCooldown": 6,
-    "skill2Damage": 5,
-    "skill2Knockback": 200,
-    "skill3Damage": 8,
-    "skill3Knockback": 240,
-    "superDamage": 16,
-    "superKnockback": 320,
-    "visualScale": 3.23,
-    "visualOffsetY": 160,
-    "gamepadIndex": 0,
+    "visualScale": 3.142857142857143,
+    "visualOffsetY": 120,
+    "gamepadIndex": -1,
     "_id": ""
   },
   {

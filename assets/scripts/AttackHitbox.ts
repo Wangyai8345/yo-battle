@@ -64,6 +64,33 @@ export default class AttackHitBox extends cc.Component {
         if (this.rb) this.rb.syncPosition(true);
     }
 
+    private buildKnockback(fromPos: cc.Vec2, toPos: cc.Vec2): cc.Vec2 {
+        if (this.kbScale <= 0) {
+            return cc.v2(0, 0);
+        }
+
+        if (this.attackType.startsWith("groundMonk")) {
+            const dirX = toPos.x >= fromPos.x ? 1 : -1;
+
+            if (this.attackType === "groundMonkAttack3Finisher") {
+                return cc.v2(dirX * this.kbScale, 520);
+            }
+
+            if (this.attackType === "groundMonkSpecialAttack") {
+                return cc.v2(dirX * this.kbScale, 320);
+            }
+
+            return cc.v2(dirX * this.kbScale, 0);
+        }
+
+        let delta = toPos.sub(fromPos);
+        if (delta.magSqr() <= 0.0001) {
+            delta = cc.v2(1, 0);
+        }
+
+        return delta.normalize().mul(this.kbScale);
+    }
+
 
     onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.PhysicsCollider, otherCollider: cc.PhysicsCollider) {
         // Attacker of this hitbox must be local
@@ -77,7 +104,7 @@ export default class AttackHitBox extends cc.Component {
             
             let fromPos = selfCollider.node.convertToWorldSpaceAR(cc.Vec2.ZERO);
             let toPos = otherCollider.node.convertToWorldSpaceAR(cc.Vec2.ZERO);
-            let kbVec = toPos.sub(fromPos).normalize().multiplyScalar(this.kbScale);
+            let kbVec = this.buildKnockback(fromPos, toPos);
             
             NetworkManager.instance.attack(
                 this.attackType,

@@ -189,7 +189,7 @@ function createWindSuperAttackConfig(clip: cc.AnimationClip | null): WindClipAct
     return createWindClipActionConfig(
         "super-attack",
         clip,
-        createControllerLockConfig(false, false, false)
+        createControllerLockConfig(true, true, true)
     );
 }
 

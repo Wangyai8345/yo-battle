@@ -335,7 +335,7 @@ export default class Windhero extends PlayerController {
     visualScale: number = 2.97;
 
     @property
-    visualOffsetY: number = 120;
+    visualOffsetY: number = 125;
 
     private moveInput: number = 0;
     private onGround: boolean = true;
