@@ -128,17 +128,17 @@ export default class GroundMonkController extends PlayerController {
     dashSfxCooldown: number = 0.1;
 
     @property({ tooltip: '視覺縮放倍率，用來對齊其他角色大小' })
-    visualScale: number = 1.0;
+    visualScale: number = 2.5;
 
     @property({ tooltip: '視覺 Y 軸偏移（往下為負）' })
-    visualOffsetY: number = 0;
+    visualOffsetY: number = 140;
 
     @property({ tooltip: '此角色使用第幾個手柄（0 = 第一個，1 = 第二個，-1 = 停用手柄）' })
     gamepadIndex: number = -1;
 
     // @property(cc.Node)
     // defendHitBox: cc.Node = null;
-    
+
     // @property(cc.Node)
     // normalAttackHitBox: cc.Node = null;
 
@@ -147,7 +147,7 @@ export default class GroundMonkController extends PlayerController {
 
     // @property(cc.Node)
     // airAttackHitBox: cc.Node = null;
-    
+
 
 
     private moveDir: number = 0;
@@ -168,6 +168,9 @@ export default class GroundMonkController extends PlayerController {
     private isDefending: boolean = false;
     private attackToken: number = 0;
     private attackPlaybackToken: number = 0;
+    private visualNode: cc.Node | null = null;
+    private visualSprite: cc.Sprite | null = null;
+    private sourceSprite: cc.Sprite | null = null;
     // 方向鍵狀態
     private upPressed: boolean = false;
     private downPressed: boolean = false;
@@ -196,16 +199,15 @@ export default class GroundMonkController extends PlayerController {
         this.baseScaleX = Math.abs(this.node.scaleX);
 
         // 套用視覺縮放與位移
-        if (this.visualOffsetY !== 0) {
-            this.node.y += this.visualOffsetY;
-        }
-        if (this.visualScale !== 1.0) {
-            this.node.scaleX = this.baseScaleX * this.facingDir * this.visualScale;
-            this.node.scaleY = Math.abs(this.node.scaleY) * this.visualScale;
-        }
+        this.ensureVisualPresentationNodes();
+        this.applyVisualPresentation();
 
         // this.applyPreset();
         this.preloadSfx();
+    }
+
+    protected lateUpdate(): void {
+        this.syncVisualSpriteFrame();
     }
 
     onDestroy() {
@@ -327,7 +329,7 @@ export default class GroundMonkController extends PlayerController {
         }
 
         this.updateGravityScale();
-        
+
         v.x = this.moveDir * this.speed;
         this.rb.linearVelocity = v;
 
@@ -450,28 +452,28 @@ export default class GroundMonkController extends PlayerController {
 
         if (this.isDead || this.isHit || this.isDashing) return;
 
-        if(event.keyCode === cc.macro.KEY.a) {
+        if (event.keyCode === cc.macro.KEY.a) {
             this.leftPressed = true;
             this.refreshMoveDir();
         }
-        if(event.keyCode === cc.macro.KEY.d) {
+        if (event.keyCode === cc.macro.KEY.d) {
             this.rightPressed = true;
             this.refreshMoveDir();
         }
-        if(event.keyCode === cc.macro.KEY.space) {
+        if (event.keyCode === cc.macro.KEY.space) {
             // 不直接跳，先丟進 buffer；update 會根據 onGround / coyote 判斷實際是否起跳
             this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
         }
-        if(event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.q || event.keyCode === cc.macro.KEY.g) {
+        if (event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.q || event.keyCode === cc.macro.KEY.g) {
             this.dash();
         }
-        if(event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
+        if (event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
             this.requestDirectionalAttack();
         }
-        if(event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
+        if (event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
             this.requestSpecialAttack();
         }
-        if(event.keyCode === cc.macro.KEY.f) {
+        if (event.keyCode === cc.macro.KEY.f) {
             this.startDefend();
         }
     }
@@ -519,15 +521,15 @@ export default class GroundMonkController extends PlayerController {
         const axisY = gp.axes[1] ?? 0;
 
         // ── 方向（搖桿 + D-Pad）─────────────────────────────────────────────
-        const dpadLeft  = gp.buttons[14]?.pressed ?? false;
+        const dpadLeft = gp.buttons[14]?.pressed ?? false;
         const dpadRight = gp.buttons[15]?.pressed ?? false;
-        const dpadUp    = gp.buttons[12]?.pressed ?? false;
-        const dpadDown  = gp.buttons[13]?.pressed ?? false;
+        const dpadUp = gp.buttons[12]?.pressed ?? false;
+        const dpadDown = gp.buttons[13]?.pressed ?? false;
 
-        const newLeft  = axisX < -DEAD_ZONE || dpadLeft;
-        const newRight = axisX >  DEAD_ZONE || dpadRight;
-        const newUp    = axisY < -DEAD_ZONE || dpadUp;
-        const newDown  = axisY >  DEAD_ZONE || dpadDown;
+        const newLeft = axisX < -DEAD_ZONE || dpadLeft;
+        const newRight = axisX > DEAD_ZONE || dpadRight;
+        const newUp = axisY < -DEAD_ZONE || dpadUp;
+        const newDown = axisY > DEAD_ZONE || dpadDown;
 
         if (newLeft !== this.gpLeft) {
             this.gpLeft = newLeft;
@@ -641,7 +643,7 @@ export default class GroundMonkController extends PlayerController {
             this.attackToken++;
             this.playAttackSfx(2);
             this.playAnim(airAttackClip, true);
-            
+
             this.anim.once('finished', () => {
                 this.isAirAttacking = false;
                 this.currentAnim = '';
@@ -803,7 +805,7 @@ export default class GroundMonkController extends PlayerController {
         //         this.defendHitBox.active = false;
         //     }, 0.1);
 
-        
+
         //啟動防禦碰撞箱(bottom)---------------------------------------------------------------------------------------
 
         this.isDefending = true;
@@ -979,7 +981,7 @@ export default class GroundMonkController extends PlayerController {
         }
 
         // FIXED: triggered when falling out of map
-        if(otherCollider.node.name == "Out Of Bound Trigger"){
+        if (otherCollider.node.name == "Out Of Bound Trigger") {
             this.deductHp(999);
         }
 
@@ -995,7 +997,7 @@ export default class GroundMonkController extends PlayerController {
         //             if(!this.isAttacking) return;
         //             if(this.facingDir === 1) this.knockback(otherCollider.node,200,0)
         //             else this.knockback(otherCollider.node,-200,0)
-                    
+
         //         break;
 
         //         case 2:                     //防禦到人
@@ -1016,7 +1018,7 @@ export default class GroundMonkController extends PlayerController {
         //                 else this.knockback(otherCollider.node,0,-200)
         //         break;
         //     }
-        
+
         // }
     }
 
@@ -1038,7 +1040,7 @@ export default class GroundMonkController extends PlayerController {
     }
 
     updateFacing() {
-        this.node.scaleX = this.baseScaleX * this.facingDir * this.visualScale;
+        this.node.scaleX = this.baseScaleX * this.facingDir;
     }
 
     updateGravityScale() {
@@ -1197,6 +1199,67 @@ export default class GroundMonkController extends PlayerController {
         return this.getExistingAnimClip(this.animAttack3, '3_atk', this.animAttack2, '2_atk', this.animAttack, '1_atk');
     }
 
+    private ensureVisualPresentationNodes() {
+        this.sourceSprite = this.node.getComponent(cc.Sprite);
+        if (!this.sourceSprite) {
+            return;
+        }
+
+        let visualNode = this.node.getChildByName("Visual");
+        if (!visualNode) {
+            visualNode = new cc.Node("Visual");
+            visualNode.parent = this.node;
+            visualNode.setSiblingIndex(0);
+        }
+
+        let visualSprite = visualNode.getComponent(cc.Sprite);
+        if (!visualSprite) {
+            visualSprite = visualNode.addComponent(cc.Sprite);
+        }
+
+        this.visualNode = visualNode;
+        this.visualSprite = visualSprite;
+        this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        this.visualSprite.type = this.sourceSprite.type;
+        this.visualSprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        this.visualSprite.trim = false;
+
+        this.sourceSprite.enabled = false;
+    }
+
+    private getVisualNode(): cc.Node | null {
+        return this.visualNode;
+    }
+
+    private applyVisualPresentation() {
+        const visualNode = this.getVisualNode();
+        if (!visualNode) {
+            return;
+        }
+
+        const sprite = this.visualSprite || visualNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            return;
+        }
+
+        visualNode.y = this.visualOffsetY;
+        visualNode.scaleX = this.visualScale;
+        visualNode.scaleY = this.visualScale;
+
+        sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        sprite.trim = false;
+    }
+
+    private syncVisualSpriteFrame() {
+        if (!this.sourceSprite || !this.visualSprite) {
+            return;
+        }
+
+        if (this.visualSprite.spriteFrame !== this.sourceSprite.spriteFrame) {
+            this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        }
+    }
+
     takeDamage(amount: number) {
         if (this.isDead || amount <= 0) {
             return;
@@ -1214,7 +1277,7 @@ export default class GroundMonkController extends PlayerController {
         // FIXED: calling PlayerController function
         this.deductHp(amount);
 
-        if(this.hp > 0) this.enterHitState();
+        if (this.hp > 0) this.enterHitState();
     }
 
     enterHitState() {
@@ -1361,7 +1424,7 @@ export default class GroundMonkController extends PlayerController {
 
         if (this.rb) {
             this.rb.linearVelocity = cc.v2(0, 0);
-            
+
             if (!this.rb.awake) {
                 this.rb.awake = true;
             }
@@ -1373,7 +1436,7 @@ export default class GroundMonkController extends PlayerController {
 
 
     // FIXED: implement PlayerController
-    beAttacked(attackType: string, damage: number, knockback: cc.Vec2){
+    beAttacked(attackType: string, damage: number, knockback: cc.Vec2) {
         // TODO: if this player have defend system, make damage lower
         this.deductHp(damage);
 
@@ -1381,7 +1444,7 @@ export default class GroundMonkController extends PlayerController {
         console.log(`You got knockbacked by (${knockback.x}, ${knockback.y})`)
 
         // TODO: if there're some special attackType, handle it here
-        switch(attackType){
+        switch (attackType) {
             case "groundMonkAirAttack":
                 break
             default:

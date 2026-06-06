@@ -911,7 +911,7 @@
     "_enabled": true,
     "_type": 2,
     "_allowSleep": true,
-    "_gravityScale": 1,
+    "_gravityScale": 3,
     "_linearDamping": 0,
     "_angularDamping": 0,
     "_linearVelocity": {
@@ -935,7 +935,7 @@
     },
     "_enabled": true,
     "speed": 250,
-    "jumpSpeed": 450,
+    "jumpSpeed": 600,
     "fallGravityScale": 7,
     "jumpGravityScale": 4,
     "fastFallGravityScale": 20,
@@ -998,8 +998,8 @@
     "skill3Knockback": 240,
     "superDamage": 16,
     "superKnockback": 320,
-    "visualScale": 3,
-    "visualOffsetY": -16,
+    "visualScale": 2.5,
+    "visualOffsetY": 140,
     "gamepadIndex": 0,
     "_id": ""
   },

@@ -998,8 +998,8 @@
     "skill3Knockback": 240,
     "superDamage": 16,
     "superKnockback": 320,
-    "visualScale": 3,
-    "visualOffsetY": -16,
+    "visualScale": 3.23,
+    "visualOffsetY": 160,
     "gamepadIndex": 0,
     "_id": ""
   },

@@ -210,17 +210,17 @@ export default class SharedHeroController extends PlayerController {
     superKnockback: number = 320;
 
     @property
-    visualScale: number = 1.15;
+    visualScale: number = 2.5;
 
     @property
-    visualOffsetY: number = -16;
+    visualOffsetY: number = 140;
 
     @property
     gamepadIndex: number = -1;
 
     // @property(cc.Node)
     // defendHitBox: cc.Node = null;
-    
+
     // @property(cc.Node)
     // normalAttackHitBox: cc.Node = null;
 
@@ -229,7 +229,7 @@ export default class SharedHeroController extends PlayerController {
 
     // @property(cc.Node)
     // airAttackHitBox: cc.Node = null;
-    
+
 
 
     private moveDir: number = 0;
@@ -254,6 +254,9 @@ export default class SharedHeroController extends PlayerController {
     private skill3CooldownRemaining: number = 0;
     private defendCooldownRemaining: number = 0;
     private superCooldownRemaining: number = 0;
+    private visualNode: cc.Node | null = null;
+    private visualSprite: cc.Sprite | null = null;
+    private sourceSprite: cc.Sprite | null = null;
     // ?孵??萇???
     private upPressed: boolean = false;
     private downPressed: boolean = false;
@@ -296,15 +299,15 @@ export default class SharedHeroController extends PlayerController {
         const axisY = gp.axes[1] ?? 0;
 
         // ── 方向（搖桿 + D-Pad）────────────────────────────────────────────
-        const dpadLeft  = gp.buttons[14]?.pressed ?? false;
+        const dpadLeft = gp.buttons[14]?.pressed ?? false;
         const dpadRight = gp.buttons[15]?.pressed ?? false;
-        const dpadUp    = gp.buttons[12]?.pressed ?? false;
-        const dpadDown  = gp.buttons[13]?.pressed ?? false;
+        const dpadUp = gp.buttons[12]?.pressed ?? false;
+        const dpadDown = gp.buttons[13]?.pressed ?? false;
 
-        const newLeft  = axisX < -DEAD_ZONE || dpadLeft;
-        const newRight = axisX >  DEAD_ZONE || dpadRight;
-        const newUp    = axisY < -DEAD_ZONE || dpadUp;
-        const newDown  = axisY >  DEAD_ZONE || dpadDown;
+        const newLeft = axisX < -DEAD_ZONE || dpadLeft;
+        const newRight = axisX > DEAD_ZONE || dpadRight;
+        const newUp = axisY < -DEAD_ZONE || dpadUp;
+        const newDown = axisY > DEAD_ZONE || dpadDown;
 
         if (newLeft !== this.gpLeft) {
             this.gpLeft = newLeft;
@@ -379,10 +382,15 @@ export default class SharedHeroController extends PlayerController {
         super.onLoad();
         this.ensureAnimationClipsRegistered();
         this.baseScaleX = Math.abs(this.node.scaleX);
+        this.ensureVisualPresentationNodes();
         this.applyVisualPresentation();
 
         // this.applyPreset();
         this.preloadSfx();
+    }
+
+    protected lateUpdate(): void {
+        this.syncVisualSpriteFrame();
     }
 
     onDestroy() {
@@ -502,7 +510,7 @@ export default class SharedHeroController extends PlayerController {
         }
 
         this.updateGravityScale();
-        
+
         v.x = this.moveDir * this.speed;
         this.rb.linearVelocity = v;
 
@@ -642,34 +650,34 @@ export default class SharedHeroController extends PlayerController {
 
         if (this.isDead || this.isHit || this.isDashing) return;
 
-        if(event.keyCode === cc.macro.KEY.a) {
+        if (event.keyCode === cc.macro.KEY.a) {
             this.leftPressed = true;
             this.refreshMoveDir();
         }
-        if(event.keyCode === cc.macro.KEY.d) {
+        if (event.keyCode === cc.macro.KEY.d) {
             this.rightPressed = true;
             this.refreshMoveDir();
         }
-        if(event.keyCode === cc.macro.KEY.space) {
+        if (event.keyCode === cc.macro.KEY.space) {
             // 銝?亥歲嚗?銝?buffer嚗pdate ???onGround / coyote ?斗撖阡??臬韏瑁歲
             this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
         }
-        if(event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.g) {
+        if (event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.g) {
             this.dash();
         }
-        if(event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
+        if (event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
             this.useMelee();
         }
-        if(event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
+        if (event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
             this.useSkill2();
         }
-        if(event.keyCode === cc.macro.KEY.c) {
+        if (event.keyCode === cc.macro.KEY.c) {
             this.useSkill3();
         }
-        if(event.keyCode === cc.macro.KEY.f) {
+        if (event.keyCode === cc.macro.KEY.f) {
             this.startDefend();
         }
-        if(event.keyCode === cc.macro.KEY.q) {
+        if (event.keyCode === cc.macro.KEY.q) {
             this.useSuper();
         }
     }
@@ -749,7 +757,7 @@ export default class SharedHeroController extends PlayerController {
             this.attackToken++;
             this.playAttackSfx(2);
             this.playAnim(airAttackClip, true);
-            
+
             this.anim.once('finished', () => {
                 this.isAirAttacking = false;
                 this.currentAnim = '';
@@ -914,7 +922,7 @@ export default class SharedHeroController extends PlayerController {
         //         this.defendHitBox.active = false;
         //     }, 0.1);
 
-        
+
         //???脩戌蝣唳?蝞?bottom)---------------------------------------------------------------------------------------
 
         this.isDefending = true;
@@ -1128,7 +1136,7 @@ export default class SharedHeroController extends PlayerController {
         }
 
         // FIXED: triggered when falling out of map
-        if(otherCollider.node.name == "Out Of Bound Trigger"){
+        if (otherCollider.node.name == "Out Of Bound Trigger") {
             this.deductHp(999);
         }
 
@@ -1144,7 +1152,7 @@ export default class SharedHeroController extends PlayerController {
         //             if(!this.isAttacking) return;
         //             if(this.facingDir === 1) this.knockback(otherCollider.node,200,0)
         //             else this.knockback(otherCollider.node,-200,0)
-                    
+
         //         break;
 
         //         case 2:                     //?脩戌?唬犖
@@ -1165,7 +1173,7 @@ export default class SharedHeroController extends PlayerController {
         //                 else this.knockback(otherCollider.node,0,-200)
         //         break;
         //     }
-        
+
         // }
     }
 
@@ -1187,8 +1195,8 @@ export default class SharedHeroController extends PlayerController {
     }
 
     updateFacing() {
-        this.node.scaleX = this.baseScaleX * this.facingDir * this.visualScale;
- 
+        this.node.scaleX = this.baseScaleX * this.facingDir;
+
     }
 
     updateGravityScale() {
@@ -1377,7 +1385,7 @@ export default class SharedHeroController extends PlayerController {
         // FIXED: calling PlayerController function
         this.deductHp(amount);
 
-        if(this.hp > 0) this.enterHitState();
+        if (this.hp > 0) this.enterHitState();
     }
 
     enterHitState() {
@@ -1528,7 +1536,7 @@ export default class SharedHeroController extends PlayerController {
 
         if (this.rb) {
             this.rb.linearVelocity = cc.v2(0, 0);
-            
+
             if (!this.rb.awake) {
                 this.rb.awake = true;
             }
@@ -1540,7 +1548,7 @@ export default class SharedHeroController extends PlayerController {
 
 
     // FIXED: implement PlayerController
-    beAttacked(attackType: string, damage: number, knockback: cc.Vec2){
+    beAttacked(attackType: string, damage: number, knockback: cc.Vec2) {
         if (this.isDead) {
             return;
         }
@@ -1560,7 +1568,7 @@ export default class SharedHeroController extends PlayerController {
         }
 
         // TODO: if there're some special attackType, handle it here
-        switch(attackType){
+        switch (attackType) {
             case "groundMonkAirAttack":
                 break
             default:
@@ -1588,14 +1596,64 @@ export default class SharedHeroController extends PlayerController {
     }
 
     private applyVisualPresentation() {
-        const sprite = this.node.getComponent(cc.Sprite);
-        if (sprite) {
-            sprite.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+        const visualNode = this.getVisualNode();
+        if (!visualNode) {
+            return;
         }
 
-        this.node.y += this.visualOffsetY;
-        this.node.scaleX = this.baseScaleX * this.facingDir * this.visualScale;
-        this.node.scaleY = Math.abs(this.node.scaleY) * this.visualScale;
+        const sprite = this.visualSprite || visualNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            return;
+        }
+
+        visualNode.y = this.visualOffsetY;
+        visualNode.scaleX = this.visualScale;
+        visualNode.scaleY = this.visualScale;
+
+        sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        sprite.trim = false;
+    }
+
+    private ensureVisualPresentationNodes() {
+        this.sourceSprite = this.node.getComponent(cc.Sprite);
+        if (!this.sourceSprite) {
+            return;
+        }
+
+        let visualNode = this.node.getChildByName("Visual");
+        if (!visualNode) {
+            visualNode = new cc.Node("Visual");
+            visualNode.parent = this.node;
+            visualNode.setSiblingIndex(0);
+        }
+
+        let visualSprite = visualNode.getComponent(cc.Sprite);
+        if (!visualSprite) {
+            visualSprite = visualNode.addComponent(cc.Sprite);
+        }
+
+        this.visualNode = visualNode;
+        this.visualSprite = visualSprite;
+        this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        this.visualSprite.type = this.sourceSprite.type;
+        this.visualSprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        this.visualSprite.trim = false;
+
+        this.sourceSprite.enabled = false;
+    }
+
+    private getVisualNode(): cc.Node | null {
+        return this.visualNode;
+    }
+
+    private syncVisualSpriteFrame() {
+        if (!this.sourceSprite || !this.visualSprite) {
+            return;
+        }
+
+        if (this.visualSprite.spriteFrame !== this.sourceSprite.spriteFrame) {
+            this.visualSprite.spriteFrame = this.sourceSprite.spriteFrame;
+        }
     }
 
     private ensureAnimationClipsRegistered() {
