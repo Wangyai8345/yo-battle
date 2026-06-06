@@ -226,7 +226,7 @@
       "__uuid__": "da15a00b-93c8-4f90-aae5-fa31a9be1539"
     },
     "superAttackTeleportDelay": 1,
-    "superAttackForwardDistance": 600,
+    "superAttackForwardDistance": 400,
     "superAttackRepeatInterval": 0.5,
     "attackSoundResource": "attack1",
     "rangedSoundResource": "attack2",

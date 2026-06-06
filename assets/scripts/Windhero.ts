@@ -365,7 +365,7 @@ export default class Windhero extends PlayerController {
             return;
         }
 
-        this.spawnDefaultMeleeHitBox("windSuperAttack");
+        this.spawnSuperAttackHitBoxes();
     };
     private readonly triggerSkill3MeleeHit = () => {
         if (this.isDead || this.currentClipAction !== "skill3") {
@@ -645,7 +645,13 @@ export default class Windhero extends PlayerController {
             return false;
         }
 
-        this.scheduleAttackHitBox("windRangedAttack", 180, 10, 220, 36, 0.15, 10, 120, 0.1);
+        const rangedDuration = this.rangedAttackClip
+            ? this.getClipPlaybackDuration(this.rangedAttackClip)
+            : 0.1;
+
+        for (let delay = 0.1; delay < Math.max(rangedDuration, 0.11); delay += 0.25) {
+            this.scheduleAttackHitBox("windRangedAttack", 180, 10, 220, 36, 0.15, 10, 120, delay, "ranged");
+        }
         return true;
     }
 
@@ -838,6 +844,26 @@ export default class Windhero extends PlayerController {
         );
     }
 
+    private spawnSuperAttackHitBoxes() {
+        this.spawnAttackHitBox(
+            "windSuperAttack",
+            cc.v2(72, 6),
+            cc.v2(88, 40),
+            0.12,
+            12,
+            150
+        );
+
+        this.spawnAttackHitBox(
+            "windSuperAttack",
+            cc.v2(-72, 6),
+            cc.v2(88, 40),
+            0.12,
+            12,
+            150
+        );
+    }
+
     private startSkill3HitLoop() {
         this.stopSkill3HitLoop();
         this.triggerSkill3MeleeHit();
@@ -867,10 +893,11 @@ export default class Windhero extends PlayerController {
         duration: number,
         damage: number,
         kbScale: number,
-        delay: number
+        delay: number,
+        requiredAction: WindClipActionName | null = null
     ) {
         this.scheduleOnce(() => {
-            if (this.isDead) {
+            if (this.isDead || (requiredAction && this.currentClipAction !== requiredAction)) {
                 return;
             }
 
