@@ -127,6 +127,15 @@ export default class GroundMonkController extends PlayerController {
     @property
     dashSfxCooldown: number = 0.1;
 
+    @property({ tooltip: '視覺縮放倍率，用來對齊其他角色大小' })
+    visualScale: number = 1.0;
+
+    @property({ tooltip: '視覺 Y 軸偏移（往下為負）' })
+    visualOffsetY: number = 0;
+
+    @property({ tooltip: '此角色使用第幾個手柄（0 = 第一個，1 = 第二個，-1 = 停用手柄）' })
+    gamepadIndex: number = -1;
+
     // @property(cc.Node)
     // defendHitBox: cc.Node = null;
     
@@ -170,10 +179,30 @@ export default class GroundMonkController extends PlayerController {
     private lastAttackSfxTime: number = -999;
     private lastDashSfxTime: number = -999;
 
+    // Gamepad 狀態
+    private gpLeft: boolean = false;
+    private gpRight: boolean = false;
+    private gpUp: boolean = false;
+    private gpDown: boolean = false;
+    private gpJumpPrev: boolean = false;
+    private gpAttackPrev: boolean = false;
+    private gpSpecialPrev: boolean = false;
+    private gpDashPrev: boolean = false;
+    private gpDefendPrev: boolean = false;
+
 
     onLoad() {
         super.onLoad();
         this.baseScaleX = Math.abs(this.node.scaleX);
+
+        // 套用視覺縮放與位移
+        if (this.visualOffsetY !== 0) {
+            this.node.y += this.visualOffsetY;
+        }
+        if (this.visualScale !== 1.0) {
+            this.node.scaleX = this.baseScaleX * this.facingDir * this.visualScale;
+            this.node.scaleY = Math.abs(this.node.scaleY) * this.visualScale;
+        }
 
         // this.applyPreset();
         this.preloadSfx();
@@ -250,6 +279,9 @@ export default class GroundMonkController extends PlayerController {
 
     // FIXED: implement PlayerController
     localUpdate(dt: number) {
+        // 手柄輸入
+        this.pollGamepad();
+
         // 更新跳躍計時器
         if (this.coyoteTimer > 0) this.coyoteTimer -= dt;
         if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= dt;
@@ -464,6 +496,96 @@ export default class GroundMonkController extends PlayerController {
             this.stopDefend();
         }
     }
+
+
+    // ── Gamepad ──────────────────────────────────────────────────────────────
+    // 標準 Gamepad 按鍵對應（Xbox / PS 布局）：
+    //   軸 0 = 左搖桿 X，軸 1 = 左搖桿 Y
+    //   button 0 = A/Cross      → 跳躍
+    //   button 1 = B/Circle     → 防禦（按住）
+    //   button 2 = X/Square     → 普攻
+    //   button 3 = Y/Triangle   → 特殊攻擊
+    //   button 4 = LB/L1        → 衝刺
+    //   D-Pad: button 12=上 13=下 14=左 15=右
+    pollGamepad() {
+        if (this.gamepadIndex < 0) return;
+
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const gp = gamepads[this.gamepadIndex];
+        if (!gp) return;
+
+        const DEAD_ZONE = 0.25;
+        const axisX = gp.axes[0] ?? 0;
+        const axisY = gp.axes[1] ?? 0;
+
+        // ── 方向（搖桿 + D-Pad）─────────────────────────────────────────────
+        const dpadLeft  = gp.buttons[14]?.pressed ?? false;
+        const dpadRight = gp.buttons[15]?.pressed ?? false;
+        const dpadUp    = gp.buttons[12]?.pressed ?? false;
+        const dpadDown  = gp.buttons[13]?.pressed ?? false;
+
+        const newLeft  = axisX < -DEAD_ZONE || dpadLeft;
+        const newRight = axisX >  DEAD_ZONE || dpadRight;
+        const newUp    = axisY < -DEAD_ZONE || dpadUp;
+        const newDown  = axisY >  DEAD_ZONE || dpadDown;
+
+        if (newLeft !== this.gpLeft) {
+            this.gpLeft = newLeft;
+            this.leftPressed = newLeft;
+            this.refreshMoveDir();
+        }
+        if (newRight !== this.gpRight) {
+            this.gpRight = newRight;
+            this.rightPressed = newRight;
+            this.refreshMoveDir();
+        }
+        if (newUp !== this.gpUp) {
+            this.gpUp = newUp;
+            this.upPressed = newUp;
+        }
+        if (newDown !== this.gpDown) {
+            this.gpDown = newDown;
+            this.downPressed = newDown;
+        }
+
+        // ── 跳躍（A/Cross，邊緣觸發）────────────────────────────────────────
+        const gpJump = gp.buttons[0]?.pressed ?? false;
+        if (gpJump && !this.gpJumpPrev) {
+            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
+        }
+        this.gpJumpPrev = gpJump;
+
+        // ── 普攻（X/Square，邊緣觸發）───────────────────────────────────────
+        const gpAttack = gp.buttons[2]?.pressed ?? false;
+        if (gpAttack && !this.gpAttackPrev) {
+            this.requestDirectionalAttack();
+        }
+        this.gpAttackPrev = gpAttack;
+
+        // ── 特殊攻擊（Y/Triangle，邊緣觸發）────────────────────────────────
+        const gpSpecial = gp.buttons[3]?.pressed ?? false;
+        if (gpSpecial && !this.gpSpecialPrev) {
+            this.requestSpecialAttack();
+        }
+        this.gpSpecialPrev = gpSpecial;
+
+        // ── 衝刺（LB/L1，邊緣觸發）─────────────────────────────────────────
+        const gpDash = gp.buttons[4]?.pressed ?? false;
+        if (gpDash && !this.gpDashPrev) {
+            this.dash();
+        }
+        this.gpDashPrev = gpDash;
+
+        // ── 防禦（B/Circle，持續狀態）───────────────────────────────────────
+        const gpDefend = gp.buttons[1]?.pressed ?? false;
+        if (gpDefend && !this.gpDefendPrev) {
+            this.startDefend();
+        } else if (!gpDefend && this.gpDefendPrev) {
+            this.stopDefend();
+        }
+        this.gpDefendPrev = gpDefend;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
 
     requestDirectionalAttack() {
@@ -916,8 +1038,7 @@ export default class GroundMonkController extends PlayerController {
     }
 
     updateFacing() {
-        this.node.scaleX = this.baseScaleX * this.facingDir;
- 
+        this.node.scaleX = this.baseScaleX * this.facingDir * this.visualScale;
     }
 
     updateGravityScale() {

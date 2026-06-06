@@ -215,6 +215,9 @@ export default class SharedHeroController extends PlayerController {
     @property
     visualOffsetY: number = -16;
 
+    @property
+    gamepadIndex: number = -1;
+
     // @property(cc.Node)
     // defendHitBox: cc.Node = null;
     
@@ -259,8 +262,117 @@ export default class SharedHeroController extends PlayerController {
     private jumpBufferTimer: number = 0;
     private readonly COYOTE_TIME: number = 0.12;
     private readonly JUMP_BUFFER_TIME: number = 0.12;
+    private airJumpUsed: boolean = false;
+    private gpLeft: boolean = false;
+    private gpRight: boolean = false;
+    private gpUp: boolean = false;
+    private gpDown: boolean = false;
+    private gpJumpPrev: boolean = false;
+    private gpAttackPrev: boolean = false;
+    private gpSpecialPrev: boolean = false;
+    private gpDashPrev: boolean = false;
+    private gpDefendPrev: boolean = false;
     private lastAttackSfxTime: number = -999;
     private lastDashSfxTime: number = -999;
+
+    // ── Gamepad ──────────────────────────────────────────────────────────────
+    // 標準 Gamepad 按鍵對應（Xbox / PS 布局）：
+    //   軸 0 = 左搖桿 X，軸 1 = 左搖桿 Y
+    //   button 0 = A/Cross      → 跳躍
+    //   button 1 = B/Circle     → 防禦（按住）
+    //   button 2 = X/Square     → 普攻
+    //   button 3 = Y/Triangle   → 特殊攻擊
+    //   button 4 = LB/L1        → 衝刺
+    //   D-Pad: button 12=上 13=下 14=左 15=右
+    pollGamepad() {
+        if (this.gamepadIndex < 0) return;
+
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const gp = gamepads[this.gamepadIndex];
+        if (!gp) return;
+
+        const DEAD_ZONE = 0.25;
+        const axisX = gp.axes[0] ?? 0;
+        const axisY = gp.axes[1] ?? 0;
+
+        // ── 方向（搖桿 + D-Pad）────────────────────────────────────────────
+        const dpadLeft  = gp.buttons[14]?.pressed ?? false;
+        const dpadRight = gp.buttons[15]?.pressed ?? false;
+        const dpadUp    = gp.buttons[12]?.pressed ?? false;
+        const dpadDown  = gp.buttons[13]?.pressed ?? false;
+
+        const newLeft  = axisX < -DEAD_ZONE || dpadLeft;
+        const newRight = axisX >  DEAD_ZONE || dpadRight;
+        const newUp    = axisY < -DEAD_ZONE || dpadUp;
+        const newDown  = axisY >  DEAD_ZONE || dpadDown;
+
+        if (newLeft !== this.gpLeft) {
+            this.gpLeft = newLeft;
+            this.leftPressed = newLeft;
+            this.refreshMoveDir();
+        }
+        if (newRight !== this.gpRight) {
+            this.gpRight = newRight;
+            this.rightPressed = newRight;
+            this.refreshMoveDir();
+        }
+        if (newUp !== this.gpUp) {
+            this.gpUp = newUp;
+            this.upPressed = newUp;
+        }
+        if (newDown !== this.gpDown) {
+            this.gpDown = newDown;
+            this.downPressed = newDown;
+        }
+
+        // ── 跳躍（A/Cross，邊緣觸發）───────────────────────────────────────
+        const gpJump = gp.buttons[0]?.pressed ?? false;
+        if (gpJump && !this.gpJumpPrev) {
+            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
+            // 空中二段跳
+            if (!this.onGround && !this.airJumpUsed && this.rb) {
+                this.airJumpUsed = true;
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                const v = this.rb.linearVelocity;
+                v.y = this.jumpSpeed;
+                this.rb.linearVelocity = v;
+                this.updateAnimation();
+            }
+        }
+        this.gpJumpPrev = gpJump;
+
+        // ── 普攻（X/Square，邊緣觸發）──────────────────────────────────────
+        const gpAttack = gp.buttons[2]?.pressed ?? false;
+        if (gpAttack && !this.gpAttackPrev) {
+            this.requestDirectionalAttack();
+        }
+        this.gpAttackPrev = gpAttack;
+
+        // ── 特殊攻擊（Y/Triangle，邊緣觸發）───────────────────────────────
+        const gpSpecial = gp.buttons[3]?.pressed ?? false;
+        if (gpSpecial && !this.gpSpecialPrev) {
+            this.requestSpecialAttack();
+        }
+        this.gpSpecialPrev = gpSpecial;
+
+        // ── 衝刺（LB/L1，邊緣觸發）────────────────────────────────────────
+        const gpDash = gp.buttons[4]?.pressed ?? false;
+        if (gpDash && !this.gpDashPrev) {
+            this.dash();
+        }
+        this.gpDashPrev = gpDash;
+
+        // ── 防禦（B/Circle，持續狀態）──────────────────────────────────────
+        const gpDefend = gp.buttons[1]?.pressed ?? false;
+        if (gpDefend && !this.gpDefendPrev) {
+            this.startDefend();
+        } else if (!gpDefend && this.gpDefendPrev) {
+            this.stopDefend();
+        }
+        this.gpDefendPrev = gpDefend;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
 
     onLoad() {
@@ -344,6 +456,7 @@ export default class SharedHeroController extends PlayerController {
 
     // FIXED: implement PlayerController
     localUpdate(dt: number) {
+        this.pollGamepad();
         this.updateAbilityCooldowns(dt);
         // ?湔頝唾?閮???        if (this.coyoteTimer > 0) this.coyoteTimer -= dt;
         if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= dt;
@@ -507,6 +620,23 @@ export default class SharedHeroController extends PlayerController {
             this.groundContactCount = 0;
             this.jumpBufferTimer = 0;
             this.coyoteTimer = 0;
+            this.updateAnimation();
+        } else if (
+            !this.isDead &&
+            !this.isHit &&
+            !this.isDashing &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up || event.keyCode === cc.macro.KEY.space) &&
+            !this.onGround &&
+            !this.airJumpUsed &&
+            this.rb
+        ) {
+            // 二段跳
+            this.airJumpUsed = true;
+            this.coyoteTimer = 0;
+            this.jumpBufferTimer = 0;
+            const v = this.rb.linearVelocity;
+            v.y = this.jumpSpeed;
+            this.rb.linearVelocity = v;
             this.updateAnimation();
         }
 
@@ -979,6 +1109,7 @@ export default class SharedHeroController extends PlayerController {
             (contact as any)._isGroundForPlayer = true;
             this.groundContactCount++;
             this.onGround = true;
+            this.airJumpUsed = false;
             this.coyoteTimer = this.COYOTE_TIME;
             this.updateAnimation();
             return;
@@ -1258,7 +1389,7 @@ export default class SharedHeroController extends PlayerController {
         this.isHit = true;
 
         this.anim.off('finished', this.onAttackAnimFinished, this);
-        this.playAnim(this.getExistingAnimClip(this.takeHitClip, this.animTakeHit, 'take_hit'));
+        this.playAnim(this.getExistingAnimClip(this.takeHitClip, this.animTakeHit, 'take_hit'), true);
 
         this.unschedule(this.exitHitState);
         this.scheduleOnce(this.exitHitState, this.hitRecoverTime);
