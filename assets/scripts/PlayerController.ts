@@ -186,7 +186,7 @@ export default abstract class PlayerController extends cc.Component {
             return;
         }
 
-        if (this.node.y <= -600) {
+        if (this.node.y <= -800) {
             this.deductHp(999);
         }
     }

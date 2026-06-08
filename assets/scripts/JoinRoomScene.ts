@@ -1,4 +1,5 @@
 import NetworkManager from "./NetworkManager";
+import VSController from "./ui/VSController";
 
 const { ccclass, property } = cc._decorator;
 
@@ -25,6 +26,9 @@ export default class JoinRoomScene extends cc.Component {
 
     @property
     gameSceneName: string = "game";
+
+    @property
+    vsSceneName: string = "vs";
 
 
     private pending: boolean = false;
@@ -104,7 +108,7 @@ export default class JoinRoomScene extends cc.Component {
                     this.statusLabel.string = `Entering game!`;
 
                     this.scheduleOnce(() => {
-                        cc.director.loadScene(this.gameSceneName);
+                        this.enterBattleFlow();
                     }, 1);
                 }
             );
@@ -121,6 +125,40 @@ export default class JoinRoomScene extends cc.Component {
 
             cc.error("Join room error:", error);
         }
+    }
+
+    private enterBattleFlow() {
+        const entrySceneName = this.getEntrySceneName();
+
+        cc.director.loadScene(entrySceneName, () => {
+            const vsRoot = cc.find("Canvas/VS");
+            if (!vsRoot) {
+                if (entrySceneName !== this.gameSceneName) {
+                    cc.warn(`[JoinRoomScene] VS root not found in scene "${entrySceneName}", fallback to ${this.gameSceneName}`);
+                    cc.director.loadScene(this.gameSceneName);
+                }
+                return;
+            }
+
+            let controller = vsRoot.getComponent(VSController);
+            if (!controller) {
+                controller = vsRoot.addComponent(VSController);
+            }
+
+            if (controller && this.gameSceneName) {
+                controller.nextSceneName = this.gameSceneName;
+            }
+        });
+    }
+
+    private getEntrySceneName(): string {
+        const trimmedVsScene = this.vsSceneName ? this.vsSceneName.trim() : "";
+        if (trimmedVsScene) {
+            return trimmedVsScene;
+        }
+
+        const trimmedGameScene = this.gameSceneName ? this.gameSceneName.trim() : "";
+        return trimmedGameScene || "game";
     }
 
     
