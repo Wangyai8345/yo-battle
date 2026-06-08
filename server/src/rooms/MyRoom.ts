@@ -24,8 +24,8 @@ const SPAWN_POINTS_CONFIG: { [key: string]: { x: number; y: number }[] } = {
 		{ x: 180, y: 200 }
 	],
 	"map1": [
-		{ x: -180, y: 200 },
-		{ x: 180, y: 200 }
+		{ x: -800, y: 200 },
+		{ x: 800, y: 200 }
 	],
 	"map2": [
 		{ x: -180, y: 200 },
@@ -305,7 +305,7 @@ export class MyRoom extends Room {
 
 
 	chooseRandomMap() {
-		const maps = ["map0", "map1", "map2"];
+		const maps = ["map1", "map1", "map2"];
 		this.state.mapName = maps[Math.floor(Math.random() * maps.length)];
 	}
 
@@ -454,7 +454,7 @@ export class MyRoom extends Room {
 				senderId: client.sessionId,
 				x: message.x,
 				y: message.y
-			}, {except: client});
+			}, { except: client });
 		});
 	}
 }

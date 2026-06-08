@@ -166,12 +166,28 @@ export default abstract class PlayerController extends cc.Component {
 
     protected update(dt: number): void {
         if (this.isLocal) {
+            this.checkOutOfBoundsDeath();
             this.localUpdate(dt);
             NetworkManager.instance.sendPositionToServer(this.node.x, this.node.y);
             NetworkManager.instance.sendScaleXToServer(this.node.scaleX);
         }
         else {
             this.interpolation(dt);
+        }
+    }
+
+    private checkOutOfBoundsDeath(): void {
+        if (this.hp <= 0) {
+            return;
+        }
+
+        const map3Node = cc.find("Canvas/Map3");
+        if (!map3Node || !map3Node.activeInHierarchy) {
+            return;
+        }
+
+        if (this.node.y <= -600) {
+            this.deductHp(999);
         }
     }
 
