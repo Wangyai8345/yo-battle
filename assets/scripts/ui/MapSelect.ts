@@ -1,4 +1,5 @@
 import UIManager from '../managers/UIManager';
+import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
 
@@ -40,12 +41,13 @@ export default class MapSelect extends cc.Component {
             console.log('[MapSelect] canvas key:', e.keyCode);
             if (this._confirmed) return;
             const k = e.keyCode;
-            if (k === 37 || k === 65) { this._curIdx = (this._curIdx - 1 + this.TOTAL) % this.TOTAL; this._refresh(); }
-            if (k === 39 || k === 68) { this._curIdx = (this._curIdx + 1) % this.TOTAL; this._refresh(); }
+            if (k === 37 || k === 65) { this._curIdx = (this._curIdx - 1 + this.TOTAL) % this.TOTAL; AudioManager.playEffect('touch', 0.6); this._refresh(); }
+            if (k === 39 || k === 68) { this._curIdx = (this._curIdx + 1) % this.TOTAL; AudioManager.playEffect('touch', 0.6); this._refresh(); }
             if (k === 32) {
                 e.preventDefault();
                 if (this._selectedIdx === this._curIdx) { this._selectedIdx = -1; }
                 else { this._selectedIdx = this._curIdx; }
+                AudioManager.playEffect('click', 0.7);
                 this._refresh();
             }
             if (k === 13) {
@@ -154,11 +156,16 @@ export default class MapSelect extends cc.Component {
 
     // 滑鼠點擊（再點同一張取消選定）
     // CustomEventData 支援 "0" 或 "0,0" 兩種格式
+    onButtonHover() {
+        AudioManager.playEffect('touch', 0.6);
+    }
+
     onMapClick(event: cc.Event, mapIndex: string) {
         if (this._confirmed) return;
         const parts = mapIndex.split(',').map(Number);
         const idx = parts.length > 1 ? parts[1] : parts[0];
         if (isNaN(idx)) return;
+        AudioManager.playEffect('touch', 0.6);
         if (this._curIdx === idx && this._selectedIdx === idx) {
             this._selectedIdx = -1;   // 再點同一張 → 取消選定
         } else {
@@ -171,6 +178,7 @@ export default class MapSelect extends cc.Component {
     onConfirmClick() {
         if (this._selectedIdx >= 0 && !this._confirmed) {
             if (this.warningLabel) this.warningLabel.active = false;
+            AudioManager.playEffect('click', 0.7);
             this._doConfirm();
         } else if (!this._confirmed) {
             if (this.warningLabel) {
@@ -182,6 +190,7 @@ export default class MapSelect extends cc.Component {
     }
 
     onBackClick() {
+        AudioManager.playEffect('click', 0.7);
         UIManager.instance.showScreen('CharSelect');
     }
 }

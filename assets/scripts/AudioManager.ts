@@ -87,6 +87,11 @@ export default class AudioManager {
     }
 
 
+    static stopMusic() {
+        cc.audioEngine.stopMusic();
+        AudioManager.currentMusicResource = '';
+    }
+
     static playMusic(resource: string, loop: boolean = true) {
         if (!resource) {
             return;

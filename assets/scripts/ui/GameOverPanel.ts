@@ -1,5 +1,6 @@
 import GameManager from '../GameManager';
 import NetworkManager from '../NetworkManager';
+import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
 
@@ -117,6 +118,7 @@ export default class GameOverPanel extends cc.Component {
         // 若遊戲中曾暫停（SettingPanel），確保 director 恢復，否則新場景的 scheduleOnce 不會執行
         cc.director.resume();
         cc.director.getPhysicsManager().debugDrawFlags = 0;
+        AudioManager.stopMusic();
         if (NetworkManager.instance) {
             NetworkManager.instance.quitServer()
                 .catch(() => {})
@@ -126,11 +128,17 @@ export default class GameOverPanel extends cc.Component {
         }
     }
 
+    onButtonHover() {
+        AudioManager.playEffect('touch', 0.6);
+    }
+
     onAgainClick() {
+        AudioManager.playEffect('click', 0.7);
         this._leaveAndLoad('join_room_scene');
     }
 
     onQuitClick() {
+        AudioManager.playEffect('click', 0.7);
         this._leaveAndLoad('Mainmenu');
     }
 }

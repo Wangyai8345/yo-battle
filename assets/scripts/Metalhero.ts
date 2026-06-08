@@ -197,7 +197,7 @@ export default class Metalhero extends PlayerController {
     skill3SoundResource: string = "attack2";
 
     @property
-    superSoundResource: string = "attack2";
+    superSoundResource: string = "metal_hero_sp";
 
     @property
     attackSfxVolume: number = 0.7;

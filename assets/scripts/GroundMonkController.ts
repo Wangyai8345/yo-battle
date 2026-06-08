@@ -496,6 +496,9 @@ export default class GroundMonkController extends PlayerController {
         }
         if (event.keyCode === cc.macro.KEY.space) {
             // 不直接跳，先丟進 buffer；update 會根據 onGround / coyote 判斷實際是否起跳
+            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
+        }
+        if (event.keyCode === cc.macro.KEY.shift) {
             this.dash();
         }
         if (event.keyCode === cc.macro.KEY.q) {

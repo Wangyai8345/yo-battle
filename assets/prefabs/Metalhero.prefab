@@ -281,7 +281,7 @@
     "rangedSoundResource": "attack2",
     "defendSoundResource": "dash",
     "skill3SoundResource": "attack2",
-    "superSoundResource": "attack2",
+    "superSoundResource": "metal_hero_sp",
     "attackSfxVolume": 0.7,
     "superSfxVolume": 1,
     "defendDamageMultiplier": 0.2,

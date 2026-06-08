@@ -237,7 +237,7 @@
     "rangedSoundResource": "attack2",
     "skill3SoundResource": "attack2",
     "defendSoundResource": "dash",
-    "superSoundResource": "attack2",
+    "superSoundResource": "archer_sp",
     "attackSfxVolume": 0.7,
     "superSfxVolume": 1,
     "defendDamageMultiplier": 0.2,

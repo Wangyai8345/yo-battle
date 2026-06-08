@@ -225,7 +225,7 @@ export default class Arrowhero extends PlayerController {
     defendSoundResource: string = "dash";
 
     @property
-    superSoundResource: string = "attack2";
+    superSoundResource: string = "archer_sp";
 
     @property
     attackSfxVolume: number = 0.7;

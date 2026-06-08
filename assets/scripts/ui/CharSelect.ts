@@ -1,4 +1,5 @@
 import UIManager from '../managers/UIManager';
+import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
 
@@ -68,10 +69,12 @@ export default class CharSelect extends cc.Component {
 
         if (k === cc.macro.KEY.a || k === cc.macro.KEY.left) {
             this._curIdx = (this._curIdx - 1 + this._total) % this._total;
+            AudioManager.playEffect('touch', 0.6);
             this._refresh();
         }
         if (k === cc.macro.KEY.d || k === cc.macro.KEY.right) {
             this._curIdx = (this._curIdx + 1) % this._total;
+            AudioManager.playEffect('touch', 0.6);
             this._refresh();
         }
         if (k === cc.macro.KEY.space) {
@@ -80,6 +83,7 @@ export default class CharSelect extends cc.Component {
             } else {
                 this._selectedIdx = this._curIdx;
             }
+            AudioManager.playEffect('click', 0.7);
             this._refresh();
         }
         if (k === cc.macro.KEY.enter) {
@@ -178,9 +182,14 @@ export default class CharSelect extends cc.Component {
     }
 
     // 相容隊友的 click 介面
+    onButtonHover() {
+        AudioManager.playEffect('touch', 0.6);
+    }
+
     onCharCardClick(event: cc.Event, playerAndIndex: string) {
         const parts = playerAndIndex.split(',').map(Number);
         const index = parts.length > 1 ? parts[1] : parts[0];
+        AudioManager.playEffect('touch', 0.6);
         this._curIdx = index;
         this._selectedIdx = index;
         this._refresh();
@@ -189,6 +198,7 @@ export default class CharSelect extends cc.Component {
     onConfirmClick() {
         if (this._selectedIdx >= 0 && !this._confirmed) {
             if (this.warningLabel) this.warningLabel.active = false;
+            AudioManager.playEffect('click', 0.7);
             this._doConfirm();
         } else if (!this._confirmed) {
             if (this.warningLabel) {

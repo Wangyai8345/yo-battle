@@ -97,14 +97,20 @@ export default class SettingPanel extends cc.Component {
         });
     }
 
+    onButtonHover() {
+        AudioManager.playEffect('touch', 0.6);
+    }
+
     /** 繼續遊戲（戰鬥中用） */
     onResumeClick() {
+        AudioManager.playEffect('click', 0.7);
         if (this._isInBattle) cc.director.resume();
         this.node.active = false;
     }
 
     /** 關閉設定（回原本畫面） */
     onCloseClick() {
+        AudioManager.playEffect('click', 0.7);
         if (this._isInBattle) {
             cc.director.resume();
             this._setPlayersVisible(true);
@@ -114,6 +120,7 @@ export default class SettingPanel extends cc.Component {
 
     /** EXIT 按鈕：顯示確認對話框 */
     onExitClick() {
+        AudioManager.playEffect('click', 0.7);
         if (this.confirmDialog) this.confirmDialog.active = true;
     }
 
@@ -121,6 +128,7 @@ export default class SettingPanel extends cc.Component {
     onConfirmExit() {
         cc.director.resume();
         this.node.active = false;
+        AudioManager.stopMusic();
         if (NetworkManager.instance) {
             NetworkManager.instance.quitServer()
                 .catch(() => {})
