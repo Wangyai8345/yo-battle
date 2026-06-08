@@ -1,4 +1,5 @@
 import HUDPanel from '../ui/HUDPanel';
+import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
 
@@ -34,6 +35,9 @@ export default class UIManager extends cc.Component {
 
     onLoad() {
         UIManager.instance = this;
+
+        AudioManager.initVolumes();
+
         this._screens = {
             MainMenu: this.mainMenuScreen,
             CharSelect: this.charSelectScreen,

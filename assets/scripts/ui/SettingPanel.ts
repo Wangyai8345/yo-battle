@@ -1,4 +1,6 @@
 import UIManager from '../managers/UIManager';
+import NetworkManager from '../NetworkManager';
+import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
 
@@ -65,12 +67,14 @@ export default class SettingPanel extends cc.Component {
     onBgmSliderChange(slider: cc.Slider) {
         const vol = slider.progress;
         cc.audioEngine.setMusicVolume(vol);
+        cc.sys.localStorage.setItem('vol_bgm', vol.toString());
         this._updateBgmLabel(vol);
     }
 
     onSfxSliderChange(slider: cc.Slider) {
         const vol = slider.progress;
-        cc.audioEngine.setEffectsVolume(vol);
+        AudioManager.setSfxVolume(vol);
+        cc.sys.localStorage.setItem('vol_sfx', vol.toString());
         this._updateSfxLabel(vol);
     }
 
@@ -117,7 +121,13 @@ export default class SettingPanel extends cc.Component {
     onConfirmExit() {
         cc.director.resume();
         this.node.active = false;
-        cc.director.loadScene('Mainmenu');
+        if (NetworkManager.instance) {
+            NetworkManager.instance.quitServer()
+                .catch(() => {})
+                .then(() => { cc.director.loadScene('Mainmenu'); });
+        } else {
+            cc.director.loadScene('Mainmenu');
+        }
     }
 
     /** 取消離開 */

@@ -1,4 +1,5 @@
 import GameManager from '../GameManager';
+import NetworkManager from '../NetworkManager';
 
 const { ccclass, property } = cc._decorator;
 
@@ -16,9 +17,20 @@ export default class GameOverPanel extends cc.Component {
     characterContainer: cc.Node = null;
 
     private _charNode: cc.Node = null;
+    private _shouldSyncSprite: boolean = false;
 
     start() {
         this.node.active = false;
+        this._shouldSyncSprite = false;
+    }
+
+    update() {
+        if (!this._shouldSyncSprite || !this._charNode || !cc.isValid(this._charNode)) return;
+        const src = this._charNode.getComponent(cc.Sprite);
+        const vis = this._charNode.getChildByName('Visual');
+        if (!src || !vis) return;
+        const vsp = vis.getComponent(cc.Sprite);
+        if (vsp) vsp.spriteFrame = src.spriteFrame;
     }
 
     /** GameManager.gameEnd() 呼叫 */
@@ -26,12 +38,12 @@ export default class GameOverPanel extends cc.Component {
         this.node.active = true;
         this.node.setSiblingIndex(this.node.parent.childrenCount - 1);
 
-        // 隱藏場上的玩家角色
+        // 完全隱藏場上角色（active=false 才能連粒子特效都隱藏，opacity 不夠）
         const canvas = cc.find('Canvas');
         if (canvas) {
             canvas.children.forEach(child => {
                 if (child.name === 'P1' || child.name === 'P2') {
-                    child.opacity = 0;
+                    child.active = false;
                 }
             });
         }
@@ -60,49 +72,65 @@ export default class GameOverPanel extends cc.Component {
             const physColliders = this._charNode.getComponents(cc.PhysicsCollider);
             physColliders.forEach(c => c.enabled = false);
 
-            // 隱藏角色上方的文字 Label
+            // 隱藏 Label 與非 Visual 的子節點（清除可能殘留的特效節點）
             this._charNode.children.forEach(child => {
-                if (child.name === 'Player Label' || child.name === 'HP Label') {
+                if (child.name !== 'Visual') {
                     child.active = false;
                 }
             });
 
             this.characterContainer.addChild(this._charNode);
 
-            // 播放 idle 動畫
-            const anim = this._charNode.getComponent(cc.Animation);
-            if (anim) {
-                const clips = anim.getClips();
-                // 先找名稱含 idle 或 ldle（arrow拼錯）的 clip
+            // 先 disable 所有 Controller，讓 lateUpdate 不會在下一幀覆蓋動畫
+            const scripts = this._charNode.getComponents(cc.Component);
+            scripts.forEach(s => {
+                if (s instanceof cc.Animation || s instanceof cc.Sprite) return;
+                if (s.constructor.name !== 'cc.Node') s.enabled = false;
+            });
+
+            // 下一幀再 play idle，確保 Controller 的 lateUpdate 已清除
+            const charNode = this._charNode;
+            this.scheduleOnce(() => {
+                if (!charNode || !cc.isValid(charNode)) return;
+                const anim = charNode.getComponent(cc.Animation);
+                if (!anim) return;
+                const clips = anim.getClips().filter(c => c != null);
                 const idleClip = clips.find(c => {
-                    const name = c.name.toLowerCase();
-                    return name.includes('idle') || name.includes('ldle');
+                    const n = c.name.toLowerCase();
+                    return n.includes('idle') || n.includes('ldle');
                 });
                 if (idleClip) {
                     anim.play(idleClip.name);
                 } else if (clips.length > 0) {
                     anim.play(clips[0].name);
                 }
-            }
+            }, 0);
 
-            // 移除 PlayerController 避免角色亂動
-            const scripts = this._charNode.getComponents(cc.Component);
-            scripts.forEach(s => {
-                if (s instanceof cc.Animation || s instanceof cc.Sprite) return;
-                if (s.constructor.name !== 'cc.Node') s.enabled = false;
-            });
+            this._shouldSyncSprite = true;
+        }
+    }
+
+    private _leaveAndLoad(sceneName: string) {
+        this._shouldSyncSprite = false;
+        if (this._charNode) this._charNode.destroy();
+        this.node.active = false;
+        // 若遊戲中曾暫停（SettingPanel），確保 director 恢復，否則新場景的 scheduleOnce 不會執行
+        cc.director.resume();
+        cc.director.getPhysicsManager().debugDrawFlags = 0;
+        if (NetworkManager.instance) {
+            NetworkManager.instance.quitServer()
+                .catch(() => {})
+                .then(() => { cc.director.loadScene(sceneName); });
+        } else {
+            cc.director.loadScene(sceneName);
         }
     }
 
     onAgainClick() {
-        if (this._charNode) this._charNode.destroy();
-        this.node.active = false;
-        cc.director.loadScene('join_room_scene');
+        this._leaveAndLoad('join_room_scene');
     }
 
     onQuitClick() {
-        if (this._charNode) this._charNode.destroy();
-        this.node.active = false;
-        cc.director.loadScene('Mainmenu');
+        this._leaveAndLoad('Mainmenu');
     }
 }

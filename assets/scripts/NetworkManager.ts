@@ -45,6 +45,7 @@ export default class NetworkManager extends cc.Component {
     // Execute when receiving "S_pendingResolvedSignal" from server
     private onMatchReadyCallback: Function = null;
     private quitPromise: Promise<void> | null = null;
+    private _isDuplicate: boolean = false;
 
 
 
@@ -54,9 +55,10 @@ export default class NetworkManager extends cc.Component {
             NetworkManager.instance = this;
 
             // persist node even if scene changed
-            cc.game.addPersistRootNode(this.node); 
-        } 
+            cc.game.addPersistRootNode(this.node);
+        }
         else {
+            this._isDuplicate = true;
             this.node.destroy();
             return;
         }
@@ -64,9 +66,13 @@ export default class NetworkManager extends cc.Component {
 
 
     protected start(): void {
+        // CC2.4.x calls start() even after destroy() in onLoad — guard against it
+        if (this._isDuplicate) return;
+
         // connectClient(false):    test on localhost
         // connectClient(true):     test on remote server
         this.connectClient(true);
+        AudioManager.initVolumes();
     }
 
 

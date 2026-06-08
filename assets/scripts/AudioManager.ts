@@ -2,7 +2,26 @@ export default class AudioManager {
     private static clipCache: { [resource: string]: cc.AudioClip } = {};
     private static loadingCallbacks: { [resource: string]: Array<(clip: cc.AudioClip) => void> } = {};
     private static currentMusicResource: string = '';
+    private static _sfxVolume: number = 0.5;
 
+    static initVolumes() {
+        try {
+            const bgmStr = cc.sys.localStorage.getItem('vol_bgm');
+            const sfxStr = cc.sys.localStorage.getItem('vol_sfx');
+            const bgm = (bgmStr !== null && bgmStr !== '') ? parseFloat(bgmStr) : NaN;
+            const sfx = (sfxStr !== null && sfxStr !== '') ? parseFloat(sfxStr) : NaN;
+            cc.audioEngine.setMusicVolume(isNaN(bgm) ? 0.5 : bgm);
+            AudioManager.setSfxVolume(isNaN(sfx) ? 0.5 : sfx);
+        } catch (e) {
+            cc.audioEngine.setMusicVolume(0.5);
+            AudioManager.setSfxVolume(0.5);
+        }
+    }
+
+    static setSfxVolume(vol: number) {
+        AudioManager._sfxVolume = Math.max(0, Math.min(1, vol));
+        cc.audioEngine.setEffectsVolume(AudioManager._sfxVolume);
+    }
 
     static preload(resource: string, onLoaded?: (clip: cc.AudioClip) => void) {
         if (!resource) {
@@ -54,7 +73,7 @@ export default class AudioManager {
             if (!clip) {
                 return;
             }
-            cc.audioEngine.play(clip, loop, Math.max(0, volume));
+            cc.audioEngine.play(clip, loop, Math.max(0, volume) * AudioManager._sfxVolume);
         };
 
         const cachedClip = AudioManager.clipCache[resource];
@@ -68,13 +87,12 @@ export default class AudioManager {
     }
 
 
-    static playMusic(resource: string, volume: number = 1, loop: boolean = true) {
+    static playMusic(resource: string, loop: boolean = true) {
         if (!resource) {
             return;
         }
 
         if (cc.audioEngine.isMusicPlaying() && AudioManager.currentMusicResource === resource) {
-            cc.audioEngine.setMusicVolume(volume);
             return;
         }
 
@@ -84,7 +102,6 @@ export default class AudioManager {
             }
             AudioManager.currentMusicResource = resource;
             cc.audioEngine.playMusic(clip, loop);
-            cc.audioEngine.setMusicVolume(volume);
         };
 
         const cachedClip = AudioManager.clipCache[resource];

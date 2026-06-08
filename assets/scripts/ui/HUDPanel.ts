@@ -12,6 +12,13 @@ export default class HUDPanel extends cc.Component {
     @property(cc.Sprite)
     avatarSprite: cc.Sprite = null;
 
+    @property(cc.Label)
+    youLabel: cc.Label = null;
+
+    setIsLocalPlayer(isLocal: boolean) {
+        if (this.youLabel) this.youLabel.node.active = isLocal;
+    }
+
     setHP(current: number, max: number) {
         if (!this.hpBarFG) return;
         const ratio = cc.misc.clampf(current / max, 0, 1);

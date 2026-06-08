@@ -217,7 +217,10 @@ export default class GameManager extends cc.Component {
             UIManager.instance.updateHP(player.id - 1, player.hp, 100);
             // 設定角色頭像
             const panel = player.id === 1 ? UIManager.instance.p1Panel : UIManager.instance.p2Panel;
-            if (panel) panel.setAvatar(player.character);
+            if (panel) {
+                panel.setAvatar(player.character);
+                panel.setIsLocalPlayer(isLocal);
+            }
         }
         // Set rb to Static if nonlocal
         if (!isLocal) {

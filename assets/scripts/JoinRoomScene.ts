@@ -17,6 +17,9 @@ export default class JoinRoomScene extends cc.Component {
     @property(cc.Button)
     quitButton: cc.Button = null;
 
+    @property(cc.Button)
+    backButton: cc.Button = null;
+
     @property(cc.Label)
     statusLabel: cc.Label = null;
 
@@ -33,8 +36,38 @@ export default class JoinRoomScene extends cc.Component {
         this.roomNameInput.string = "";
         this.statusLabel.string = "Enter room name";
 
+        // Disable EditBox here; re-enable in start() after Canvas layout is stable.
+        // The game scene's camera (zoomRatio != 1) can leave stale state that causes
+        // the EditBox HTML element to render at the wrong position if enabled during onLoad.
+        this.roomNameInput.enabled = false;
+
         this.joinButton.node.on('click', this.onJoinButtonClicked, this);
         this.quitButton.node.on('click', this.onQuitButtonClicked, this);
+        if (this.backButton) this.backButton.node.on('click', this.onBackButtonClicked, this);
+    }
+
+    protected start(): void {
+        // Canvas layout is fully recalculated by this point; safe to enable EditBox
+        if (this.roomNameInput) this.roomNameInput.enabled = true;
+
+        // Auto-focus the EditBox so the player can type immediately
+        this.scheduleOnce(() => {
+            const impl = (this.roomNameInput as any)?._editBoxImpl;
+            if (impl?._elem?.focus) impl._elem.focus();
+        }, 0.1);
+
+        // Enter key triggers join
+        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this._onKeyDown, this);
+    }
+
+    onDestroy() {
+        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this._onKeyDown, this);
+    }
+
+    private _onKeyDown(event: cc.Event.EventKeyboard) {
+        if (event.keyCode === cc.macro.KEY.enter && !this.pending && this.joinButton.interactable) {
+            this.onJoinButtonClicked();
+        }
     }
 
 
@@ -103,6 +136,21 @@ export default class JoinRoomScene extends cc.Component {
 
             cc.error("Quit room error:", error);
         }
+    }
+
+
+    async onBackButtonClicked() {
+        if (this.backButton) this.backButton.interactable = false;
+        if (this.pending) {
+            try {
+                this.pending = false;
+                await NetworkManager.instance.quitServer();
+            }
+            catch(error){
+                cc.error("Back button quit error:", error);
+            }
+        }
+        cc.director.loadScene('Mainmenu');
     }
 
 
