@@ -1,6 +1,6 @@
 // import BulletController from "./BulletController";
 import AudioManager from "./AudioManager";
-import NetworkManager, { GAMESTATE } from "./NetworkManager";
+import NetworkManager, { GAMESTATE, type MatchStatsData, type RoundStatData } from "./NetworkManager";
 import PlayerController from "./PlayerController";
 import { resolvePlayerController } from "./PlayerControllerResolver";
 import DragonProjectile from "./DragonProjectile";
@@ -79,6 +79,10 @@ export default class GameManager extends cc.Component {
     private playerNodes: cc.Node[] = [];
     private prefabNodes: Map<string, cc.Node> = new Map();
     private isReady: boolean = false;
+    private localRoundStats: RoundStatData[] = [];
+    private hasRecordedCurrentRound: boolean = false;
+    private localRoundP1DealtPercent: number = 0;
+    private localRoundP2DealtPercent: number = 0;
 
 
 
@@ -104,6 +108,9 @@ export default class GameManager extends cc.Component {
 
 
     protected start(): void {
+        this.localRoundStats = [];
+        this.hasRecordedCurrentRound = false;
+        this.resetLocalRoundDamageTracking();
         NetworkManager.instance.initGameScene();
         AudioManager.playMusic('BGM');
         this.setAutoQuitSchedule();
@@ -287,6 +294,8 @@ export default class GameManager extends cc.Component {
 
 
     gameStart() {
+        this.hasRecordedCurrentRound = false;
+        this.resetLocalRoundDamageTracking();
         this.playerNodes.forEach((node) => {
             const controller = this.resolvePlayerController(node);
             if (controller) {
@@ -298,6 +307,7 @@ export default class GameManager extends cc.Component {
 
 
     gameBreak() {
+        this.recordLocalRoundStat("BREAK");
         this.playerNodes.forEach((node) => {
             const controller = this.resolvePlayerController(node);
             if (controller) {
@@ -306,10 +316,157 @@ export default class GameManager extends cc.Component {
         });
     }
 
+    private getSortedStatePlayers(state: any): any[] {
+        const players: any[] = [];
+        state?.players?.forEach?.((player: any, sessionId: string) => {
+            players.push({
+                id: player.id,
+                name: player.name,
+                hp: player.hp,
+                sessionId,
+            });
+        });
+        return players.sort((a, b) => a.id - b.id);
+    }
+
+    private getLocalRoundResult(players: any[], winnerNameFromState?: string): string {
+        if (winnerNameFromState) {
+            return winnerNameFromState;
+        }
+
+        if (players.length < 2) {
+            return "DRAW";
+        }
+
+        if (players[0].hp === players[1].hp) {
+            return "DRAW";
+        }
+
+        return players[0].hp > players[1].hp ? players[0].name : players[1].name;
+    }
+
+    private clampPercent(value: number): number {
+        return Math.max(0, Math.min(100, Math.round(value)));
+    }
+
+    private resetLocalRoundDamageTracking() {
+        this.localRoundP1DealtPercent = 0;
+        this.localRoundP2DealtPercent = 0;
+    }
+
+    public recordLocalAttackDamage(targetSessionId: string, damage: number) {
+        if (this.hasRecordedCurrentRound) {
+            return;
+        }
+
+        const state = NetworkManager.instance?.getRoomState?.();
+        if (!state?.players) {
+            return;
+        }
+
+        const players = this.getSortedStatePlayers(state);
+        const targetPlayer = players.find((player) => player.sessionId === targetSessionId);
+        const attackerPlayer = players.find((player) => player.sessionId !== targetSessionId);
+
+        if (!targetPlayer || !attackerPlayer) {
+            return;
+        }
+
+        const safeDamage = Math.max(0, Number.isFinite(damage) ? damage : 0);
+        const targetHp = Math.max(0, Number.isFinite(targetPlayer.hp) ? targetPlayer.hp : 0);
+        const appliedDamage = Math.min(safeDamage, targetHp);
+
+        if (attackerPlayer.id === 1) {
+            this.localRoundP1DealtPercent = Math.min(100, this.localRoundP1DealtPercent + appliedDamage);
+        } else if (attackerPlayer.id === 2) {
+            this.localRoundP2DealtPercent = Math.min(100, this.localRoundP2DealtPercent + appliedDamage);
+        }
+    }
+
+    private recordLocalRoundStat(source: "BREAK" | "END") {
+        if (this.hasRecordedCurrentRound) {
+            return;
+        }
+
+        const state = NetworkManager.instance?.getRoomState?.();
+        const players = this.getSortedStatePlayers(state);
+        if (players.length < 2) {
+            return;
+        }
+
+        const round: RoundStatData = {
+            round: this.localRoundStats.length + 1,
+            p1DealtPercent: this.clampPercent(this.localRoundP1DealtPercent),
+            p2DealtPercent: this.clampPercent(this.localRoundP2DealtPercent),
+            result: this.getLocalRoundResult(players, source === "END" ? state?.winner : undefined),
+        };
+
+        this.localRoundStats.push(round);
+        this.hasRecordedCurrentRound = true;
+    }
+
+
+    private buildMatchStatsData(state: any): MatchStatsData | null {
+        if (!state?.players) {
+            return null;
+        }
+
+        let p1Name = "P1";
+        let p2Name = "P2";
+
+        state.players.forEach((player: any) => {
+            if (player.id === 1) p1Name = player.name || "P1";
+            if (player.id === 2) p2Name = player.name || "P2";
+        });
+
+        const rounds: RoundStatData[] = [];
+        let totalP1Dealt = 0;
+        let totalP2Dealt = 0;
+        let p1RoundWins = 0;
+        let p2RoundWins = 0;
+
+        const hasLocalRoundStats = this.localRoundStats.length > 0;
+        const hasServerRoundStats = !!state?.roundStats && typeof state.roundStats.forEach === "function";
+        const rawRounds: any[] = [];
+
+        if (hasLocalRoundStats) {
+            rawRounds.push(...this.localRoundStats);
+        } else if (hasServerRoundStats) {
+            state.roundStats.forEach((round: any) => rawRounds.push(round));
+        }
+
+        rawRounds.forEach((round: any) => {
+            const row: RoundStatData = {
+                round: round.round,
+                p1DealtPercent: round.p1DealtPercent,
+                p2DealtPercent: round.p2DealtPercent,
+                result: round.result,
+            };
+
+            rounds.push(row);
+            totalP1Dealt += row.p1DealtPercent;
+            totalP2Dealt += row.p2DealtPercent;
+
+            if (row.result === p1Name) p1RoundWins += 1;
+            if (row.result === p2Name) p2RoundWins += 1;
+        });
+
+        return {
+            p1Name,
+            p2Name,
+            totalP1Dealt,
+            totalP2Dealt,
+            p1RoundWins,
+            p2RoundWins,
+            rounds,
+        };
+    }
+
 
     gameEnd(){
         const state = NetworkManager.instance.getRoomState();
         const winner = state.winner;
+        this.recordLocalRoundStat("END");
 
         // 找贏家的角色 Prefab
         let winnerPrefab: cc.Prefab = null;
@@ -319,11 +476,13 @@ export default class GameManager extends cc.Component {
             }
         });
 
-        if (this.gameOverPanel) {
-            this.gameOverPanel.show(winner, winnerPrefab);
-        } else {
-            if(this.winnerLabel) this.winnerLabel.string = `Winner: ${winner}`;
-        }
+        const matchStats = this.buildMatchStatsData(state);
+
+        NetworkManager.instance.transitionToGameOverScene({
+            winnerName: winner,
+            winnerPrefab: winnerPrefab || null,
+            matchStats,
+        });
     }
 
 

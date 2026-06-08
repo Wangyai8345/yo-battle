@@ -1,5 +1,5 @@
 import GameManager from '../GameManager';
-import NetworkManager from '../NetworkManager';
+import NetworkManager, { type MatchStatsData, type RoundStatData } from '../NetworkManager';
 import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
@@ -14,15 +14,26 @@ export default class GameOverPanel extends cc.Component {
     @property(cc.Label)
     winnerLabel: cc.Label = null;
 
+    @property(cc.Label)
+    nameLabel: cc.Label = null;
+
     @property(cc.Node)
     characterContainer: cc.Node = null;
 
+    @property
+    hideOnStart: boolean = true;
+
     private _charNode: cc.Node = null;
     private _shouldSyncSprite: boolean = false;
+    private _hasShown: boolean = false;
 
     start() {
-        this.node.active = false;
+        this.node.active = this._hasShown || !this.hideOnStart;
         this._shouldSyncSprite = false;
+
+        if (!this.hideOnStart && !this._hasShown) {
+            this.populateFromStoredResult();
+        }
     }
 
     update() {
@@ -34,8 +45,86 @@ export default class GameOverPanel extends cc.Component {
         if (vsp) vsp.spriteFrame = src.spriteFrame;
     }
 
+    private getLabelAt(path: string): cc.Label | null {
+        const node = cc.find(path, this.node);
+        return node ? node.getComponent(cc.Label) : null;
+    }
+
+    private formatRoundResult(result: string, matchStats: MatchStatsData): string {
+        if (result === "DRAW") return "DRAW";
+        if (result === matchStats.p1Name) return "P1 WIN";
+        if (result === matchStats.p2Name) return "P2 WIN";
+        return result;
+    }
+
+    private applyRoundRow(rowNode: cc.Node, round: RoundStatData, matchStats: MatchStatsData) {
+        const roundLabel = cc.find("RoundLabel", rowNode)?.getComponent(cc.Label);
+        const p1Value = cc.find("P1Value", rowNode)?.getComponent(cc.Label);
+        const p2Value = cc.find("P2Value", rowNode)?.getComponent(cc.Label);
+        const resultValue = cc.find("ResultValue", rowNode)?.getComponent(cc.Label);
+
+        if (roundLabel) roundLabel.string = `R${round.round}`;
+        if (p1Value) p1Value.string = `${round.p1DealtPercent}%`;
+        if (p2Value) p2Value.string = `${round.p2DealtPercent}%`;
+        if (resultValue) resultValue.string = this.formatRoundResult(round.result, matchStats);
+    }
+
+    private renderMatchStats(matchStats: MatchStatsData | null, winnerName: string) {
+        const totalDamageLabel = this.getLabelAt("Panel/Body/LeftPlayerCard/SummaryBox/TotalDamageLabel");
+        const roundWinsLabel = this.getLabelAt("Panel/Body/LeftPlayerCard/SummaryBox/RoundWinsLabel");
+        const statsList = cc.find("Panel/Body/RightStats/StatsList", this.node);
+        const rowTemplate = statsList ? cc.find("RowTemplate", statsList) : null;
+
+        if (!matchStats) {
+            if (totalDamageLabel) totalDamageLabel.string = "TOTAL DAMAGE: 0%";
+            if (roundWinsLabel) roundWinsLabel.string = "ROUND WINS: 0";
+            if (rowTemplate) {
+                rowTemplate.active = false;
+            }
+            return;
+        }
+
+        const isP1Winner = winnerName === matchStats.p1Name;
+        const winnerTotalDamage = isP1Winner ? matchStats.totalP1Dealt : matchStats.totalP2Dealt;
+        const winnerRoundWins = isP1Winner ? matchStats.p1RoundWins : matchStats.p2RoundWins;
+
+        if (totalDamageLabel) totalDamageLabel.string = `TOTAL DAMAGE: ${winnerTotalDamage}%`;
+        if (roundWinsLabel) roundWinsLabel.string = `ROUND WINS: ${winnerRoundWins}`;
+
+        if (!statsList || !rowTemplate) {
+            return;
+        }
+
+        statsList.children.slice().forEach((child) => {
+            if (child !== rowTemplate) {
+                child.destroy();
+            }
+        });
+
+        const rounds = matchStats.rounds.length > 0
+            ? matchStats.rounds
+            : [{ round: 1, p1DealtPercent: 0, p2DealtPercent: 0, result: "DRAW" }];
+
+        const baseX = rowTemplate.x;
+        const baseY = rowTemplate.y;
+        const rowSpacing = 58;
+
+        rounds.forEach((round, index) => {
+            const rowNode = index === 0 ? rowTemplate : cc.instantiate(rowTemplate);
+            if (index > 0) {
+                rowNode.name = `Row_${index + 1}`;
+                statsList.addChild(rowNode);
+            }
+
+            rowNode.active = true;
+            rowNode.setPosition(baseX, baseY - rowSpacing * index);
+            this.applyRoundRow(rowNode, round, matchStats);
+        });
+    }
+
     /** GameManager.gameEnd() 呼叫 */
-    public show(winnerName: string, winnerPrefab?: cc.Prefab) {
+    public show(winnerName: string, winnerPrefab?: cc.Prefab, matchStats: MatchStatsData | null = null) {
+        this._hasShown = true;
         this.node.active = true;
         this.node.setSiblingIndex(this.node.parent.childrenCount - 1);
 
@@ -49,8 +138,13 @@ export default class GameOverPanel extends cc.Component {
             });
         }
         if (this.winnerLabel) {
-            this.winnerLabel.string = `${winnerName} WINS!`;
+            this.winnerLabel.string = "";
         }
+        const resolvedNameLabel = this.nameLabel || this.getLabelAt("Panel/Body/LeftPlayerCard/NameLabel");
+        if (resolvedNameLabel) {
+            resolvedNameLabel.string = `WINNER ${winnerName}`;
+        }
+        this.renderMatchStats(matchStats, winnerName);
 
         // 顯示贏家角色動畫
         if (winnerPrefab && this.characterContainer) {
@@ -109,6 +203,13 @@ export default class GameOverPanel extends cc.Component {
 
             this._shouldSyncSprite = true;
         }
+    }
+
+    private populateFromStoredResult() {
+        const data = NetworkManager.instance?.getGameOverData?.();
+        if (!data) return;
+
+        this.show(data.winnerName, data.winnerPrefab || undefined, data.matchStats || null);
     }
 
     private _leaveAndLoad(sceneName: string) {

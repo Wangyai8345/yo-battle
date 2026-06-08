@@ -1,5 +1,5 @@
 import { Room, Client, CloseCode } from "colyseus";
-import { MyRoomState, Player } from "./schema/MyRoomState.js";
+import { MyRoomState, Player, RoundStat } from "./schema/MyRoomState.js";
 
 
 const READY_TIME = 1;
@@ -41,6 +41,8 @@ export class MyRoom extends Room {
 
 	gameTimer: any = null;
 	syncSignals: Map<string, Set<string>> = new Map<string, Set<string>>();
+	private currentRoundP1DealtPercent = 0;
+	private currentRoundP2DealtPercent = 0;
 
 
 	onCreate(options: any) {
@@ -86,8 +88,16 @@ export class MyRoom extends Room {
 		 * Called when a client leaves the room.
 		 */
 
-		this.state.winner = this.getOtherPlayer(client.sessionId).name;
-		this.state.gameState = GAMESTATE.END;
+		if (
+			this.state.gameState !== GAMESTATE.END &&
+			this.state.gameState !== GAMESTATE.TERMINATED
+		) {
+			const otherPlayer = this.getOtherPlayer(client.sessionId);
+			if (otherPlayer) {
+				this.state.winner = otherPlayer.name;
+				this.state.gameState = GAMESTATE.END;
+			}
+		}
 
 		this.state.players.delete(client.sessionId);
 		console.log(client.sessionId, "left!", code);
@@ -123,13 +133,76 @@ export class MyRoom extends Room {
 	}
 
 
+	private getPlayerById(id: number) {
+		for (const player of this.state.players.values()) {
+			if (player.id === id) {
+				return player;
+			}
+		}
+		return null;
+	}
+
+	private clampPercent(value: number) {
+		return Math.max(0, Math.min(100, Math.round(value)));
+	}
+
+
+	private resetRoundDamageTracking() {
+		this.currentRoundP1DealtPercent = 0;
+		this.currentRoundP2DealtPercent = 0;
+	}
+
+
+	private recordAttackDamage(attackerSessionId: string, targetSessionId: string, damage: number) {
+		if (this.state.gameState !== GAMESTATE.GAME) {
+			return;
+		}
+
+		const attacker = this.getPlayer(attackerSessionId);
+		const target = this.getPlayer(targetSessionId);
+
+		if (!attacker || !target) {
+			return;
+		}
+
+		const safeDamage = Math.max(0, Number.isFinite(damage) ? damage : 0);
+		const appliedDamage = Math.min(safeDamage, Math.max(0, target.hp));
+
+		if (attacker.id === 1) {
+			this.currentRoundP1DealtPercent = Math.min(100, this.currentRoundP1DealtPercent + appliedDamage);
+		} else if (attacker.id === 2) {
+			this.currentRoundP2DealtPercent = Math.min(100, this.currentRoundP2DealtPercent + appliedDamage);
+		}
+	}
+
+
+	private recordRoundStat(result: string) {
+		const p1 = this.getPlayerById(1);
+		const p2 = this.getPlayerById(2);
+
+		if (!p1 || !p2) {
+			return;
+		}
+
+		const stat = new RoundStat();
+		stat.round = this.state.roundStats.length + 1;
+		stat.p1DealtPercent = this.clampPercent(this.currentRoundP1DealtPercent);
+		stat.p2DealtPercent = this.clampPercent(this.currentRoundP2DealtPercent);
+		stat.result = result;
+
+		this.state.roundStats.push(stat);
+	}
+
+
 	playerLoseOneHeart(sessionId: string) {
 		if (this.state.gameState !== GAMESTATE.GAME) return;
 
 		const player = this.getPlayer(sessionId);
-		player.heart -= 1;
-
 		const otherplayer = this.getOtherPlayer(sessionId);
+		if (!player || !otherplayer) return;
+
+		this.recordRoundStat(otherplayer.name);
+		player.heart -= 1;
 
 		if (player.heart === 0) {
 			this.state.winner = otherplayer.name;
@@ -142,19 +215,15 @@ export class MyRoom extends Room {
 
 
 	checkHigherHP() {
-		let sessionIds: string[] = [];
-		let HPs: number[] = [];
+		const players = Array.from(this.state.players.entries())
+			.sort((a, b) => a[1].id - b[1].id);
 
-		this.state.players.forEach((player, sessionId) => {
-			sessionIds.push(sessionId);
-			HPs.push(player.hp);
-		});
-
-		if (HPs.length === 2 && HPs[0] !== HPs[1]) {
-			if (HPs[0] > HPs[1]) this.playerLoseOneHeart(sessionIds[1]);
-			if (HPs[0] < HPs[1]) this.playerLoseOneHeart(sessionIds[0]);
+		if (players.length === 2 && players[0][1].hp !== players[1][1].hp) {
+			if (players[0][1].hp > players[1][1].hp) this.playerLoseOneHeart(players[1][0]);
+			if (players[0][1].hp < players[1][1].hp) this.playerLoseOneHeart(players[0][0]);
 		}
 		else {
+			this.recordRoundStat("DRAW");
 			this.state.gameState = GAMESTATE.BREAK;
 		}
 	}
@@ -213,6 +282,7 @@ export class MyRoom extends Room {
 
 
 	async runGameLoop() {
+		this.state.roundStats.splice(0, this.state.roundStats.length);
 		this.resetRound();
 
 		this.state.gameState = GAMESTATE.READY;
@@ -268,6 +338,7 @@ export class MyRoom extends Room {
 
 
 	resetRound() {
+		this.resetRoundDamageTracking();
 		this.resetPlayerPositions();
 		this.reserPlayerHp();
 	}
@@ -409,6 +480,7 @@ export class MyRoom extends Room {
 				const TOLERATE_DISTANCE = 50;
 
 				if (distance <= TOLERATE_DISTANCE) {
+					this.recordAttackDamage(client.sessionId, message.targetSessionId, message.damage);
 
 					this.broadcast("S_attackResult", {
 						isValid: true,

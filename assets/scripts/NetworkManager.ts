@@ -20,6 +20,29 @@ export enum GAMESTATE{
 	TERMINATED 	// Game completely end
 };
 
+export type GameOverData = {
+    winnerName: string;
+    winnerPrefab: cc.Prefab | null;
+    matchStats: MatchStatsData | null;
+};
+
+export type RoundStatData = {
+    round: number;
+    p1DealtPercent: number;
+    p2DealtPercent: number;
+    result: string;
+};
+
+export type MatchStatsData = {
+    p1Name: string;
+    p2Name: string;
+    totalP1Dealt: number;
+    totalP2Dealt: number;
+    p1RoundWins: number;
+    p2RoundWins: number;
+    rounds: RoundStatData[];
+};
+
 
 
 
@@ -47,6 +70,8 @@ export default class NetworkManager extends cc.Component {
     private onMatchReadyCallback: Function = null;
     private quitPromise: Promise<void> | null = null;
     private _isDuplicate: boolean = false;
+    private gameOverData: GameOverData | null = null;
+    private isTransitioningToGameOver = false;
 
 
 
@@ -246,11 +271,15 @@ export default class NetworkManager extends cc.Component {
 					break;
 
 				case GAMESTATE.END:
-                    gameManager?.gameEnd();
+                    if (!this.isTransitioningToGameOver) {
+                        gameManager?.gameEnd();
+                    }
 					break;
 
 				case GAMESTATE.TERMINATED:
-                    this.terminateAndReturnToLobby();
+                    if (!this.isTransitioningToGameOver) {
+                        this.terminateAndReturnToLobby();
+                    }
 					break;
             }
         });
@@ -344,6 +373,8 @@ export default class NetworkManager extends cc.Component {
                 debug(`S_attackResult, isValid: ${message.isValid}, attackType: ${message.attackType}`);
                 
                 if (message.isValid) {
+                    GameManager.instance?.recordLocalAttackDamage(message.targetSessionId, message.damage);
+
                     if (this.isLocal(message.targetSessionId)) {
                         // 防守方客戶端：走 beAttacked()，內部會觸發 hit spark
                         let controller = this.getPlayerControllerOf(message.targetSessionId);
@@ -403,10 +434,67 @@ export default class NetworkManager extends cc.Component {
     }
 
 
+    public setGameOverData(data: GameOverData | null) {
+        this.gameOverData = data;
+    }
+
+
+    public getGameOverData(): GameOverData | null {
+        return this.gameOverData;
+    }
+
+
+    public async transitionToGameOverScene(data: GameOverData, sceneName: string = "gameover") {
+        if (this.isTransitioningToGameOver) {
+            if (this.gameOverData && !this.gameOverData.matchStats && data.matchStats) {
+                this.gameOverData = data;
+            }
+            return;
+        }
+
+        this.gameOverData = data;
+        this.isTransitioningToGameOver = true;
+
+        try {
+            await this.quitServer();
+        } catch (error) {
+            cc.warn("[NetworkManager] Failed to quit server before loading gameover scene", error);
+        } finally {
+            cc.director.loadScene(sceneName, () => {
+                const finalData = this.gameOverData || data;
+                const canvas = cc.find("Canvas");
+                const panelNode =
+                    cc.find("Canvas/GameOverPanel") ||
+                    cc.find("GameOverPanel");
+
+                if (!panelNode) {
+                    cc.error("[NetworkManager] GameOverPanel node not found after loading gameover scene");
+                    return;
+                }
+
+                const panel = panelNode.getComponent("GameOverPanel") as any;
+
+                if (!panel || typeof panel.show !== "function") {
+                    cc.error("[NetworkManager] GameOverPanel component missing or show() unavailable");
+                    return;
+                }
+
+                panel.show(
+                    finalData.winnerName,
+                    finalData.winnerPrefab || undefined,
+                    finalData.matchStats || null
+                );
+            });
+        }
+    }
+
+
     /** @usage called at Join Game Scene when player clicked join game button */
     public async connectToServer(roomName: string, chosenCharacter: string, onMatchReady: Function) {
         try{
             this.onMatchReadyCallback = onMatchReady;
+            this.gameOverData = null;
+            this.isTransitioningToGameOver = false;
 
             this.room = await this.client.joinOrCreate("my_room", { 
                 customRoomName: roomName,

@@ -6611,8 +6611,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 530,
-      "height": 400
+      "width": 1920,
+      "height": 1080
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -6623,8 +6623,8 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        0,
-        0,
+        -2810.576,
+        -19.428,
         0,
         0,
         0,
@@ -7724,9 +7724,11 @@
     "winnerLabel": {
       "__id__": 162
     },
+    "nameLabel": null,
     "characterContainer": {
       "__id__": 163
     },
+    "hideOnStart": true,
     "_id": "c2LauFDGFDZZXXfy6MB61d"
   },
   {

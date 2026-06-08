@@ -1,4 +1,4 @@
-import { Schema, MapSchema, type } from "@colyseus/schema";
+import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
 
 export class Player extends Schema {
@@ -14,8 +14,16 @@ export class Player extends Schema {
     @type("string") character: string;
 }
 
+export class RoundStat extends Schema {
+    @type("number") round: number = 1;
+    @type("number") p1DealtPercent: number = 0;
+    @type("number") p2DealtPercent: number = 0;
+    @type("string") result: string = "DRAW";
+}
+
 export class MyRoomState extends Schema {
     @type({ map: Player }) players = new MapSchema<Player>();
+    @type([RoundStat]) roundStats = new ArraySchema<RoundStat>();
     @type("boolean") isPending: boolean = true;
     @type("number") gameState: number = 0;
 

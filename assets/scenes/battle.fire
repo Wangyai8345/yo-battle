@@ -16330,6 +16330,8 @@
     "knockbackLabel": {
       "__id__": 460
     },
+    "avatarSprite": null,
+    "youLabel": null,
     "_id": "497fih9d1MWZKB5zIaekiL"
   },
   {
@@ -16828,6 +16830,8 @@
     "knockbackLabel": {
       "__id__": 471
     },
+    "avatarSprite": null,
+    "youLabel": null,
     "_id": "42PcGbZ0hNdIhDeOrUd2qU"
   },
   {
@@ -21054,6 +21058,7 @@
     "exampleProjectilePrefab": null,
     "arrowProjectilePrefab": null,
     "arrowBeamPrefab": null,
+    "dragonProjectilePrefab": null,
     "map0Prefab": null,
     "map1Prefab": null,
     "map2Prefab": null,
@@ -21061,6 +21066,7 @@
     "winnerLabel": null,
     "heartLabel": null,
     "waitingLabel": null,
+    "gameOverPanel": null,
     "_id": "d1l/C9/mZJwJfESmC5cgj5"
   },
   {
