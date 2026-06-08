@@ -11,7 +11,7 @@ export default class MainMenu extends cc.Component {
     settingPanel: SettingPanel = null;
 
     onLoad() {
-        AudioManager.stopMusic();
+        AudioManager.playMusic('遊戲登入背景音樂');
     }
 
     onButtonHover() {

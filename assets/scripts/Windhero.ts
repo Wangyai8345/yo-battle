@@ -1054,7 +1054,7 @@ export default class Windhero extends PlayerController {
         }
 
         visualNode.y = this.visualOffsetY;
-        visualNode.scaleX = this.visualScale;
+        visualNode.scaleX = -this.visualScale; // sprite 天生面左，乘 -1 讓朝右為預設正方向
         visualNode.scaleY = this.visualScale;
 
         const sprite = visualNode.getComponent(cc.Sprite);
