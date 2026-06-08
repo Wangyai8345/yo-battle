@@ -1,4 +1,5 @@
 import NetworkManager from "./NetworkManager";
+import ParticleEffectManager from "./ParticleEffectManager";
 import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
@@ -339,6 +340,7 @@ export default class Windhero extends PlayerController {
 
     private moveInput: number = 0;
     private onGround: boolean = true;
+    private _prevOnGround: boolean = true;
     private groundContactCount: number = 0;
     private currentAnim: string = "";
     private leftHeld: boolean = false;
@@ -406,6 +408,11 @@ export default class Windhero extends PlayerController {
 
     protected lateUpdate(): void {
         this.syncVisualSpriteFrame();
+        if (this.onGround && !this._prevOnGround) {
+            const worldPos = this.node.convertToWorldSpaceAR(cc.v2(0, -this.node.height * 0.5));
+            ParticleEffectManager.playLanding(worldPos, cc.find('Canvas'));
+        }
+        this._prevOnGround = this.onGround;
     }
 
     protected localUpdate(dt: number): void {

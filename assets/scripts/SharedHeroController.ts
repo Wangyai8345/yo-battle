@@ -1,6 +1,7 @@
 ﻿import AudioManager from './AudioManager';
 import NetworkManager from './NetworkManager';
 import PlayerController from './PlayerController';
+import ParticleEffectManager from './ParticleEffectManager';
 
 const { ccclass, property } = cc._decorator;
 type ClipLike = cc.AnimationClip | string | null | undefined;
@@ -234,6 +235,7 @@ export default class SharedHeroController extends PlayerController {
 
     private moveDir: number = 0;
     private onGround: boolean = false;
+    private _prevOnGround: boolean = false;
     private groundContactCount: number = 0;
     private isDashing: boolean = false;
     private facingDir: number = 1; // 閫?Ｘ????1 for right, -1 for left
@@ -391,6 +393,14 @@ export default class SharedHeroController extends PlayerController {
 
     protected lateUpdate(): void {
         this.syncVisualSpriteFrame();
+
+        // 落地粉塵：偵測從空中切換到地面的那一幀
+        if (this.onGround && !this._prevOnGround) {
+            const worldPos = this.node.convertToWorldSpaceAR(cc.v2(0, -this.node.height * 0.5));
+            console.log('[FX] landing dust at', worldPos.x.toFixed(0), worldPos.y.toFixed(0));
+            ParticleEffectManager.playLanding(worldPos, cc.find('Canvas'));
+        }
+        this._prevOnGround = this.onGround;
     }
 
     onDestroy() {
@@ -1418,6 +1428,9 @@ export default class SharedHeroController extends PlayerController {
         }
 
         this.isDead = true;
+        const deathWorldPos = this.node.convertToWorldSpaceAR(cc.v2(0, 0));
+        console.log('[FX] death explosion at', deathWorldPos.x.toFixed(0), deathWorldPos.y.toFixed(0));
+        ParticleEffectManager.playDeath(deathWorldPos, cc.find('Canvas'));
         this.isHit = false;
         this.isAttacking = false;
         this.isAirAttacking = false;
@@ -1565,6 +1578,9 @@ export default class SharedHeroController extends PlayerController {
         if (this.hp > 0) {
             this.applyKnockback(knockback);
             this.enterHitState();
+            const hitWorldPos = this.node.convertToWorldSpaceAR(cc.v2(0, 0));
+            console.log('[FX] beAttacked hit spark at', hitWorldPos.x, hitWorldPos.y);
+            ParticleEffectManager.playHit(hitWorldPos, cc.find('Canvas'));
         }
 
         // TODO: if there're some special attackType, handle it here

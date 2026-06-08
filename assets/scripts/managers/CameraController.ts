@@ -61,9 +61,10 @@ export default class CameraController extends cc.Component {
     update(dt: number) {
         this._findPlayers();
         if (!this.p1 || !this._cam) return;
+        if (!cc.isValid(this.p1)) { this.p1 = null; return; }
 
         const p1Pos = this.p1.getPosition();
-        const p2Pos = this.p2 ? this.p2.getPosition() : p1Pos;
+        const p2Pos = (this.p2 && cc.isValid(this.p2)) ? this.p2.getPosition() : p1Pos;
 
         const midX = (p1Pos.x + p2Pos.x) / 2;
         const midY = (p1Pos.y + p2Pos.y) / 2 + this.offsetY;

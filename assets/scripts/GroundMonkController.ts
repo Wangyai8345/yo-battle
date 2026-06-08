@@ -1,5 +1,6 @@
 import AudioManager from './AudioManager';
 import NetworkManager from './NetworkManager';
+import ParticleEffectManager from './ParticleEffectManager';
 import PlayerController from './PlayerController';
 
 const { ccclass, property } = cc._decorator;
@@ -192,6 +193,7 @@ export default class GroundMonkController extends PlayerController {
 
     private moveDir: number = 0;
     private onGround: boolean = false;
+    private _prevOnGround: boolean = false;
     private groundContactCount: number = 0;
     private isDashing: boolean = false;
     private facingDir: number = 1; // 角色面朝的方向，1 for right, -1 for left
@@ -249,6 +251,11 @@ export default class GroundMonkController extends PlayerController {
 
     protected lateUpdate(): void {
         this.syncVisualSpriteFrame();
+        if (this.onGround && !this._prevOnGround) {
+            const worldPos = this.node.convertToWorldSpaceAR(cc.v2(0, -this.node.height * 0.5));
+            ParticleEffectManager.playLanding(worldPos, cc.find('Canvas'));
+        }
+        this._prevOnGround = this.onGround;
     }
 
     onDestroy() {

@@ -1,5 +1,6 @@
 import AudioManager from "./AudioManager";
 import GameManager from "./GameManager";
+import ParticleEffectManager from "./ParticleEffectManager";
 import PlayerController from "./PlayerController";
 import { resolvePlayerController } from "./PlayerControllerResolver";
 
@@ -290,6 +291,15 @@ export default class NetworkManager extends cc.Component {
         this.room.onMessage("S_playerDead", (message: { sessionId: string }) => {
             debug(`S_playerDead, SessionId: ${message.sessionId}`);
 
+            // 死亡爆炸：不論攻守方皆觸發（onDeath 只在防守方，這裡補攻擊方那側）
+            if (!this.isLocal(message.sessionId)) {
+                const deadNode = this.playerNodes.get(message.sessionId);
+                if (deadNode && cc.isValid(deadNode)) {
+                    const worldPos = deadNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                    ParticleEffectManager.playDeath(worldPos, cc.find('Canvas'));
+                }
+            }
+
             let controller = this.getPlayerControllerOf(message.sessionId);
             if (controller) {
                 controller.syncDeathState();
@@ -333,14 +343,24 @@ export default class NetworkManager extends cc.Component {
             }) => {
                 debug(`S_attackResult, isValid: ${message.isValid}, attackType: ${message.attackType}`);
                 
-                if(message.isValid && this.isLocal(message.targetSessionId)){
-                    let controller = this.getPlayerControllerOf(message.targetSessionId);
-                    if(controller) {
-                        controller.beAttacked(
-                            message.attackType,
-                            message.damage,
-                            cc.v2(message.kbX, message.kbY)
-                        );
+                if (message.isValid) {
+                    if (this.isLocal(message.targetSessionId)) {
+                        // 防守方客戶端：走 beAttacked()，內部會觸發 hit spark
+                        let controller = this.getPlayerControllerOf(message.targetSessionId);
+                        if (controller) {
+                            controller.beAttacked(
+                                message.attackType,
+                                message.damage,
+                                cc.v2(message.kbX, message.kbY)
+                            );
+                        }
+                    } else {
+                        // 攻擊方客戶端：beAttacked() 不會在這裡呼叫，手動噴 hit spark
+                        const targetNode = this.playerNodes.get(message.targetSessionId);
+                        if (targetNode && cc.isValid(targetNode)) {
+                            const worldPos = targetNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                            ParticleEffectManager.playHit(worldPos, cc.find('Canvas'));
+                        }
                     }
                 }
             }
