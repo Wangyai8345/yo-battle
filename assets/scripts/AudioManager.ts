@@ -110,7 +110,7 @@ export default class AudioManager {
             cc.audioEngine.playMusic(clip, loop);
             if (volumeScale !== 1) {
                 const base = cc.audioEngine.getMusicVolume();
-                cc.audioEngine.setMusicVolume(base * Math.max(0, Math.min(1, volumeScale)));
+                cc.audioEngine.setMusicVolume(Math.max(0, Math.min(1, base * volumeScale)));
             }
         };
 
