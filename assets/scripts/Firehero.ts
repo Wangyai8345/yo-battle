@@ -352,6 +352,9 @@ export default class Firehero extends PlayerController {
     dashSpeed: number = 1000;
 
     @property
+    fastFallGravityScale: number = 20.0;
+
+    @property
     dashDuration: number = 0.15;
 
     @property
@@ -409,6 +412,8 @@ export default class Firehero extends PlayerController {
     private isDashing: boolean = false;
     private dashCooldownRemaining: number = 0;
     private airJumpUsed: boolean = false;
+    private downPressed: boolean = false;
+    private _initialGravityScale: number = -1;
     private currentClipAction: WindClipActionName | null = null;
     private pendingPhase: TimedPhaseState | null = null;
     private superModel: WindSuperModel | null = null;
@@ -495,10 +500,14 @@ export default class Firehero extends PlayerController {
 
         const DEAD_ZONE = 0.25;
         const axisX = gp.axes[0] ?? 0;
+        const axisY = gp.axes[1] ?? 0;
         const dpadLeft = gp.buttons[14]?.pressed ?? false;
         const dpadRight = gp.buttons[15]?.pressed ?? false;
+        const dpadDown = gp.buttons[13]?.pressed ?? false;
         const newLeft = axisX < -DEAD_ZONE || dpadLeft;
         const newRight = axisX > DEAD_ZONE || dpadRight;
+        const newDown = axisY > DEAD_ZONE || dpadDown;
+        this.downPressed = newDown;
 
         if (newLeft !== this.gpLeft) {
             this.gpLeft = newLeft;
@@ -590,6 +599,7 @@ export default class Firehero extends PlayerController {
         }
         this.rb.linearVelocity = velocity;
 
+        this.updateGravityScale();
         this.updateFacingFromVelocity(velocity.x);
         this.applyFacingDirection();
 
@@ -607,6 +617,10 @@ export default class Firehero extends PlayerController {
         if (event.keyCode === cc.macro.KEY.d && !this.directionInputLocked) {
             this.rightHeld = true;
             this.refreshMoveInput();
+        }
+
+        if (event.keyCode === cc.macro.KEY.s || event.keyCode === cc.macro.KEY.down) {
+            this.downPressed = true;
         }
 
         if (
@@ -683,6 +697,10 @@ export default class Firehero extends PlayerController {
         if (event.keyCode === cc.macro.KEY.d && !this.directionInputLocked) {
             this.rightHeld = false;
             this.refreshMoveInput();
+        }
+
+        if (event.keyCode === cc.macro.KEY.s || event.keyCode === cc.macro.KEY.down) {
+            this.downPressed = false;
         }
     }
 
@@ -1408,6 +1426,7 @@ export default class Firehero extends PlayerController {
         this.leftHeld = false;
         this.rightHeld = false;
         this.moveInput = 0;
+        this.downPressed = false;
     }
 
     private resetTransientInputState() {
@@ -1421,6 +1440,18 @@ export default class Firehero extends PlayerController {
             const velocity = this.rb.linearVelocity;
             velocity.x = 0;
             this.rb.linearVelocity = velocity;
+        }
+    }
+
+    private updateGravityScale() {
+        if (!this.rb) return;
+        if (this._initialGravityScale < 0) {
+            this._initialGravityScale = this.rb.gravityScale;
+        }
+        if (!this.onGround && !this.isDashing && this.downPressed) {
+            this.rb.gravityScale = this.fastFallGravityScale;
+        } else {
+            this.rb.gravityScale = this._initialGravityScale;
         }
     }
 
