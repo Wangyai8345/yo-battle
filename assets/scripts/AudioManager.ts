@@ -73,7 +73,8 @@ export default class AudioManager {
             if (!clip) {
                 return;
             }
-            cc.audioEngine.play(clip, loop, Math.max(0, volume) * AudioManager._sfxVolume);
+            const id = cc.audioEngine.playEffect(clip, loop);
+            cc.audioEngine.setVolume(id, Math.max(0, volume) * AudioManager._sfxVolume);
         };
 
         const cachedClip = AudioManager.clipCache[resource];
