@@ -3,6 +3,7 @@ import PlayerController from "./PlayerController";
 import { resolvePlayerController } from "./PlayerControllerResolver";
 
 const { ccclass, property } = cc._decorator;
+const WATER_PRIESTESS_SKILL3_CONTROL_PREFIX = "waterPriestessSkill3Control:";
 
 @ccclass
 export default class AttackHitBox extends cc.Component {
@@ -67,6 +68,18 @@ export default class AttackHitBox extends cc.Component {
     private buildKnockback(fromPos: cc.Vec2, toPos: cc.Vec2): cc.Vec2 {
         if (this.kbScale <= 0) {
             return cc.v2(0, 0);
+        }
+
+        if (this.attackType.startsWith(WATER_PRIESTESS_SKILL3_CONTROL_PREFIX)) {
+            const attackerNode = this.node.parent;
+            const attackerWorldPos = attackerNode
+                ? attackerNode.convertToWorldSpaceAR(cc.Vec2.ZERO)
+                : fromPos;
+            let delta = attackerWorldPos.sub(toPos);
+            if (delta.magSqr() <= 0.0001) {
+                delta = cc.v2(1, 0);
+            }
+            return delta.normalize().mul(this.kbScale);
         }
 
         if (this.attackType.startsWith("groundMonk")) {

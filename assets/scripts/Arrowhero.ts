@@ -3,6 +3,7 @@ import ParticleEffectManager from "./ParticleEffectManager";
 import PlayerController from "./PlayerController";
 
 const { ccclass, property } = cc._decorator;
+const WATER_PRIESTESS_SKILL3_CONTROL_PREFIX = "waterPriestessSkill3Control:";
 
 type SkillSlot = "attack" | "skill2" | "skill3" | "defend" | "super";
 type ArrowClipActionName =
@@ -475,6 +476,7 @@ export default class Arrowhero extends PlayerController {
     protected localUpdate(dt: number): void {
         this.pollGamepad();
         this.updateCooldowns(dt);
+        this.updateCrowdControl(dt);
 
         if (!this.rb) {
             return;
@@ -482,7 +484,9 @@ export default class Arrowhero extends PlayerController {
 
         if (this.isDead || this.isHit) {
             const velocity = this.rb.linearVelocity;
-            velocity.x = 0;
+            if (!this.isCrowdControlled()) {
+                velocity.x = 0;
+            }
             this.rb.linearVelocity = velocity;
             if (!this.animationLocked) {
                 this.updateAnimation();
@@ -597,17 +601,29 @@ export default class Arrowhero extends PlayerController {
             return;
         }
 
+        const crowdControlDuration = this.parseTaggedDuration(
+            attackType,
+            WATER_PRIESTESS_SKILL3_CONTROL_PREFIX
+        );
         let finalDamage = damage;
         if (this.isDefending) {
             finalDamage = Math.floor(finalDamage * this.defendDamageMultiplier);
-            if (finalDamage <= 0) {
+            if (finalDamage < 0) {
+                finalDamage = 0;
+            }
+            if (finalDamage <= 0 && crowdControlDuration <= 0) {
                 return;
             }
         }
 
-        this.deductHp(finalDamage);
+        if (finalDamage > 0) {
+            this.deductHp(finalDamage);
+        }
 
-        if (this.hp > 0) {
+        if (this.hp > 0 && (finalDamage > 0 || crowdControlDuration > 0)) {
+            if (crowdControlDuration > 0) {
+                this.applyCrowdControl(crowdControlDuration);
+            }
             this.enterHitState(knockback);
         }
 
@@ -624,6 +640,7 @@ export default class Arrowhero extends PlayerController {
             return;
         }
 
+        this.consumeCrowdControl();
         this.unschedule(this.hideAfterDeath);
         this.clearAnimationFinishedListener(this.onClipFinished);
         this.isDead = true;
@@ -651,6 +668,7 @@ export default class Arrowhero extends PlayerController {
 
     public onRestart(): void {
         this.unschedule(this.hideAfterDeath);
+        this.consumeCrowdControl();
         this.isDead = false;
         this.isHit = false;
         this.isDefending = false;
@@ -1007,6 +1025,12 @@ export default class Arrowhero extends PlayerController {
 
     private exitHitState() {
         if (this.isDead) {
+            return;
+        }
+
+        if (this.isCrowdControlled()) {
+            this.unschedule(this.exitHitState);
+            this.scheduleOnce(this.exitHitState, Math.max(0.05, this.getCrowdControlRemaining()));
             return;
         }
 

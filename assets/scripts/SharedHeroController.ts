@@ -5,6 +5,7 @@ import ParticleEffectManager from './ParticleEffectManager';
 
 const { ccclass, property } = cc._decorator;
 type ClipLike = cc.AnimationClip | string | null | undefined;
+const WATER_PRIESTESS_SKILL3_CONTROL_PREFIX = "waterPriestessSkill3Control:";
 
 // enum CharacterPreset {
 //     Custom = 0,
@@ -476,6 +477,7 @@ export default class SharedHeroController extends PlayerController {
     localUpdate(dt: number) {
         this.pollGamepad();
         this.updateAbilityCooldowns(dt);
+        this.updateCrowdControl(dt);
         // ?湔頝唾?閮???        if (this.coyoteTimer > 0) this.coyoteTimer -= dt;
         if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= dt;
 
@@ -493,7 +495,9 @@ export default class SharedHeroController extends PlayerController {
         let v = this.rb.linearVelocity;
 
         if (this.isDead || this.isHit) {
-            v.x = 0;
+            if (!this.isCrowdControlled()) {
+                v.x = 0;
+            }
             this.rb.linearVelocity = v;
             this.updateAnimation();
             return;
@@ -967,10 +971,19 @@ export default class SharedHeroController extends PlayerController {
     }
 
     useMelee() {
+        if (this.isWaterPriestessCharacter()) {
+            this.useWaterPriestessMelee();
+            return;
+        }
         this.requestDirectionalAttack();
     }
 
     useSkill2() {
+        if (this.isWaterPriestessCharacter()) {
+            this.useWaterPriestessSkill2();
+            return;
+        }
+
         if (this.skill2CooldownRemaining > 0) {
             return;
         }
@@ -989,6 +1002,11 @@ export default class SharedHeroController extends PlayerController {
     }
 
     useSkill3() {
+        if (this.isWaterPriestessCharacter()) {
+            this.useWaterPriestessSkill3();
+            return;
+        }
+
         if (this.skill3CooldownRemaining > 0) {
             return;
         }
@@ -1008,6 +1026,11 @@ export default class SharedHeroController extends PlayerController {
     }
 
     useSuper() {
+        if (this.isWaterPriestessCharacter()) {
+            this.useWaterPriestessSuper();
+            return;
+        }
+
         if (this.superCooldownRemaining > 0) {
             return;
         }
@@ -1035,12 +1058,26 @@ export default class SharedHeroController extends PlayerController {
         damage: number,
         knockback: number
     ): boolean {
-        if (this.isDead || this.isHit || this.isDashing || this.isAttacking || this.isAirAttacking) {
+        const playback = this.startSpecialAttackPlayback(clip);
+        if (!playback) {
             return false;
         }
 
+        this.spawnAttackHitBox(attackType, center, size, duration, damage, knockback);
+        return true;
+    }
+
+    private startSpecialAttackPlayback(
+        clip: string,
+        minimumDuration: number = 0,
+        playSpecialSfx: boolean = true
+    ): { playbackToken: number; playbackDuration: number } | null {
+        if (this.isDead || this.isHit || this.isDashing || this.isAttacking || this.isAirAttacking) {
+            return null;
+        }
+
         if (!clip) {
-            return false;
+            return null;
         }
 
         this.isAttacking = true;
@@ -1055,21 +1092,15 @@ export default class SharedHeroController extends PlayerController {
             this.rb.linearVelocity = v;
         }
 
-        this.playSpecialAttackSfx();
+        if (playSpecialSfx) {
+            this.playSpecialAttackSfx();
+        }
         this.playAnim(clip, true);
-
-        this.spawnAttackHitBox(
-            attackType,
-            center,
-            size,
-            duration,
-            damage,
-            knockback
-        );
 
         const playbackToken = this.attackPlaybackToken;
         const state = this.anim ? this.anim.getAnimationState(clip) : null;
         const playbackDuration = state ? state.duration / Math.max(state.speed || 1, 0.01) : 0.5;
+        const effectiveDuration = Math.max(playbackDuration, minimumDuration, 0.05);
 
         this.unschedule(this.onAttackStepTimeout);
         this.anim.off('finished', this.onAttackAnimFinished, this);
@@ -1079,8 +1110,193 @@ export default class SharedHeroController extends PlayerController {
                 return;
             }
             this.onAttackStepTimeout();
-        }, Math.max(playbackDuration, 0.05) + 0.05);
-        return true;
+        }, effectiveDuration + 0.05);
+
+        return {
+            playbackToken,
+            playbackDuration: effectiveDuration,
+        };
+    }
+
+    private schedulePlaybackHitBox(
+        attackType: string,
+        center: cc.Vec2,
+        size: cc.Vec2,
+        duration: number,
+        damage: number,
+        knockback: number,
+        delay: number,
+        playbackToken: number,
+        requireAttacking: boolean = true
+    ) {
+        this.scheduleOnce(() => {
+            if (
+                this.isDead
+                || !cc.isValid(this.node)
+                || this.attackPlaybackToken !== playbackToken
+                || (requireAttacking && !this.isAttacking)
+            ) {
+                return;
+            }
+
+            this.spawnAttackHitBox(
+                attackType,
+                center,
+                size,
+                duration,
+                damage,
+                knockback
+            );
+        }, Math.max(0, delay));
+    }
+
+    private isWaterPriestessCharacter(): boolean {
+        return this.node.name === 'water_priestess' || this.animRun === 'walk';
+    }
+
+    private useWaterPriestessMelee() {
+        const clip = this.getExistingAnimClip(this.attackClip, this.animAttack, 'atk', '1_atk');
+        const playback = this.startSpecialAttackPlayback(clip, 0, false);
+        if (!playback) {
+            return;
+        }
+
+        this.playAttackSfx(1);
+
+        this.schedulePlaybackHitBox(
+            "waterPriestessMeleeAttack",
+            cc.v2(80, 8),
+            cc.v2(96, 42),
+            0.12,
+            2,
+            100,
+            0.08,
+            playback.playbackToken
+        );
+    }
+
+    private useWaterPriestessSkill2() {
+        if (this.skill2CooldownRemaining > 0) {
+            return;
+        }
+
+        const clip = this.getExistingAnimClip(
+            this.attack2Clip,
+            this.animAttack2,
+            '2_atk',
+            this.specialAttackClip,
+            this.animSpecialAttack,
+            'sp_atk'
+        );
+        const playback = this.startSpecialAttackPlayback(clip, 1.05);
+        if (!playback) {
+            return;
+        }
+
+        this.skill2CooldownRemaining = Math.max(0, this.skill2Cooldown);
+
+        this.schedulePlaybackHitBox(
+            "waterPriestessSkill2Short",
+            cc.v2(80, 8),
+            cc.v2(96, 42),
+            0.12,
+            this.skill2Damage,
+            this.skill2Knockback,
+            0.08,
+            playback.playbackToken
+        );
+
+        this.schedulePlaybackHitBox(
+            "waterPriestessSkill2Long",
+            cc.v2(180, 10),
+            cc.v2(220, 36),
+            0.15,
+            this.skill2Damage,
+            this.skill2Knockback,
+            1,
+            playback.playbackToken,
+            false
+        );
+    }
+
+    private useWaterPriestessSkill3() {
+        if (this.skill3CooldownRemaining > 0) {
+            return;
+        }
+
+        const clip = this.getExistingAnimClip(
+            this.skill3Clip,
+            this.animSkill3,
+            this.attack3Clip,
+            this.animAttack3,
+            '3_atk',
+            this.specialAttackClip,
+            this.animSpecialAttack,
+            'sp_atk'
+        );
+        const playback = this.startSpecialAttackPlayback(clip);
+        if (!playback) {
+            return;
+        }
+
+        this.skill3CooldownRemaining = Math.max(0, this.skill3Cooldown);
+        const controlAttackType = `${WATER_PRIESTESS_SKILL3_CONTROL_PREFIX}${playback.playbackDuration.toFixed(2)}`;
+
+        for (let delay = 0; delay < playback.playbackDuration; delay += 0.5) {
+            this.schedulePlaybackHitBox(
+                controlAttackType,
+                cc.v2(118, 14),
+                cc.v2(320, 180),
+                0.12,
+                0,
+                220,
+                delay,
+                playback.playbackToken
+            );
+
+            this.schedulePlaybackHitBox(
+                "waterPriestessSkill3Damage",
+                cc.v2(80, 8),
+                cc.v2(96, 42),
+                0.12,
+                this.skill3Damage,
+                0,
+                delay,
+                playback.playbackToken
+            );
+        }
+    }
+
+    private useWaterPriestessSuper() {
+        if (this.superCooldownRemaining > 0) {
+            return;
+        }
+
+        const clip = this.getExistingAnimClip(
+            this.superClip,
+            this.animSuper,
+            this.specialAttackClip,
+            this.animSpecialAttack,
+            'sp_atk',
+            this.skill3Clip,
+            this.animSkill3
+        );
+        const playback = this.startSpecialAttackPlayback(clip);
+        if (!playback) {
+            return;
+        }
+
+        this.superCooldownRemaining = Math.max(0, this.superCooldown);
+        this.schedulePlaybackHitBox(
+            "waterPriestessSuperAttack",
+            cc.v2(118, 14),
+            cc.v2(320, 180),
+            0.12,
+            this.superDamage,
+            this.superKnockback,
+            Math.max(0, playback.playbackDuration - 0.5),
+            playback.playbackToken
+        );
     }
 
     doJump() {
@@ -1417,6 +1633,11 @@ export default class SharedHeroController extends PlayerController {
         if (this.isDead) {
             return;
         }
+        if (this.isCrowdControlled()) {
+            this.unschedule(this.exitHitState);
+            this.scheduleOnce(this.exitHitState, Math.max(0.05, this.getCrowdControlRemaining()));
+            return;
+        }
         this.isHit = false;
         this.updateAnimation();
     }
@@ -1427,6 +1648,7 @@ export default class SharedHeroController extends PlayerController {
             return;
         }
 
+        this.consumeCrowdControl();
         this.isDead = true;
         const deathWorldPos = this.node.convertToWorldSpaceAR(cc.v2(0, 0));
         console.log('[FX] death explosion at', deathWorldPos.x.toFixed(0), deathWorldPos.y.toFixed(0));
@@ -1537,6 +1759,7 @@ export default class SharedHeroController extends PlayerController {
         this.groundContactCount = 0;
         this.coyoteTimer = 0;
         this.jumpBufferTimer = 0;
+        this.consumeCrowdControl();
         this.skill2CooldownRemaining = 0;
         this.skill3CooldownRemaining = 0;
         this.defendCooldownRemaining = 0;
@@ -1566,16 +1789,29 @@ export default class SharedHeroController extends PlayerController {
             return;
         }
 
+        const crowdControlDuration = this.parseTaggedDuration(
+            attackType,
+            WATER_PRIESTESS_SKILL3_CONTROL_PREFIX
+        );
+
         if (this.isDefending) {
             damage = Math.floor(damage * this.defendDamageMultiplier);
-            if (damage <= 0) {
+            if (damage < 0) {
+                damage = 0;
+            }
+            if (damage <= 0 && crowdControlDuration <= 0) {
                 return;
             }
         }
 
-        this.deductHp(damage);
+        if (damage > 0) {
+            this.deductHp(damage);
+        }
 
-        if (this.hp > 0) {
+        if (this.hp > 0 && (damage > 0 || crowdControlDuration > 0)) {
+            if (crowdControlDuration > 0) {
+                this.applyCrowdControl(crowdControlDuration);
+            }
             this.applyKnockback(knockback);
             this.enterHitState();
             const hitWorldPos = this.node.convertToWorldSpaceAR(cc.v2(0, 0));

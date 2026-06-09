@@ -5,6 +5,7 @@ import PlayerController from './PlayerController';
 
 const { ccclass, property } = cc._decorator;
 type ClipLike = cc.AnimationClip | string | null | undefined;
+const WATER_PRIESTESS_SKILL3_CONTROL_PREFIX = "waterPriestessSkill3Control:";
 
 // enum CharacterPreset {
 //     Custom = 0,
@@ -330,6 +331,7 @@ export default class GroundMonkController extends PlayerController {
 
     // FIXED: implement PlayerController
     localUpdate(dt: number) {
+        this.updateCrowdControl(dt);
         // 手柄輸入
         this.pollGamepad();
 
@@ -351,7 +353,9 @@ export default class GroundMonkController extends PlayerController {
         let v = this.rb.linearVelocity;
 
         if (this.isDead || this.isHit) {
-            v.x = 0;
+            if (!this.isCrowdControlled()) {
+                v.x = 0;
+            }
             this.rb.linearVelocity = v;
             this.updateAnimation();
             return;
@@ -1582,6 +1586,11 @@ export default class GroundMonkController extends PlayerController {
         if (this.isDead) {
             return;
         }
+        if (this.isCrowdControlled()) {
+            this.unschedule(this.exitHitState);
+            this.scheduleOnce(this.exitHitState, Math.max(0.05, this.getCrowdControlRemaining()));
+            return;
+        }
         this.isHit = false;
         this.updateAnimation();
     }
@@ -1592,6 +1601,7 @@ export default class GroundMonkController extends PlayerController {
             return;
         }
 
+        this.consumeCrowdControl();
         this.isDead = true;
         this.isHit = false;
         this.isAttacking = false;
@@ -1699,6 +1709,7 @@ export default class GroundMonkController extends PlayerController {
         this.groundContactCount = 0;
         this.coyoteTimer = 0;
         this.jumpBufferTimer = 0;
+        this.consumeCrowdControl();
         this.airJumpUsed = false;
         this.currentAnim = '';
 
@@ -1725,16 +1736,29 @@ export default class GroundMonkController extends PlayerController {
             return;
         }
 
+        const crowdControlDuration = this.parseTaggedDuration(
+            attackType,
+            WATER_PRIESTESS_SKILL3_CONTROL_PREFIX
+        );
+
         if (this.isDefending) {
             damage = Math.floor(damage * this.defendDamageMultiplier);
-            if (damage <= 0) {
+            if (damage < 0) {
+                damage = 0;
+            }
+            if (damage <= 0 && crowdControlDuration <= 0) {
                 return;
             }
         }
 
-        this.deductHp(damage);
+        if (damage > 0) {
+            this.deductHp(damage);
+        }
 
-        if (this.hp > 0) {
+        if (this.hp > 0 && (damage > 0 || crowdControlDuration > 0)) {
+            if (crowdControlDuration > 0) {
+                this.applyCrowdControl(crowdControlDuration);
+            }
             this.applyKnockback(knockback);
             this.enterHitState();
         }

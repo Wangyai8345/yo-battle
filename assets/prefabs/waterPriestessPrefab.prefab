@@ -860,7 +860,9 @@
     ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
-    "_spriteFrame": null,
+    "_spriteFrame": {
+      "__uuid__": "31d05010-0915-4110-8b85-d6e5d68f833e"
+    },
     "_type": 0,
     "_sizeMode": 0,
     "_fillType": 0,
@@ -896,8 +898,8 @@
     },
     "_size": {
       "__type__": "cc.Size",
-      "width": 25,
-      "height": 34
+      "width": 75,
+      "height": 120
     },
     "_id": ""
   },
@@ -999,7 +1001,7 @@
     "superDamage": 16,
     "superKnockback": 320,
     "visualScale": 2.5,
-    "visualOffsetY": 140,
+    "visualOffsetY": 100,
     "gamepadIndex": 0,
     "_id": ""
   },

@@ -733,7 +733,7 @@
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
     "_spriteFrame": {
-      "__uuid__": "a25fd8cd-fe84-42c8-ba64-c0d840fb254b"
+      "__uuid__": "98baad43-43dd-4115-921c-0c63692dd6d8"
     },
     "_type": 0,
     "_sizeMode": 2,
@@ -816,6 +816,7 @@
     "superCooldown": 6,
     "speed": 250,
     "jumpSpeed": 650,
+    "gamepadIndex": -1,
     "groundAcceleration": 2200,
     "groundDeceleration": 2600,
     "airAcceleration": 1400,
@@ -874,6 +875,10 @@
     "superSoundResource": "attack2",
     "attackSfxVolume": 0.7,
     "superSfxVolume": 1,
+    "dashSpeed": 1000,
+    "dashDuration": 0.15,
+    "dashCooldown": 0.8,
+    "dashSoundResource": "dash",
     "defendDamageMultiplier": 0.2,
     "hitRecoverTime": 0.25,
     "airborneAnimationVelocityThreshold": 20,

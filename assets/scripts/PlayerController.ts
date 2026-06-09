@@ -9,6 +9,7 @@ const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default abstract class PlayerController extends cc.Component {
+    protected static readonly WATER_PRIESTESS_SKILL3_CONTROL_PREFIX = "waterPriestessSkill3Control:";
 
     // @property
     // speed: number = 100;
@@ -24,6 +25,7 @@ export default abstract class PlayerController extends cc.Component {
     protected rb: cc.RigidBody = null;
     public anim: cc.Animation = null;
     public isControllable: boolean = false;
+    private crowdControlRemaining: number = 0;
 
     // Network related
     public isLocal: boolean = true;
@@ -151,6 +153,39 @@ export default abstract class PlayerController extends cc.Component {
         this.clearAnimationFinishedListener(callback);
         animation.once("finished", callback, this);
         return true;
+    }
+
+    protected updateCrowdControl(dt: number): void {
+        this.crowdControlRemaining = Math.max(0, this.crowdControlRemaining - Math.max(0, dt));
+    }
+
+    protected applyCrowdControl(duration: number): void {
+        this.crowdControlRemaining = Math.max(
+            this.crowdControlRemaining,
+            Math.max(0, duration)
+        );
+    }
+
+    protected isCrowdControlled(): boolean {
+        return this.crowdControlRemaining > 0;
+    }
+
+    protected getCrowdControlRemaining(): number {
+        return this.crowdControlRemaining;
+    }
+
+    protected consumeCrowdControl(): void {
+        this.crowdControlRemaining = 0;
+    }
+
+    protected parseTaggedDuration(attackType: string, prefix: string): number {
+        if (!attackType || !attackType.startsWith(prefix)) {
+            return 0;
+        }
+
+        const rawValue = attackType.slice(prefix.length);
+        const parsedValue = Number(rawValue);
+        return Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0;
     }
 
     public syncDeathState() {
