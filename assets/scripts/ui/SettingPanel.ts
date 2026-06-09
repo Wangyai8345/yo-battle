@@ -31,10 +31,12 @@ export default class SettingPanel extends cc.Component {
     confirmDialog: cc.Node = null;
 
     private _isInBattle: boolean = false;
+    private _onCloseCallback: (() => void) | null = null;
 
     /** 從 MainMenu 開啟 */
-    public openFromMenu() {
+    public openFromMenu(onClose?: () => void) {
         this._isInBattle = false;
+        this._onCloseCallback = onClose || null;
         if (this.titleLabel) this.titleLabel.string = 'SETTINGS';
         this.node.active = true;
         this._syncSliders();
@@ -116,6 +118,10 @@ export default class SettingPanel extends cc.Component {
             this._setPlayersVisible(true);
         }
         this.node.active = false;
+        if (this._onCloseCallback) {
+            this._onCloseCallback();
+            this._onCloseCallback = null;
+        }
     }
 
     /** EXIT 按鈕：顯示確認對話框 */

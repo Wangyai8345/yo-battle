@@ -1,4 +1,5 @@
 import AudioManager from "./AudioManager";
+import CameraController from "./managers/CameraController";
 import GameManager from "./GameManager";
 import ParticleEffectManager from "./ParticleEffectManager";
 import PlayerController from "./PlayerController";
@@ -328,6 +329,8 @@ export default class NetworkManager extends cc.Component {
                     ParticleEffectManager.playDeath(worldPos, cc.find('Canvas'));
                 }
             }
+            // 死亡：大幅 Camera Shake（兩邊客戶端都觸發）
+            CameraController.instance?.shake(0.55, 30);
 
             let controller = this.getPlayerControllerOf(message.sessionId);
             if (controller) {
@@ -374,6 +377,9 @@ export default class NetworkManager extends cc.Component {
                 
                 if (message.isValid) {
                     GameManager.instance?.recordLocalAttackDamage(message.targetSessionId, message.damage);
+
+                    // 每次有效攻擊：Camera Shake（兩邊客戶端都觸發）
+                    CameraController.instance?.shake(0.18, 7);
 
                     if (this.isLocal(message.targetSessionId)) {
                         // 防守方客戶端：走 beAttacked()，內部會觸發 hit spark

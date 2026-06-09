@@ -28,22 +28,22 @@
     <key>finishParticleSize</key><real>90</real>
     <key>finishParticleSizeVariance</key><real>20</real>
 
-    <key>startColorRed</key><real>0.88</real>
-    <key>startColorGreen</key><real>0.90</real>
-    <key>startColorBlue</key><real>0.95</real>
+    <key>startColorRed</key><real>0.65</real>
+    <key>startColorGreen</key><real>0.65</real>
+    <key>startColorBlue</key><real>0.65</real>
     <key>startColorAlpha</key><real>0.12</real>
-    <key>startColorVarianceRed</key><real>0.04</real>
-    <key>startColorVarianceGreen</key><real>0.04</real>
-    <key>startColorVarianceBlue</key><real>0.04</real>
-    <key>startColorVarianceAlpha</key><real>0.04</real>
+    <key>startColorVarianceRed</key><real>0.05</real>
+    <key>startColorVarianceGreen</key><real>0.05</real>
+    <key>startColorVarianceBlue</key><real>0.05</real>
+    <key>startColorVarianceAlpha</key><real>0.03</real>
 
-    <key>finishColorRed</key><real>0.88</real>
-    <key>finishColorGreen</key><real>0.90</real>
-    <key>finishColorBlue</key><real>0.95</real>
+    <key>finishColorRed</key><real>0.55</real>
+    <key>finishColorGreen</key><real>0.55</real>
+    <key>finishColorBlue</key><real>0.55</real>
     <key>finishColorAlpha</key><real>0.0</real>
-    <key>finishColorVarianceRed</key><real>0.04</real>
-    <key>finishColorVarianceGreen</key><real>0.04</real>
-    <key>finishColorVarianceBlue</key><real>0.04</real>
+    <key>finishColorVarianceRed</key><real>0.05</real>
+    <key>finishColorVarianceGreen</key><real>0.05</real>
+    <key>finishColorVarianceBlue</key><real>0.05</real>
     <key>finishColorVarianceAlpha</key><real>0.0</real>
 
     <key>sourcePositionVariancex</key><real>1100</real>

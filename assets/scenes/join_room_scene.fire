@@ -809,6 +809,7 @@
       "__id__": 49
     },
     "gameSceneName": "game",
+    "vsSceneName": "vs",
     "_id": "3bbZvYkZ1NhrF3ye8EKaXz"
   },
   {
@@ -4707,8 +4708,8 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -480,
-        -490,
+        0,
+        -275.643,
         0,
         0,
         0,
@@ -4801,8 +4802,8 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -480,
-        50,
+        0,
+        264.357,
         0,
         0,
         0,

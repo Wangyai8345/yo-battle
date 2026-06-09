@@ -3,6 +3,9 @@ const { ccclass, property } = cc._decorator;
 @ccclass
 export default class CameraController extends cc.Component {
 
+    /** 全域單例，供其他腳本呼叫 shake() */
+    static instance: CameraController = null;
+
     @property(cc.Node)
     p1: cc.Node = null;
 
@@ -53,7 +56,31 @@ export default class CameraController extends cc.Component {
 
     private _cam: cc.Camera = null;
 
+    // ── Camera Shake ──────────────────────────────────────
+    private _shakeTimer: number = 0;
+    private _shakeDuration: number = 0;
+    private _shakeIntensity: number = 0;
+    /** 追蹤用的基礎位置（不含 shake 偏移，給 lerp 用） */
+    private _baseX: number = 0;
+    private _baseY: number = 0;
+
+    /**
+     * 觸發 Camera Shake
+     * @param duration   持續時間（秒），建議：普通攻擊 0.18、死亡 0.4
+     * @param intensity  最大偏移量（world units），建議：普通攻擊 7、死亡 18
+     */
+    shake(duration: number, intensity: number) {
+        // 若新的強度更大就覆蓋，否則取兩者最大值，避免疊擊時縮短
+        if (intensity >= this._shakeIntensity || this._shakeTimer <= 0) {
+            this._shakeDuration  = duration;
+            this._shakeTimer     = duration;
+            this._shakeIntensity = intensity;
+        }
+    }
+    // ──────────────────────────────────────────────────────
+
     onLoad() {
+        CameraController.instance = this;
         this._cam = this.getComponent(cc.Camera);
         if (!this._cam) cc.warn('[Camera] 找不到 Camera 元件！');
     }
@@ -104,8 +131,23 @@ export default class CameraController extends cc.Component {
         const clampedX = cc.misc.clampf(midX, minX, maxX);
         const clampedY = cc.misc.clampf(midY, minY, maxY);
 
-        // ── 6. 平滑移動 Camera ────────────────────────────
-        this.node.x = cc.misc.lerp(this.node.x, clampedX, this.followSpeed * dt);
-        this.node.y = cc.misc.lerp(this.node.y, clampedY, this.followSpeed * dt);
+        // ── 6. 平滑移動 Camera（base 位置，不含 shake）─────
+        this._baseX = cc.misc.lerp(this._baseX, clampedX, this.followSpeed * dt);
+        this._baseY = cc.misc.lerp(this._baseY, clampedY, this.followSpeed * dt);
+
+        // ── 7. Camera Shake offset ────────────────────────
+        let shakeX = 0;
+        let shakeY = 0;
+        if (this._shakeTimer > 0) {
+            this._shakeTimer -= dt;
+            // 強度隨時間線性衰減（結尾趨近 0）
+            const progress = Math.max(this._shakeTimer / this._shakeDuration, 0);
+            const cur = this._shakeIntensity * progress;
+            shakeX = (Math.random() * 2 - 1) * cur;
+            shakeY = (Math.random() * 2 - 1) * cur;
+        }
+
+        this.node.x = this._baseX + shakeX;
+        this.node.y = this._baseY + shakeY;
     }
 }

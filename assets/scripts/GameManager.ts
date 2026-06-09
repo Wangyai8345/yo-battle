@@ -478,11 +478,14 @@ export default class GameManager extends cc.Component {
 
         const matchStats = this.buildMatchStatsData(state);
 
-        NetworkManager.instance.transitionToGameOverScene({
-            winnerName: winner,
-            winnerPrefab: winnerPrefab || null,
-            matchStats,
-        });
+        // 延遲跳轉，讓死亡特效與 Camera Shake 播完再切場景
+        this.scheduleOnce(() => {
+            NetworkManager.instance.transitionToGameOverScene({
+                winnerName: winner,
+                winnerPrefab: winnerPrefab || null,
+                matchStats,
+            });
+        }, 2.5);
     }
 
 

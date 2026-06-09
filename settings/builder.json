@@ -1,8 +1,11 @@
 {
-  "title": "YoBattle",
+  "title": "yo-battle",
   "packageName": "org.cocos2d.demo",
-  "startScene": "4712a8a9-32e7-4d87-b057-0b4acc3acbde",
-  "excludeScenes": [],
+  "startScene": "3d67c5a0-2dd3-4980-90c2-486191eccf82",
+  "excludeScenes": [
+    "a468f971-1832-4b46-a394-ae24ff7b14f3",
+    "8b9c9a7d-1233-4851-9993-646be7c1cc1e"
+  ],
   "orientation": {
     "landscapeRight": true,
     "landscapeLeft": true,
