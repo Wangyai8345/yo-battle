@@ -50,22 +50,63 @@ export default class JoinRoomScene extends cc.Component {
         if (this.backButton) this.backButton.node.on('click', this.onBackButtonClicked, this);
     }
 
+    private _docKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
     protected start(): void {
-        // Canvas layout is fully recalculated by this point; safe to enable EditBox
         if (this.roomNameInput) this.roomNameInput.enabled = true;
 
-        // Auto-focus the EditBox so the player can type immediately
-        this.scheduleOnce(() => {
-            const impl = (this.roomNameInput as any)?._editBoxImpl;
-            if (impl?._elem?.focus) impl._elem.focus();
-        }, 0.1);
+        // document-level keydown：在真正的 user gesture 裡 focus，Chrome 不會擋
+        this._docKeyHandler = (e: KeyboardEvent) => {
+            // CC2.4.x EditBox 的 DOM 元素可能延遲建立，直接用 querySelector 找
+            const elem = (document.querySelector('input[type="text"]') ||
+                          document.querySelector('input:not([type="submit"]):not([type="button"])') ||
+                          document.querySelector('textarea')) as HTMLInputElement | null;
+            if (!elem) return;
 
-        // Enter key triggers join
-        cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this._onKeyDown, this);
+            // Enter → 直接 join
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                if (!this.pending && this.joinButton && this.joinButton.interactable) {
+                    e.preventDefault();
+                    this.onJoinButtonClicked();
+                }
+                return;
+            }
+
+            // Backspace / Delete：CC 引擎可能在 bubble 階段吃掉這些鍵，手動處理
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                if (document.activeElement !== elem) elem.focus();
+                if (e.key === 'Backspace') {
+                    elem.value = elem.value.slice(0, -1);
+                } else {
+                    // Delete 鍵：刪游標後一個字（這裡簡化為清空，通常不常用）
+                    elem.value = elem.value.slice(0, -1);
+                }
+                this.roomNameInput.string = elem.value;
+                e.preventDefault();
+                return;
+            }
+
+            // 使用者打任何可見字元時，若 input 還沒 focus 就先 focus 並補入第一個字
+            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                if (document.activeElement !== elem) {
+                    elem.focus();
+                    // keydown 在 focus 前就觸發，字元不會自動進 input，手動補入
+                    elem.value = elem.value + e.key;
+                    this.roomNameInput.string = elem.value;
+                    e.preventDefault();
+                }
+            }
+        };
+
+        // capture:true 確保在 CC 引擎攔截之前先收到事件
+        window.addEventListener('keydown', this._docKeyHandler, true);
     }
 
     onDestroy() {
-        cc.systemEvent.off(cc.SystemEvent.EventType.KEY_DOWN, this._onKeyDown, this);
+        if (this._docKeyHandler) {
+            window.removeEventListener('keydown', this._docKeyHandler, true);
+            this._docKeyHandler = null;
+        }
     }
 
     private _onKeyDown(event: cc.Event.EventKeyboard) {

@@ -1019,7 +1019,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 203.44,
+      "width": 242.46,
       "height": 100.8
     },
     "_anchorPoint": {
@@ -1031,7 +1031,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        16.633,
+        20.633,
         7.185,
         0,
         0,
@@ -1076,8 +1076,10 @@
     "_fontSize": 60,
     "_lineHeight": 80,
     "_enableWrapText": true,
-    "_N$file": null,
-    "_isSystemFontUsed": true,
+    "_N$file": {
+      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
+    },
+    "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -1176,7 +1178,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 203.44,
+      "width": 255.9,
       "height": 100.8
     },
     "_anchorPoint": {
@@ -1188,7 +1190,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        1347.662,
+        1341.662,
         1.449,
         0,
         0,
@@ -1233,8 +1235,10 @@
     "_fontSize": 60,
     "_lineHeight": 80,
     "_enableWrapText": true,
-    "_N$file": null,
-    "_isSystemFontUsed": true,
+    "_N$file": {
+      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
+    },
+    "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -1297,6 +1301,7 @@
     "leftPlayerLabel": null,
     "rightPlayerLabel": null,
     "nextSceneName": "game",
+    "vsBgmResource": "vs_bgm",
     "waitForPlayersTimeout": 3,
     "slideInDuration": 0.5,
     "prePlayDelay": 1,

@@ -4,7 +4,7 @@ export default class ParticleEffectManager {
     private static _whiteSF: cc.SpriteFrame = null;
 
     /** 取得 1×1 白色 SpriteFrame，供無 texture 的 plist 使用 */
-    private static _getWhiteSF(): cc.SpriteFrame {
+    static getWhiteSF(): cc.SpriteFrame {
         if (ParticleEffectManager._whiteSF) return ParticleEffectManager._whiteSF;
         const tex = new cc.Texture2D();
         tex.initWithData(
@@ -53,7 +53,7 @@ export default class ParticleEffectManager {
 
             // onLoad 後再補白色像素，確保有 texture 才能渲染
             if (!ps.spriteFrame) {
-                ps.spriteFrame = ParticleEffectManager._getWhiteSF();
+                ps.spriteFrame = ParticleEffectManager.getWhiteSF();
             }
 
             const localPos = spawnOn.convertToNodeSpaceAR(worldPos);
