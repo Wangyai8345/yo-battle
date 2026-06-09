@@ -220,6 +220,21 @@ export default class SharedHeroController extends PlayerController {
     @property
     gamepadIndex: number = -1;
 
+    @property
+    groundAcceleration: number = 2200;
+
+    @property
+    groundDeceleration: number = 2600;
+
+    @property
+    airAcceleration: number = 1400;
+
+    @property
+    airDeceleration: number = 500;
+
+    @property
+    airborneAnimationVelocityThreshold: number = 20;
+
     // @property(cc.Node)
     // defendHitBox: cc.Node = null;
 
@@ -268,7 +283,9 @@ export default class SharedHeroController extends PlayerController {
     private jumpBufferTimer: number = 0;
     private readonly COYOTE_TIME: number = 0.12;
     private readonly JUMP_BUFFER_TIME: number = 0.12;
+    private readonly JUMP_CORNER_CORRECTION_TIME: number = 0.12;
     private airJumpUsed: boolean = false;
+    private jumpCornerCorrectionTimer: number = 0;
     private gpLeft: boolean = false;
     private gpRight: boolean = false;
     private gpUp: boolean = false;
@@ -334,15 +351,29 @@ export default class SharedHeroController extends PlayerController {
         // ── 跳躍（A/Cross，邊緣觸發）───────────────────────────────────────
         const gpJump = gp.buttons[0]?.pressed ?? false;
         if (gpJump && !this.gpJumpPrev) {
-            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
-            // 空中二段跳
             if (!this.onGround && !this.airJumpUsed && this.rb) {
                 this.airJumpUsed = true;
-                this.coyoteTimer = 0;
-                this.jumpBufferTimer = 0;
                 const v = this.rb.linearVelocity;
                 v.y = this.jumpSpeed;
                 this.rb.linearVelocity = v;
+                this.startJumpCornerCorrection();
+                this.updateAnimation();
+            } else if (
+                this.onGround &&
+                !this.isDead &&
+                !this.isHit &&
+                !this.isDashing &&
+                !this.isDefending &&
+                !this.isAttacking &&
+                !this.isAirAttacking &&
+                this.rb
+            ) {
+                const v = this.rb.linearVelocity;
+                v.y = this.jumpSpeed;
+                this.rb.linearVelocity = v;
+                this.startJumpCornerCorrection();
+                this.onGround = false;
+                this.groundContactCount = 0;
                 this.updateAnimation();
             }
         }
@@ -478,16 +509,9 @@ export default class SharedHeroController extends PlayerController {
         this.pollGamepad();
         this.updateAbilityCooldowns(dt);
         this.updateCrowdControl(dt);
-        // ?湔頝唾?閮???        if (this.coyoteTimer > 0) this.coyoteTimer -= dt;
-        if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= dt;
-
-        // ??buffer ?扳??歲嚗??曉?質歲嚗nGround ????coyote time ?改?嚗停?瑁?頝?
-        if (this.jumpBufferTimer > 0 && !this.isDashing && !this.isDead && !this.isHit) {
-            if (this.onGround || this.coyoteTimer > 0) {
-                this.doJump();
-            }
+        if (this.jumpCornerCorrectionTimer > 0) {
+            this.jumpCornerCorrectionTimer = Math.max(0, this.jumpCornerCorrectionTimer - dt);
         }
-
         if (this.isDashing) {
             return;
         }
@@ -525,7 +549,7 @@ export default class SharedHeroController extends PlayerController {
 
         this.updateGravityScale();
 
-        v.x = this.moveDir * this.speed;
+        v.x = this.updateHorizontalVelocity(v.x, dt);
         this.rb.linearVelocity = v;
 
         if (this.moveDir !== 0 && this.facingDir !== this.moveDir) {
@@ -567,14 +591,16 @@ export default class SharedHeroController extends PlayerController {
             // 蝚砌???隞塚?Box2D EndContact ??? 1~2 撟嚗???漲?文??迤?其??賬雿征銝?
             if (!activeAirAttackClip || this.currentAnim !== activeAirAttackClip) {
                 // 閫?交???j_up嚗?憒?Priestess嚗??湔挾蝛箔葉?賜 j_down嚗???
-                const goingUp = this.rb && this.rb.linearVelocity.y > 1;
-                let airborneClip: string;
-                if (goingUp && activeJumpUpClip) {
-                    airborneClip = activeJumpUpClip;
+                const verticalVelocity = this.rb ? this.rb.linearVelocity.y : 0;
+                if (Math.abs(verticalVelocity) < this.airborneAnimationVelocityThreshold) {
+                    this.playAnim(this.moveDir !== 0
+                        ? this.getExistingAnimClip(this.runClip, this.animRun, 'run')
+                        : this.getExistingAnimClip(this.idleClip, this.animIdle, 'idle'));
                 } else {
-                    airborneClip = activeJumpDownClip || activeJumpUpClip;
+                    this.playAnim(verticalVelocity >= 0
+                        ? activeJumpUpClip
+                        : (activeJumpDownClip || activeJumpUpClip));
                 }
-                this.playAnim(airborneClip);
             }
         } else if (this.moveDir !== 0) {
             this.playAnim(this.getExistingAnimClip(this.runClip, this.animRun, 'run'));
@@ -638,10 +664,9 @@ export default class SharedHeroController extends PlayerController {
             const velocity = this.rb.linearVelocity;
             velocity.y = this.jumpSpeed;
             this.rb.linearVelocity = velocity;
+            this.startJumpCornerCorrection();
             this.onGround = false;
             this.groundContactCount = 0;
-            this.jumpBufferTimer = 0;
-            this.coyoteTimer = 0;
             this.updateAnimation();
         } else if (
             !this.isDead &&
@@ -654,11 +679,10 @@ export default class SharedHeroController extends PlayerController {
         ) {
             // 二段跳
             this.airJumpUsed = true;
-            this.coyoteTimer = 0;
-            this.jumpBufferTimer = 0;
             const v = this.rb.linearVelocity;
             v.y = this.jumpSpeed;
             this.rb.linearVelocity = v;
+            this.startJumpCornerCorrection();
             this.updateAnimation();
         }
 
@@ -671,10 +695,6 @@ export default class SharedHeroController extends PlayerController {
         if (event.keyCode === cc.macro.KEY.d) {
             this.rightPressed = true;
             this.refreshMoveDir();
-        }
-        if (event.keyCode === cc.macro.KEY.space) {
-            // 銝?亥歲嚗?銝?buffer嚗pdate ???onGround / coyote ?斗撖阡??臬韏瑁歲
-            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
         }
         if (event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.g) {
             this.dash();
@@ -890,6 +910,32 @@ export default class SharedHeroController extends PlayerController {
             return;
         }
         this.moveDir = this.leftPressed ? -1 : 1;
+    }
+
+    private updateHorizontalVelocity(currentX: number, dt: number): number {
+        const targetX = this.moveDir * this.speed;
+        if (!this.onGround) {
+            return targetX;
+        }
+
+        const hasInput = this.moveDir !== 0;
+        const acceleration = this.onGround
+            ? (hasInput ? this.groundAcceleration : this.groundDeceleration)
+            : (hasInput ? this.airAcceleration : this.airDeceleration);
+
+        return this.moveTowards(currentX, targetX, acceleration * dt);
+    }
+
+    private moveTowards(current: number, target: number, maxDelta: number): number {
+        if (current < target) {
+            return Math.min(current + maxDelta, target);
+        }
+
+        if (current > target) {
+            return Math.max(current - maxDelta, target);
+        }
+
+        return target;
     }
 
     startDefend() {
@@ -1307,6 +1353,7 @@ export default class SharedHeroController extends PlayerController {
         const v = this.rb.linearVelocity;
         v.y = this.jumpSpeed;
         this.rb.linearVelocity = v;
+        this.startJumpCornerCorrection();
         this.onGround = false;
         this.groundContactCount = 0;
         this.updateAnimation();
@@ -1337,9 +1384,23 @@ export default class SharedHeroController extends PlayerController {
         }, 0.2);
     }
 
+    private isGroundContactForPlayer(contact: cc.PhysicsContact): boolean {
+        const worldManifold = contact.getWorldManifold();
+        const normal = worldManifold && worldManifold.normal;
+        if (!normal) {
+            return false;
+        }
+
+        return normal.y < -0.5 && Math.abs(normal.y) >= Math.abs(normal.x);
+    }
+
+    private startJumpCornerCorrection(): void {
+        this.jumpCornerCorrectionTimer = this.JUMP_CORNER_CORRECTION_TIME;
+    }
+
     onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
         //console.log("contacted");
-        if (this.isGroundNode(otherCollider.node)) {
+        if (this.isGroundNode(otherCollider.node) && this.isGroundContactForPlayer(contact)) {
             (contact as any)._isGroundForPlayer = true;
             this.groundContactCount++;
             this.onGround = true;
@@ -1401,6 +1462,33 @@ export default class SharedHeroController extends PlayerController {
         //     }
 
         // }
+    }
+
+    onPreSolve(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
+        if (!this.rb || this.jumpCornerCorrectionTimer <= 0 || this.rb.linearVelocity.y <= 0) {
+            return;
+        }
+
+        if (otherCollider.node.name === "Out Of Bound Trigger") {
+            return;
+        }
+
+        if (this.isGroundNode(otherCollider.node) && this.isGroundContactForPlayer(contact)) {
+            return;
+        }
+
+        const worldManifold = contact.getWorldManifold();
+        const normal = worldManifold && worldManifold.normal;
+        if (!normal) {
+            return;
+        }
+
+        const isSideContact = Math.abs(normal.x) > Math.abs(normal.y);
+        const isCeilingContact = normal.y > 0.2;
+        const hasHorizontalIntent = this.moveDir !== 0 || Math.abs(this.rb.linearVelocity.x) > 1;
+        if (isSideContact || (isCeilingContact && hasHorizontalIntent)) {
+            contact.disabledOnce = true;
+        }
     }
 
     onEndContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider) {
@@ -1759,6 +1847,7 @@ export default class SharedHeroController extends PlayerController {
         this.groundContactCount = 0;
         this.coyoteTimer = 0;
         this.jumpBufferTimer = 0;
+        this.jumpCornerCorrectionTimer = 0;
         this.consumeCrowdControl();
         this.skill2CooldownRemaining = 0;
         this.skill3CooldownRemaining = 0;

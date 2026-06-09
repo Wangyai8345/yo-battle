@@ -1015,6 +1015,11 @@
     "visualScale": 3.142857142857143,
     "visualOffsetY": 120,
     "gamepadIndex": -1,
+    "groundAcceleration": 2200,
+    "groundDeceleration": 2600,
+    "airAcceleration": 1400,
+    "airDeceleration": 500,
+    "airborneAnimationVelocityThreshold": 20,
     "_id": ""
   },
   {
