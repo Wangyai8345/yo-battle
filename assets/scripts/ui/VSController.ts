@@ -206,7 +206,7 @@ export default class VSController extends cc.Component {
         this.unschedule(this.tryStartSequence);
         this.applyPlayerData(players);
         if (this.vsBgmResource) {
-            AudioManager.playMusic(this.vsBgmResource);
+            AudioManager.playMusic(this.vsBgmResource, true, 2.0);
         }
         this.playSequence();
     }

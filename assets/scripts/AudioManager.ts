@@ -93,7 +93,7 @@ export default class AudioManager {
         AudioManager.currentMusicResource = '';
     }
 
-    static playMusic(resource: string, loop: boolean = true) {
+    static playMusic(resource: string, loop: boolean = true, volumeScale: number = 1) {
         if (!resource) {
             return;
         }
@@ -108,6 +108,10 @@ export default class AudioManager {
             }
             AudioManager.currentMusicResource = resource;
             cc.audioEngine.playMusic(clip, loop);
+            if (volumeScale !== 1) {
+                const base = cc.audioEngine.getMusicVolume();
+                cc.audioEngine.setMusicVolume(Math.max(0, Math.min(1, base * volumeScale)));
+            }
         };
 
         const cachedClip = AudioManager.clipCache[resource];
