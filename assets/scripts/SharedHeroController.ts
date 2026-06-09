@@ -1286,9 +1286,11 @@ export default class SharedHeroController extends PlayerController {
         }
 
         this.skill3CooldownRemaining = Math.max(0, this.skill3Cooldown);
-        const controlAttackType = `${WATER_PRIESTESS_SKILL3_CONTROL_PREFIX}${playback.playbackDuration.toFixed(2)}`;
 
         for (let delay = 0; delay < playback.playbackDuration; delay += 0.5) {
+            const remainingControlDuration = Math.max(0.05, playback.playbackDuration - delay);
+            const controlAttackType = `${WATER_PRIESTESS_SKILL3_CONTROL_PREFIX}${remainingControlDuration.toFixed(2)}`;
+
             this.schedulePlaybackHitBox(
                 controlAttackType,
                 cc.v2(118, 14),
