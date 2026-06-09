@@ -221,6 +221,7 @@ export default class GroundMonkController extends PlayerController {
     private jumpBufferTimer: number = 0;
     private readonly COYOTE_TIME: number = 0.12;
     private readonly JUMP_BUFFER_TIME: number = 0.12;
+    private airJumpUsed: boolean = false;
     private lastAttackSfxTime: number = -999;
     private lastDashSfxTime: number = -999;
 
@@ -482,6 +483,23 @@ export default class GroundMonkController extends PlayerController {
             this.jumpBufferTimer = 0;
             this.coyoteTimer = 0;
             this.updateAnimation();
+        } else if (
+            !this.isDead &&
+            !this.isHit &&
+            !this.isDashing &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.up) &&
+            !this.onGround &&
+            !this.airJumpUsed &&
+            this.rb
+        ) {
+            // 二段跳
+            this.airJumpUsed = true;
+            this.coyoteTimer = 0;
+            this.jumpBufferTimer = 0;
+            const v = this.rb.linearVelocity;
+            v.y = this.jumpSpeed;
+            this.rb.linearVelocity = v;
+            this.updateAnimation();
         }
 
         if (this.isDead || this.isHit || this.isDashing) return;
@@ -495,8 +513,19 @@ export default class GroundMonkController extends PlayerController {
             this.refreshMoveDir();
         }
         if (event.keyCode === cc.macro.KEY.space) {
-            // 不直接跳，先丟進 buffer；update 會根據 onGround / coyote 判斷實際是否起跳
-            this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
+            // 空中按 space → 二段跳
+            if (!this.onGround && !this.airJumpUsed && !this.isDead && !this.isHit && !this.isDashing && this.rb) {
+                this.airJumpUsed = true;
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                const v = this.rb.linearVelocity;
+                v.y = this.jumpSpeed;
+                this.rb.linearVelocity = v;
+                this.updateAnimation();
+            } else {
+                // 地面：丟進 buffer；update 會根據 onGround / coyote 判斷實際是否起跳
+                this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
+            }
         }
         if (event.keyCode === cc.macro.KEY.shift) {
             this.dash();
@@ -591,6 +620,16 @@ export default class GroundMonkController extends PlayerController {
         const gpJump = gp.buttons[0]?.pressed ?? false;
         if (gpJump && !this.gpJumpPrev) {
             this.jumpBufferTimer = this.JUMP_BUFFER_TIME;
+            // 空中二段跳
+            if (!this.onGround && !this.airJumpUsed && this.rb) {
+                this.airJumpUsed = true;
+                this.coyoteTimer = 0;
+                this.jumpBufferTimer = 0;
+                const v = this.rb.linearVelocity;
+                v.y = this.jumpSpeed;
+                this.rb.linearVelocity = v;
+                this.updateAnimation();
+            }
         }
         this.gpJumpPrev = gpJump;
 
@@ -1094,7 +1133,7 @@ export default class GroundMonkController extends PlayerController {
             320,
             180,
             0.1,
-            5,
+            15,
             2200,
             Math.max(0, duration - 0.5),
             playbackToken
@@ -1155,6 +1194,7 @@ export default class GroundMonkController extends PlayerController {
             (contact as any)._isGroundForPlayer = true;
             this.groundContactCount++;
             this.onGround = true;
+            this.airJumpUsed = false;
             this.coyoteTimer = this.COYOTE_TIME;
             this.updateAnimation();
             return;
@@ -1659,6 +1699,7 @@ export default class GroundMonkController extends PlayerController {
         this.groundContactCount = 0;
         this.coyoteTimer = 0;
         this.jumpBufferTimer = 0;
+        this.airJumpUsed = false;
         this.currentAnim = '';
 
         // if (this.respawnPoint) {

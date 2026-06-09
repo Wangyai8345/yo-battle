@@ -153,6 +153,9 @@ export default class Arrowhero extends PlayerController {
     jumpSpeed: number = 500;
 
     @property
+    gamepadIndex: number = -1;
+
+    @property
     groundAcceleration: number = 2200;
 
     @property
@@ -232,6 +235,18 @@ export default class Arrowhero extends PlayerController {
 
     @property
     superSfxVolume: number = 1;
+
+    @property
+    dashSpeed: number = 1000;
+
+    @property
+    dashDuration: number = 0.15;
+
+    @property
+    dashCooldown: number = 0.8;
+
+    @property
+    dashSoundResource: string = "dash";
 
     @property
     defendDamageMultiplier: number = 0.2;
@@ -315,6 +330,16 @@ export default class Arrowhero extends PlayerController {
     private currentAnim: string = "";
     private leftHeld: boolean = false;
     private rightHeld: boolean = false;
+    // ── Gamepad state ───────────────────────────────────────────────────────
+    private gpLeft: boolean = false;
+    private gpRight: boolean = false;
+    private gpJumpPrev: boolean = false;
+    private gpMeleePrev: boolean = false;
+    private gpRangedPrev: boolean = false;
+    private gpDefendPrev: boolean = false;
+    private gpSkill3Prev: boolean = false;
+    private gpSuperPrev: boolean = false;
+    private gpDashPrev: boolean = false;
     private facingDir: number = 1;
     private lockedFacingDir: number = 1;
     private facingLocked: boolean = false;
@@ -329,6 +354,9 @@ export default class Arrowhero extends PlayerController {
     private isDead: boolean = false;
     private isHit: boolean = false;
     private isDefending: boolean = false;
+    private isDashing: boolean = false;
+    private dashCooldownRemaining: number = 0;
+    private airJumpUsed: boolean = false;
     private currentClipAction: ArrowClipActionName | null = null;
     private readonly hideAfterDeath = () => {
         if (this.isDead) {
@@ -369,7 +397,83 @@ export default class Arrowhero extends PlayerController {
         this._prevOnGround = this.onGround;
     }
 
+    private pollGamepad(): void {
+        if (this.gamepadIndex < 0) return;
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const gp = gamepads[this.gamepadIndex];
+        if (!gp) return;
+
+        const DEAD_ZONE = 0.25;
+        const axisX = gp.axes[0] ?? 0;
+        const dpadLeft = gp.buttons[14]?.pressed ?? false;
+        const dpadRight = gp.buttons[15]?.pressed ?? false;
+        const newLeft = axisX < -DEAD_ZONE || dpadLeft;
+        const newRight = axisX > DEAD_ZONE || dpadRight;
+
+        if (newLeft !== this.gpLeft) {
+            this.gpLeft = newLeft;
+            this.leftHeld = newLeft;
+            this.refreshMoveInput();
+        }
+        if (newRight !== this.gpRight) {
+            this.gpRight = newRight;
+            this.rightHeld = newRight;
+            this.refreshMoveInput();
+        }
+
+        // ── 跳躍 (A/Cross) ──
+        const gpJump = gp.buttons[0]?.pressed ?? false;
+        if (gpJump && !this.gpJumpPrev) {
+            if (!this.onGround && !this.airJumpUsed && this.rb) {
+                this.airJumpUsed = true;
+                const v = this.rb.linearVelocity;
+                v.y = this.jumpSpeed;
+                this.rb.linearVelocity = v;
+                this.updateAnimation();
+            } else if (this.onGround && !this.isDead && !this.isHit && !this.movementLocked && this.rb) {
+                const v = this.rb.linearVelocity;
+                v.y = this.jumpSpeed;
+                this.rb.linearVelocity = v;
+                this.onGround = false;
+                this.groundContactCount = 0;
+                this.updateAnimation();
+            }
+        }
+        this.gpJumpPrev = gpJump;
+
+        // ── 普攻 (X/Square) ──
+        const gpMelee = gp.buttons[2]?.pressed ?? false;
+        if (gpMelee && !this.gpMeleePrev) this.useMelee();
+        this.gpMeleePrev = gpMelee;
+
+        // ── 遠程 (Y/Triangle) ──
+        const gpRanged = gp.buttons[3]?.pressed ?? false;
+        if (gpRanged && !this.gpRangedPrev) this.useRanged();
+        this.gpRangedPrev = gpRanged;
+
+        // ── 衝刺 (LB/L1) ──
+        const gpDash = gp.buttons[4]?.pressed ?? false;
+        if (gpDash && !this.gpDashPrev) this.useDash();
+        this.gpDashPrev = gpDash;
+
+        // ── 技能3 (RB/R1) ──
+        const gpSkill3 = gp.buttons[5]?.pressed ?? false;
+        if (gpSkill3 && !this.gpSkill3Prev) this.useSkill3();
+        this.gpSkill3Prev = gpSkill3;
+
+        // ── 大招 (LT/L2) ──
+        const gpSuper = gp.buttons[6]?.pressed ?? false;
+        if (gpSuper && !this.gpSuperPrev) this.useSuper();
+        this.gpSuperPrev = gpSuper;
+
+        // ── 防禦 (B/Circle) ──
+        const gpDefend = gp.buttons[1]?.pressed ?? false;
+        if (gpDefend && !this.gpDefendPrev) this.useDefend();
+        this.gpDefendPrev = gpDefend;
+    }
+
     protected localUpdate(dt: number): void {
+        this.pollGamepad();
         this.updateCooldowns(dt);
 
         if (!this.rb) {
@@ -387,7 +491,9 @@ export default class Arrowhero extends PlayerController {
         }
 
         const velocity = this.rb.linearVelocity;
-        velocity.x = this.updateHorizontalVelocity(velocity.x, dt);
+        if (!this.isDashing) {
+            velocity.x = this.updateHorizontalVelocity(velocity.x, dt);
+        }
         this.rb.linearVelocity = velocity;
 
         this.updateFacingFromVelocity(velocity.x);
@@ -423,6 +529,26 @@ export default class Arrowhero extends PlayerController {
             this.onGround = false;
             this.groundContactCount = 0;
             this.updateAnimation();
+        } else if (
+            !this.movementLocked &&
+            !this.isDead &&
+            !this.isHit &&
+            (event.keyCode === cc.macro.KEY.w || event.keyCode === cc.macro.KEY.space) &&
+            !this.onGround &&
+            !this.airJumpUsed &&
+            this.rb
+        ) {
+            // 二段跳
+            this.airJumpUsed = true;
+            const v = this.rb.linearVelocity;
+            v.y = this.jumpSpeed;
+            this.rb.linearVelocity = v;
+            this.updateAnimation();
+        }
+
+        if (event.keyCode === cc.macro.KEY.shift) {
+            this.useDash();
+            return;
         }
 
         if (!canStartArrowAction(this.currentClipAction, this.isDead, this.isHit)) {
@@ -544,6 +670,9 @@ export default class Arrowhero extends PlayerController {
         this.skill3CooldownRemaining = 0;
         this.defendCooldownRemaining = 0;
         this.superCooldownRemaining = 0;
+        this.isDashing = false;
+        this.dashCooldownRemaining = 0;
+        this.airJumpUsed = false;
         this.currentAnim = "";
 
         if (this.rb) {
@@ -560,6 +689,7 @@ export default class Arrowhero extends PlayerController {
         if (this.isGroundNode(otherCollider.node)) {
             this.groundContactCount++;
             this.onGround = true;
+            this.airJumpUsed = false;
             this.updateAnimation();
         } else if (otherCollider.node.name === "Out Of Bound Trigger" && this.isLocal) {
             this.deductHp(999);
@@ -1170,12 +1300,34 @@ export default class Arrowhero extends PlayerController {
         this.updateAnimation();
     }
 
+    private useDash(): void {
+        if (this.isDead || this.isHit || this.isDashing || this.dashCooldownRemaining > 0) return;
+        if (!this.rb) return;
+
+        this.isDashing = true;
+        this.dashCooldownRemaining = this.dashCooldown;
+
+        if (this.dashSoundResource) {
+            NetworkManager.instance.playSoundEffect(this.dashSoundResource, 0.7);
+        }
+
+        const dir = this.facingDir;
+        const velocity = this.rb.linearVelocity;
+        velocity.x = dir * this.dashSpeed;
+        this.rb.linearVelocity = velocity;
+
+        this.scheduleOnce(() => {
+            this.isDashing = false;
+        }, Math.max(0.05, this.dashDuration));
+    }
+
     private updateCooldowns(dt: number) {
         this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
         this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
         this.skill3CooldownRemaining = Math.max(0, this.skill3CooldownRemaining - dt);
         this.defendCooldownRemaining = Math.max(0, this.defendCooldownRemaining - dt);
         this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
+        this.dashCooldownRemaining = Math.max(0, this.dashCooldownRemaining - dt);
     }
 
     private tryUseCooldown(slot: SkillSlot): boolean {

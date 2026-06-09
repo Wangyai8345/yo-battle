@@ -1,4 +1,5 @@
 import NetworkManager from "../NetworkManager";
+import AudioManager from "../AudioManager";
 
 const { ccclass, property } = cc._decorator;
 
@@ -29,6 +30,9 @@ export default class VSController extends cc.Component {
 
     @property
     nextSceneName: string = "game";
+
+    @property
+    vsBgmResource: string = "vs_bgm";
 
     @property
     waitForPlayersTimeout: number = 3;
@@ -201,6 +205,9 @@ export default class VSController extends cc.Component {
         this.sequenceStarted = true;
         this.unschedule(this.tryStartSequence);
         this.applyPlayerData(players);
+        if (this.vsBgmResource) {
+            AudioManager.playMusic(this.vsBgmResource);
+        }
         this.playSequence();
     }
 
