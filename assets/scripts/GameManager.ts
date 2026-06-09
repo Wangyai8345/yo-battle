@@ -112,7 +112,7 @@ export default class GameManager extends cc.Component {
         this.hasRecordedCurrentRound = false;
         this.resetLocalRoundDamageTracking();
         NetworkManager.instance.initGameScene();
-        AudioManager.playMusic('BGM', true, 0.5);
+        AudioManager.playMusic('BGM', true, 0.3);
         this.setAutoQuitSchedule();
     }
 
