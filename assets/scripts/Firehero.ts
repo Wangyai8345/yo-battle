@@ -1482,6 +1482,7 @@ export default class Firehero extends PlayerController {
         this.isDefending = false;
         this.movementLocked = false;
         this.animationLocked = false;
+        this.directionInputLocked = false;
         this.facingLocked = false;
         this.currentAnim = "";
         this.updateAnimation();
