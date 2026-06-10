@@ -13,6 +13,7 @@ export default class FirebaseConfig extends cc.Component {
         else {
             this.initFirebase();
         }
+        cc.game.addPersistRootNode(this.node);
     }
 
     loadFirebaseScripts(callback: () => void) {
@@ -40,13 +41,14 @@ export default class FirebaseConfig extends cc.Component {
 
     initFirebase() {
         const firebaseConfig = {
-            apiKey: "AIzaSyCwm3CxNgRldx1ewwPXOL4MrMg-Z9TOMyw",
-            authDomain: "web-mario-6423f.firebaseapp.com",
-            databaseURL: "https://web-mario-6423f-default-rtdb.firebaseio.com/",
-            projectId: "web-mario-6423f",
-            storageBucket: "web-mario-6423f.firebasestorage.app",
-            messagingSenderId: "1035173117039",
-            appId: "1:1035173117039:web:2bcc9fd6841abe015a219a"
+            apiKey: "AIzaSyBuGBqqZ0XUI4SjSWVLVCnhiqy09lP3NSY",
+            authDomain: "yo-battle-9921a.firebaseapp.com",
+            databaseURL: "https://yo-battle-9921a-default-rtdb.firebaseio.com",
+            projectId: "yo-battle-9921a",
+            storageBucket: "yo-battle-9921a.firebasestorage.app",
+            messagingSenderId: "11338410793",
+            appId: "1:11338410793:web:6024406c092e262af86538",
+            measurementId: "G-62530V6NLT"
         };
 
         if (!firebase.apps.length) {
