@@ -2,6 +2,8 @@ import UIManager from '../managers/UIManager';
 import SettingPanel from './SettingPanel';
 import AccountScreen from './AccountScreen';
 import AudioManager from '../AudioManager';
+import { initializeApp, getApps } from "firebase/app";
+import { getDatabase } from "firebase/database";
 
 const { ccclass, property } = cc._decorator;
 
@@ -17,6 +19,24 @@ export default class MainMenu extends cc.Component {
     /** 所有 Menu 按鈕的容器節點（開 Panel 時隱藏） */
     @property(cc.Node)
     menuButtons: cc.Node = null;
+
+    start() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyCsy69T3t_FNuOyjct5fvd-ZLIM3dKTmZ0",
+      authDomain: "cocos-firebase-tutorial.firebaseapp.com",
+      databaseURL:
+        "https://cocos-firebase-tutorial-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "cocos-firebase-tutorial",
+      storageBucket: "cocos-firebase-tutorial.firebasestorage.app",
+      messagingSenderId: "1058980190093",
+      appId: "1:1058980190093:web:8396b10065f55f60268fc4",
+    };
+
+    if (getApps().length === 0) {
+        const app = initializeApp(firebaseConfig);
+        console.log("Firebase initialized:", app);
+    }
+  }
 
     onLoad() {
         AudioManager.playMusic('遊戲登入背景音樂');
