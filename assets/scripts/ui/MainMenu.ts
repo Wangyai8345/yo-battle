@@ -22,14 +22,14 @@ export default class MainMenu extends cc.Component {
 
     start() {
     const firebaseConfig = {
-      apiKey: "AIzaSyCsy69T3t_FNuOyjct5fvd-ZLIM3dKTmZ0",
-      authDomain: "cocos-firebase-tutorial.firebaseapp.com",
-      databaseURL:
-        "https://cocos-firebase-tutorial-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "cocos-firebase-tutorial",
-      storageBucket: "cocos-firebase-tutorial.firebasestorage.app",
-      messagingSenderId: "1058980190093",
-      appId: "1:1058980190093:web:8396b10065f55f60268fc4",
+        apiKey: "AIzaSyBuGBqqZ0XUI4SjSWVLVCnhiqy09lP3NSY",
+        authDomain: "yo-battle-9921a.firebaseapp.com",
+        databaseURL: "https://yo-battle-9921a-default-rtdb.firebaseio.com",
+        projectId: "yo-battle-9921a",
+        storageBucket: "yo-battle-9921a.firebasestorage.app",
+        messagingSenderId: "11338410793",
+        appId: "1:11338410793:web:6024406c092e262af86538",
+        measurementId: "G-62530V6NLT"
     };
 
     if (getApps().length === 0) {
