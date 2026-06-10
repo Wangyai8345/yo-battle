@@ -1834,12 +1834,13 @@ export default class GroundMonkController extends PlayerController {
             WATER_PRIESTESS_SKILL3_CONTROL_PREFIX
         );
 
+        const shouldReactToMetalFinisher = attackType === "metalSuperAttackFinisher";
         if (this.isDefending) {
             damage = Math.floor(damage * this.defendDamageMultiplier);
             if (damage < 0) {
                 damage = 0;
             }
-            if (damage <= 0 && crowdControlDuration <= 0) {
+            if (damage <= 0 && crowdControlDuration <= 0 && !shouldReactToMetalFinisher) {
                 return;
             }
         }
@@ -1848,7 +1849,7 @@ export default class GroundMonkController extends PlayerController {
             this.deductHp(damage);
         }
 
-        if (this.hp > 0 && (damage > 0 || crowdControlDuration > 0)) {
+        if (this.hp > 0 && (damage > 0 || crowdControlDuration > 0 || shouldReactToMetalFinisher)) {
             if (crowdControlDuration > 0) {
                 this.applyCrowdControl(crowdControlDuration);
             }

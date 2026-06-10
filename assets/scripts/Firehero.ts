@@ -714,13 +714,14 @@ export default class Firehero extends PlayerController {
             attackType,
             WATER_PRIESTESS_SKILL3_CONTROL_PREFIX
         );
+        const shouldReactToMetalFinisher = attackType === "metalSuperAttackFinisher";
         let finalDamage = damage;
         if (this.isDefending) {
             finalDamage = Math.floor(finalDamage * this.defendDamageMultiplier);
             if (finalDamage < 0) {
                 finalDamage = 0;
             }
-            if (finalDamage <= 0 && crowdControlDuration <= 0) {
+            if (finalDamage <= 0 && crowdControlDuration <= 0 && !shouldReactToMetalFinisher) {
                 return;
             }
         }
@@ -729,7 +730,7 @@ export default class Firehero extends PlayerController {
             this.deductHp(finalDamage);
         }
 
-        if (this.hp > 0 && (finalDamage > 0 || crowdControlDuration > 0)) {
+        if (this.hp > 0 && (finalDamage > 0 || crowdControlDuration > 0 || shouldReactToMetalFinisher)) {
             if (crowdControlDuration > 0) {
                 this.applyCrowdControl(crowdControlDuration);
             }
