@@ -545,19 +545,19 @@ export default class GroundMonkController extends PlayerController {
         if (event.keyCode === cc.macro.KEY.shift) {
             this.dash();
         }
-        if (event.keyCode === cc.macro.KEY.q) {
+        if (event.keyCode === cc.macro.KEY.u) {
             this.requestSpecialAttack();
         }
-        if (event.keyCode === cc.macro.KEY.e) {
+        if (event.keyCode === cc.macro.KEY.j) {
             this.requestAttackStep(1);
         }
-        if (event.keyCode === cc.macro.KEY.r) {
+        if (event.keyCode === cc.macro.KEY.k) {
             this.requestAttackStep(2);
         }
-        if (event.keyCode === cc.macro.KEY.c) {
+        if (event.keyCode === cc.macro.KEY.l) {
             this.requestAttackStep(3);
         }
-        if (event.keyCode === cc.macro.KEY.f) {
+        if (event.keyCode === cc.macro.KEY.i) {
             this.startDefend();
         }
     }
@@ -688,8 +688,6 @@ export default class GroundMonkController extends PlayerController {
         const gpDefend = gp.buttons[1]?.pressed ?? false;
         if (gpDefend && !this.gpDefendPrev) {
             this.startDefend();
-        } else if (!gpDefend && this.gpDefendPrev) {
-            this.stopDefend();
         }
         this.gpDefendPrev = gpDefend;
     }

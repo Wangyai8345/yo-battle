@@ -404,8 +404,6 @@ export default class SharedHeroController extends PlayerController {
         const gpDefend = gp.buttons[1]?.pressed ?? false;
         if (gpDefend && !this.gpDefendPrev) {
             this.startDefend();
-        } else if (!gpDefend && this.gpDefendPrev) {
-            this.stopDefend();
         }
         this.gpDefendPrev = gpDefend;
     }
@@ -699,19 +697,19 @@ export default class SharedHeroController extends PlayerController {
         if (event.keyCode === cc.macro.KEY.shift || event.keyCode === cc.macro.KEY.g) {
             this.dash();
         }
-        if (event.keyCode === cc.macro.KEY.j || event.keyCode === cc.macro.KEY.e) {
+        if (event.keyCode === cc.macro.KEY.j) {
             this.useMelee();
         }
-        if (event.keyCode === cc.macro.KEY.k || event.keyCode === cc.macro.KEY.r) {
+        if (event.keyCode === cc.macro.KEY.k) {
             this.useSkill2();
         }
-        if (event.keyCode === cc.macro.KEY.c) {
+        if (event.keyCode === cc.macro.KEY.l) {
             this.useSkill3();
         }
-        if (event.keyCode === cc.macro.KEY.f) {
+        if (event.keyCode === cc.macro.KEY.i) {
             this.startDefend();
         }
-        if (event.keyCode === cc.macro.KEY.q) {
+        if (event.keyCode === cc.macro.KEY.u) {
             this.useSuper();
         }
     }
@@ -731,9 +729,6 @@ export default class SharedHeroController extends PlayerController {
         if (event.keyCode === cc.macro.KEY.d) {
             this.rightPressed = false;
             this.refreshMoveDir();
-        }
-        if (event.keyCode === cc.macro.KEY.f) {
-            this.stopDefend();
         }
     }
 

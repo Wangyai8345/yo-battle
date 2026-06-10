@@ -573,27 +573,27 @@ export default class Arrowhero extends PlayerController {
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.e) {
+        if (event.keyCode === cc.macro.KEY.j) {
             this.useMelee();
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.r) {
+        if (event.keyCode === cc.macro.KEY.k) {
             this.useRanged();
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.c) {
+        if (event.keyCode === cc.macro.KEY.l) {
             this.useSkill3();
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.f) {
+        if (event.keyCode === cc.macro.KEY.i) {
             this.useDefend();
             return;
         }
 
-        if (event.keyCode === cc.macro.KEY.q) {
+        if (event.keyCode === cc.macro.KEY.u) {
             this.useSuper();
         }
     }
@@ -612,6 +612,7 @@ export default class Arrowhero extends PlayerController {
         if (event.keyCode === cc.macro.KEY.s || event.keyCode === cc.macro.KEY.down) {
             this.downPressed = false;
         }
+
     }
 
     public beAttacked(attackType: string, damage: number, knockback: cc.Vec2): void {
