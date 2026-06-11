@@ -24,6 +24,7 @@ export enum GAMESTATE{
 export type GameOverData = {
     winnerName: string;
     winnerPrefab: cc.Prefab | null;
+    winnerCharacter: string | null;
     matchStats: MatchStatsData | null;
 };
 
@@ -487,7 +488,7 @@ export default class NetworkManager extends cc.Component {
 
                 panel.show(
                     finalData.winnerName,
-                    finalData.winnerPrefab || undefined,
+                    finalData.winnerCharacter || null,
                     finalData.matchStats || null
                 );
             });

@@ -17,7 +17,7 @@
         "__id__": 2
       }
     ],
-    "_active": true,
+    "_active": false,
     "_components": [],
     "_prefab": null,
     "_opacity": 255,
@@ -3178,6 +3178,44 @@
       "__id__": 15
     },
     "hideOnStart": true,
+    "displayScale": 8,
+    "displayOffsetY": 300,
+    "groundMonkSkill3Clip": {
+      "__uuid__": "897acfcc-c5c8-4d1f-95e4-5641a95af1d2"
+    },
+    "groundMonkIdleClip": {
+      "__uuid__": "06cfb1f1-a050-45f4-b734-cb25efc810c6"
+    },
+    "waterPriestessSkill3Clip": {
+      "__uuid__": "e28efec0-1e2c-4066-98b5-83ed8eb5d069"
+    },
+    "waterPriestessIdleClip": {
+      "__uuid__": "b2b10b96-241c-4964-ad1d-563934853463"
+    },
+    "windHashashinSkill3Clip": {
+      "__uuid__": "38667321-46eb-4b0c-a402-90d750048013"
+    },
+    "windHashashinIdleClip": {
+      "__uuid__": "8446d5cc-78e8-43b0-b615-630479615b2e"
+    },
+    "leafRangerSkill3Clip": {
+      "__uuid__": "88f43859-92c4-4c9d-b62a-cf71c024acdc"
+    },
+    "leafRangerIdleClip": {
+      "__uuid__": "1a6e3f56-a904-48ed-9c43-1900def38b2f"
+    },
+    "fireKnightSkill3Clip": {
+      "__uuid__": "ed1cfee7-16e2-4e20-8952-2f9965eb30c6"
+    },
+    "fireKnightIdleClip": {
+      "__uuid__": "023e33ab-d72d-4099-bfc3-04207f75c130"
+    },
+    "metalBladekeeperSkill3Clip": {
+      "__uuid__": "994ba6aa-41b2-43d8-8e54-edb52ca766c6"
+    },
+    "metalBladekeeperIdleClip": {
+      "__uuid__": "bfae38eb-5774-40c4-8896-db5ba52ca3b2"
+    },
     "_id": "34mY7EzF5BrahnL8Xob4O8"
   },
   {

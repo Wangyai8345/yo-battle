@@ -1,13 +1,13 @@
-import GameManager from '../GameManager';
 import NetworkManager, { type MatchStatsData, type RoundStatData } from '../NetworkManager';
 import AudioManager from '../AudioManager';
 
 const { ccclass, property } = cc._decorator;
 
-/**
- * GameOverPanel
- * 遊戲結束時顯示 Winner 角色動畫 + Again / Quit 按鈕
- */
+type ClipSet = {
+    skill3: cc.AnimationClip | null;
+    idle: cc.AnimationClip | null;
+};
+
 @ccclass
 export default class GameOverPanel extends cc.Component {
 
@@ -23,26 +23,59 @@ export default class GameOverPanel extends cc.Component {
     @property
     hideOnStart: boolean = true;
 
-    private _charNode: cc.Node = null;
-    private _shouldSyncSprite: boolean = false;
+    @property
+    displayScale: number = 10;
+
+    @property
+    displayOffsetY: number = -30;
+
+    @property({ type: cc.AnimationClip, displayName: "Ground Monk Skill3" })
+    groundMonkSkill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Ground Monk Idle" })
+    groundMonkIdleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Water Priestess Skill3" })
+    waterPriestessSkill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Water Priestess Idle" })
+    waterPriestessIdleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Wind Hashashin Skill3" })
+    windHashashinSkill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Wind Hashashin Idle" })
+    windHashashinIdleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Leaf Ranger Skill3" })
+    leafRangerSkill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Leaf Ranger Idle" })
+    leafRangerIdleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Fire Knight Skill3" })
+    fireKnightSkill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Fire Knight Idle" })
+    fireKnightIdleClip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Metal Bladekeeper Skill3" })
+    metalBladekeeperSkill3Clip: cc.AnimationClip = null;
+
+    @property({ type: cc.AnimationClip, displayName: "Metal Bladekeeper Idle" })
+    metalBladekeeperIdleClip: cc.AnimationClip = null;
+
+    private _displayNode: cc.Node = null;
+    private _displaySprite: cc.Sprite = null;
+    private _displayAnimation: cc.Animation = null;
     private _hasShown: boolean = false;
 
     start() {
         this.node.active = this._hasShown || !this.hideOnStart;
-        this._shouldSyncSprite = false;
 
         if (!this.hideOnStart && !this._hasShown) {
             this.populateFromStoredResult();
         }
-    }
-
-    update() {
-        if (!this._shouldSyncSprite || !this._charNode || !cc.isValid(this._charNode)) return;
-        const src = this._charNode.getComponent(cc.Sprite);
-        const vis = this._charNode.getChildByName('Visual');
-        if (!src || !vis) return;
-        const vsp = vis.getComponent(cc.Sprite);
-        if (vsp) vsp.spriteFrame = src.spriteFrame;
     }
 
     private getLabelAt(path: string): cc.Label | null {
@@ -122,86 +155,172 @@ export default class GameOverPanel extends cc.Component {
         });
     }
 
-    /** GameManager.gameEnd() 呼叫 */
-    public show(winnerName: string, winnerPrefab?: cc.Prefab, matchStats: MatchStatsData | null = null) {
+    public show(winnerName: string, winnerCharacter: string | null = null, matchStats: MatchStatsData | null = null) {
         this._hasShown = true;
         this.node.active = true;
         this.node.setSiblingIndex(this.node.parent.childrenCount - 1);
 
-        // 完全隱藏場上角色（active=false 才能連粒子特效都隱藏，opacity 不夠）
         const canvas = cc.find('Canvas');
         if (canvas) {
-            canvas.children.forEach(child => {
+            canvas.children.forEach((child) => {
                 if (child.name === 'P1' || child.name === 'P2') {
                     child.active = false;
                 }
             });
         }
+
         if (this.winnerLabel) {
             this.winnerLabel.string = "";
         }
+
         const resolvedNameLabel = this.nameLabel || this.getLabelAt("Panel/Body/LeftPlayerCard/NameLabel");
         if (resolvedNameLabel) {
             resolvedNameLabel.string = `WINNER ${winnerName}`;
         }
+
         this.renderMatchStats(matchStats, winnerName);
+        this.playWinnerAnimation(winnerCharacter);
+    }
 
-        // 顯示贏家角色動畫
-        if (winnerPrefab && this.characterContainer) {
-            if (this._charNode) this._charNode.destroy();
-            this._charNode = cc.instantiate(winnerPrefab);
-            this._charNode.setPosition(0, -30);
-            this._charNode.scale = 1.5;
+    private playWinnerAnimation(winnerCharacter: string | null) {
+        const display = this.ensureDisplayNode();
+        if (!display) {
+            return;
+        }
 
-            // 完全移除物理
-            const rb = this._charNode.getComponent(cc.RigidBody);
-            if (rb) {
-                rb.enabledContactListener = false;
-                rb.linearVelocity = cc.v2(0, 0);
-                rb.angularVelocity = 0;
-                rb.gravityScale = 0;
-                rb.type = cc.RigidBodyType.Static;
+        display.animation.stop();
+        display.animation.off("finished");
+        display.node.active = false;
+        display.sprite.spriteFrame = null;
+
+        if (!winnerCharacter) {
+            cc.warn("[GameOverPanel] Missing winnerCharacter");
+            return;
+        }
+
+        const clipSet = this.getConfiguredClipSetForCharacter(winnerCharacter);
+        if (!clipSet) {
+            cc.warn(`[GameOverPanel] No configured clip set for "${winnerCharacter}"`);
+            return;
+        }
+
+        display.node.active = true;
+        this.configureDisplayNode(display.node);
+
+        if (clipSet.idle) {
+            this.registerClip(display.animation, clipSet.idle);
+            clipSet.idle.wrapMode = cc.WrapMode.Loop;
+        }
+
+        if (clipSet.skill3) {
+            this.registerClip(display.animation, clipSet.skill3);
+            clipSet.skill3.wrapMode = cc.WrapMode.Normal;
+            this.applyFirstFrameSprite(display.sprite, clipSet.skill3);
+            display.animation.once("finished", () => {
+                if (!cc.isValid(display.node) || !clipSet.idle) return;
+                this.applyFirstFrameSprite(display.sprite, clipSet.idle);
+                display.animation.play(clipSet.idle.name);
+            });
+            display.animation.play(clipSet.skill3.name);
+            return;
+        }
+
+        if (clipSet.idle) {
+            this.applyFirstFrameSprite(display.sprite, clipSet.idle);
+            display.animation.play(clipSet.idle.name);
+        }
+    }
+
+    private ensureDisplayNode(): { node: cc.Node; sprite: cc.Sprite; animation: cc.Animation } | null {
+        if (!this.characterContainer || !cc.isValid(this.characterContainer)) {
+            cc.warn("[GameOverPanel] CharacterContainer is missing");
+            return null;
+        }
+
+        if (!this._displayNode || !cc.isValid(this._displayNode)) {
+            this._displayNode = this.characterContainer.getChildByName("AnimatedCharacter") || new cc.Node("AnimatedCharacter");
+            if (!this._displayNode.parent) {
+                this.characterContainer.addChild(this._displayNode);
             }
-            const colliders = this._charNode.getComponents(cc.Collider);
-            colliders.forEach(c => c.enabled = false);
-            const physColliders = this._charNode.getComponents(cc.PhysicsCollider);
-            physColliders.forEach(c => c.enabled = false);
+        }
 
-            // 隱藏 Label 與非 Visual 的子節點（清除可能殘留的特效節點）
-            this._charNode.children.forEach(child => {
-                if (child.name !== 'Visual') {
-                    child.active = false;
-                }
-            });
+        this.configureDisplayNode(this._displayNode);
 
-            this.characterContainer.addChild(this._charNode);
+        let sprite = this._displayNode.getComponent(cc.Sprite);
+        if (!sprite) {
+            sprite = this._displayNode.addComponent(cc.Sprite);
+        }
 
-            // 先 disable 所有 Controller，讓 lateUpdate 不會在下一幀覆蓋動畫
-            const scripts = this._charNode.getComponents(cc.Component);
-            scripts.forEach(s => {
-                if (s instanceof cc.Animation || s instanceof cc.Sprite) return;
-                if (s.constructor.name !== 'cc.Node') s.enabled = false;
-            });
+        sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        sprite.trim = false;
 
-            // 下一幀再 play idle，確保 Controller 的 lateUpdate 已清除
-            const charNode = this._charNode;
-            this.scheduleOnce(() => {
-                if (!charNode || !cc.isValid(charNode)) return;
-                const anim = charNode.getComponent(cc.Animation);
-                if (!anim) return;
-                const clips = anim.getClips().filter(c => c != null);
-                const idleClip = clips.find(c => {
-                    const n = c.name.toLowerCase();
-                    return n.includes('idle') || n.includes('ldle');
-                });
-                if (idleClip) {
-                    anim.play(idleClip.name);
-                } else if (clips.length > 0) {
-                    anim.play(clips[0].name);
-                }
-            }, 0);
+        let animation = this._displayNode.getComponent(cc.Animation);
+        if (!animation) {
+            animation = this._displayNode.addComponent(cc.Animation);
+        }
 
-            this._shouldSyncSprite = true;
+        this._displaySprite = sprite;
+        this._displayAnimation = animation;
+
+        return {
+            node: this._displayNode,
+            sprite,
+            animation,
+        };
+    }
+
+    private configureDisplayNode(node: cc.Node) {
+        node.setPosition(0, this.displayOffsetY);
+        node.scaleX = this.displayScale;
+        node.scaleY = this.displayScale;
+    }
+
+    private registerClip(animation: cc.Animation, clip: cc.AnimationClip): void {
+        const exists = animation.getClips().some((existingClip) => {
+            return existingClip === clip || existingClip.name === clip.name;
+        });
+
+        if (!exists) {
+            animation.addClip(clip, clip.name);
+        }
+    }
+
+    private applyFirstFrameSprite(sprite: cc.Sprite, clip: cc.AnimationClip): void {
+        const curveData = (clip as any)?.curveData;
+        const comps = curveData?.comps;
+        const spriteComp = comps?.["cc.Sprite"];
+        const frames = spriteComp?.spriteFrame;
+        const firstFrame = frames && frames.length > 0 ? frames[0]?.value : null;
+
+        if (firstFrame) {
+            sprite.spriteFrame = firstFrame;
+        }
+    }
+
+    private getConfiguredClipSetForCharacter(characterKey: string): ClipSet | null {
+        switch (characterKey) {
+            case "ground_monk":
+                return { skill3: this.groundMonkSkill3Clip, idle: this.groundMonkIdleClip };
+            case "water_priestess":
+                return { skill3: this.waterPriestessSkill3Clip, idle: this.waterPriestessIdleClip };
+            case "wind":
+            case "wind_hero":
+            case "wind_hashashin":
+                return { skill3: this.windHashashinSkill3Clip, idle: this.windHashashinIdleClip };
+            case "arrow":
+            case "arrow_hero":
+            case "leaf_ranger":
+                return { skill3: this.leafRangerSkill3Clip, idle: this.leafRangerIdleClip };
+            case "fire_hero":
+            case "fire_knight":
+                return { skill3: this.fireKnightSkill3Clip, idle: this.fireKnightIdleClip };
+            case "metal":
+            case "metal_hero":
+            case "metalhero":
+            case "metal_bladekeeper":
+                return { skill3: this.metalBladekeeperSkill3Clip, idle: this.metalBladekeeperIdleClip };
+            default:
+                return null;
         }
     }
 
@@ -209,20 +328,24 @@ export default class GameOverPanel extends cc.Component {
         const data = NetworkManager.instance?.getGameOverData?.();
         if (!data) return;
 
-        this.show(data.winnerName, data.winnerPrefab || undefined, data.matchStats || null);
+        this.show(data.winnerName, data.winnerCharacter || null, data.matchStats || null);
     }
 
     private _leaveAndLoad(sceneName: string) {
-        this._shouldSyncSprite = false;
-        if (this._charNode) this._charNode.destroy();
+        if (this._displayAnimation) {
+            this._displayAnimation.stop();
+            this._displayAnimation.off("finished");
+        }
+        if (this._displayNode && cc.isValid(this._displayNode)) {
+            this._displayNode.active = false;
+        }
         this.node.active = false;
-        // 若遊戲中曾暫停（SettingPanel），確保 director 恢復，否則新場景的 scheduleOnce 不會執行
         cc.director.resume();
         cc.director.getPhysicsManager().debugDrawFlags = 0;
         AudioManager.stopMusic();
         if (NetworkManager.instance) {
             NetworkManager.instance.quitServer()
-                .catch(() => {})
+                .catch(() => { })
                 .then(() => { cc.director.loadScene(sceneName); });
         } else {
             cc.director.loadScene(sceneName);

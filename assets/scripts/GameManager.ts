@@ -470,9 +470,11 @@ export default class GameManager extends cc.Component {
 
         // 找贏家的角色 Prefab
         let winnerPrefab: cc.Prefab = null;
+        let winnerCharacter: string | null = null;
         state.players.forEach((player: any) => {
             if (player.name === winner) {
                 winnerPrefab = this.getPlayerPrefab(player.character);
+                winnerCharacter = player.character || null;
             }
         });
 
@@ -483,6 +485,7 @@ export default class GameManager extends cc.Component {
             NetworkManager.instance.transitionToGameOverScene({
                 winnerName: winner,
                 winnerPrefab: winnerPrefab || null,
+                winnerCharacter,
                 matchStats,
             });
         }, 2.5);
