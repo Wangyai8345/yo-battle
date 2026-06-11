@@ -220,10 +220,10 @@ export default class Windhero extends PlayerController {
     };
 
     @property
-    attackCooldown: number = 0.35;
+    attackCooldown: number = 0.3;
 
     @property
-    skill2Cooldown: number = 1.4;
+    skill2Cooldown: number = 1;
 
     @property
     skill3Cooldown: number = 2;
@@ -235,7 +235,7 @@ export default class Windhero extends PlayerController {
     defendCooldown: number = 1.2;
 
     @property
-    superCooldown: number = 6;
+    superCooldown: number = 5;
 
     @property
     speed: number = 250;

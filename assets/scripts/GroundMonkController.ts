@@ -5,6 +5,7 @@ import PlayerController from './PlayerController';
 
 const { ccclass, property } = cc._decorator;
 type ClipLike = cc.AnimationClip | string | null | undefined;
+type MonkCooldownSlot = 'attack' | 'skill2' | 'skill3' | 'super';
 const WATER_PRIESTESS_SKILL3_CONTROL_PREFIX = "waterPriestessSkill3Control:";
 
 // enum CharacterPreset {
@@ -169,6 +170,18 @@ export default class GroundMonkController extends PlayerController {
     @property
     dashSfxCooldown: number = 0.1;
 
+    @property
+    attackCooldown: number = 0.15;
+
+    @property
+    skill2Cooldown: number = 0.5;
+
+    @property
+    skill3Cooldown: number = 1;
+
+    @property
+    superCooldown: number = 3;
+
     @property({ tooltip: '視覺縮放倍率，用來對齊其他角色大小' })
     visualScale: number = 3.142857142857143;
 
@@ -226,6 +239,10 @@ export default class GroundMonkController extends PlayerController {
     private isDefending: boolean = false;
     private attackToken: number = 0;
     private attackPlaybackToken: number = 0;
+    private attackCooldownRemaining: number = 0;
+    private skill2CooldownRemaining: number = 0;
+    private skill3CooldownRemaining: number = 0;
+    private superCooldownRemaining: number = 0;
     private visualNode: cc.Node | null = null;
     private visualSprite: cc.Sprite | null = null;
     private sourceSprite: cc.Sprite | null = null;
@@ -349,6 +366,7 @@ export default class GroundMonkController extends PlayerController {
     // FIXED: implement PlayerController
     localUpdate(dt: number) {
         this.updateCrowdControl(dt);
+        this.updateAbilityCooldowns(dt);
         // 手柄輸入
         this.pollGamepad();
         if (this.jumpCornerCorrectionTimer > 0) {
@@ -703,12 +721,18 @@ export default class GroundMonkController extends PlayerController {
             return;
         }
 
+        const slot = this.getAttackStepCooldownSlot(step);
+        if (this.getCooldownRemaining(slot) > 0) {
+            return;
+        }
+
         if (!this.onGround) {
             const airAttackClip = this.getExistingAnimClip(this.jumpAttackClip, this.animJumpAttack, 'air_atk', this.attackClip, this.animAttack);
             if (!airAttackClip) {
                 this.updateAnimation();
                 return;
             }
+            this.setCooldownRemaining(slot, this.getCooldownDuration(slot));
             this.spawnAttackHitBox(
                 "groundMonkAirAttackLeft",
                 cc.v2(-70, 0),
@@ -793,6 +817,10 @@ export default class GroundMonkController extends PlayerController {
             ? this.getExistingAnimClip('up_atk')
             : (this.downPressed ? this.getExistingAnimClip('down_atk') : '');
         const clipName = overrideClip || this.getComboClip(normalizedStep);
+        if (!clipName) {
+            return;
+        }
+        this.setCooldownRemaining(slot, this.getCooldownDuration(slot));
         const duration = this.startAttackPlayback(normalizedStep, clipName);
         const attackPlaybackToken = this.attackPlaybackToken;
 
@@ -1118,11 +1146,16 @@ export default class GroundMonkController extends PlayerController {
         if (this.isDead || this.isHit || this.isDashing || this.isAttacking || this.isAirAttacking) {
             return;
         }
+        if (this.superCooldownRemaining > 0) {
+            return;
+        }
 
         const clip = this.getExistingAnimClip(this.specialAttackClip, this.animSpecialAttack, 'sp_atk');
         if (!clip) {
             return;
         }
+
+        this.superCooldownRemaining = Math.max(0, this.superCooldown);
 
         // 把特殊攻擊視為一個普通攻擊段，但鎖死不能接 combo（特殊招獨立、不可中斷自己）
         this.isAttacking = true;
@@ -1804,6 +1837,10 @@ export default class GroundMonkController extends PlayerController {
         this.jumpCornerCorrectionTimer = 0;
         this.consumeCrowdControl();
         this.airJumpUsed = false;
+        this.attackCooldownRemaining = 0;
+        this.skill2CooldownRemaining = 0;
+        this.skill3CooldownRemaining = 0;
+        this.superCooldownRemaining = 0;
         this.currentAnim = '';
 
         // if (this.respawnPoint) {
@@ -1875,6 +1912,70 @@ export default class GroundMonkController extends PlayerController {
         velocity.y = Math.max(velocity.y, knockback.y);
         this.rb.linearVelocity = velocity;
         this.rb.awake = true;
+    }
+
+    private updateAbilityCooldowns(dt: number) {
+        this.attackCooldownRemaining = Math.max(0, this.attackCooldownRemaining - dt);
+        this.skill2CooldownRemaining = Math.max(0, this.skill2CooldownRemaining - dt);
+        this.skill3CooldownRemaining = Math.max(0, this.skill3CooldownRemaining - dt);
+        this.superCooldownRemaining = Math.max(0, this.superCooldownRemaining - dt);
+    }
+
+    private getAttackStepCooldownSlot(step: number): MonkCooldownSlot {
+        if (step <= 1) {
+            return 'attack';
+        }
+        if (step === 2) {
+            return 'skill2';
+        }
+        return 'skill3';
+    }
+
+    private getCooldownDuration(slot: MonkCooldownSlot): number {
+        switch (slot) {
+            case 'attack':
+                return Math.max(0, this.attackCooldown);
+            case 'skill2':
+                return Math.max(0, this.skill2Cooldown);
+            case 'skill3':
+                return Math.max(0, this.skill3Cooldown);
+            case 'super':
+                return Math.max(0, this.superCooldown);
+            default:
+                return 0;
+        }
+    }
+
+    private getCooldownRemaining(slot: MonkCooldownSlot): number {
+        switch (slot) {
+            case 'attack':
+                return this.attackCooldownRemaining;
+            case 'skill2':
+                return this.skill2CooldownRemaining;
+            case 'skill3':
+                return this.skill3CooldownRemaining;
+            case 'super':
+                return this.superCooldownRemaining;
+            default:
+                return 0;
+        }
+    }
+
+    private setCooldownRemaining(slot: MonkCooldownSlot, value: number) {
+        switch (slot) {
+            case 'attack':
+                this.attackCooldownRemaining = value;
+                return;
+            case 'skill2':
+                this.skill2CooldownRemaining = value;
+                return;
+            case 'skill3':
+                this.skill3CooldownRemaining = value;
+                return;
+            case 'super':
+                this.superCooldownRemaining = value;
+                return;
+        }
     }
 
 

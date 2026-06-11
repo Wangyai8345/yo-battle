@@ -182,7 +182,7 @@ export default class SharedHeroController extends PlayerController {
     dashSfxCooldown: number = 0.1;
 
     @property
-    skill2Cooldown: number = 1.2;
+    skill2Cooldown: number = 1;
 
     @property
     skill3Cooldown: number = 2;
@@ -191,7 +191,7 @@ export default class SharedHeroController extends PlayerController {
     defendCooldown: number = 1.2;
 
     @property
-    superCooldown: number = 6;
+    superCooldown: number = 5;
 
     @property
     skill2Damage: number = 5;

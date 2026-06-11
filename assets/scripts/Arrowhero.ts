@@ -133,10 +133,10 @@ export default class Arrowhero extends PlayerController {
     };
 
     @property
-    attackCooldown: number = 0.35;
+    attackCooldown: number = 0.3;
 
     @property
-    skill2Cooldown: number = 1.2;
+    skill2Cooldown: number = 1;
 
     @property
     skill3Cooldown: number = 2;
@@ -145,7 +145,7 @@ export default class Arrowhero extends PlayerController {
     defendCooldown: number = 1.2;
 
     @property
-    superCooldown: number = 6;
+    superCooldown: number = 5;
 
     @property
     speed: number = 250;
