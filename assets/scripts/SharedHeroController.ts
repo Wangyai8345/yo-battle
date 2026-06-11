@@ -1222,7 +1222,7 @@ export default class SharedHeroController extends PlayerController {
             cc.v2(80, 8),
             cc.v2(96, 42),
             0.12,
-            2,
+            10,
             100,
             0.08,
             playback.playbackToken
