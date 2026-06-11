@@ -57,6 +57,7 @@ export default class JoinRoomScene extends cc.Component {
 
         // document-level keydown：在真正的 user gesture 裡 focus，Chrome 不會擋
         this._docKeyHandler = (e: KeyboardEvent) => {
+            const key = typeof e.key === 'string' ? e.key : '';
             // CC2.4.x EditBox 的 DOM 元素可能延遲建立，直接用 querySelector 找
             const elem = (document.querySelector('input[type="text"]') ||
                           document.querySelector('input:not([type="submit"]):not([type="button"])') ||
@@ -64,7 +65,7 @@ export default class JoinRoomScene extends cc.Component {
             if (!elem) return;
 
             // Enter → 直接 join
-            if (e.key === 'Enter' || e.keyCode === 13) {
+            if (key === 'Enter' || e.keyCode === 13) {
                 if (!this.pending && this.joinButton && this.joinButton.interactable) {
                     e.preventDefault();
                     this.onJoinButtonClicked();
@@ -73,9 +74,9 @@ export default class JoinRoomScene extends cc.Component {
             }
 
             // Backspace / Delete：CC 引擎可能在 bubble 階段吃掉這些鍵，手動處理
-            if (e.key === 'Backspace' || e.key === 'Delete') {
+            if (key === 'Backspace' || key === 'Delete') {
                 if (document.activeElement !== elem) elem.focus();
-                if (e.key === 'Backspace') {
+                if (key === 'Backspace') {
                     elem.value = elem.value.slice(0, -1);
                 } else {
                     // Delete 鍵：刪游標後一個字（這裡簡化為清空，通常不常用）
@@ -87,11 +88,11 @@ export default class JoinRoomScene extends cc.Component {
             }
 
             // 使用者打任何可見字元時，若 input 還沒 focus 就先 focus 並補入第一個字
-            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+            if (key.length === 1 && !e.ctrlKey && !e.metaKey) {
                 if (document.activeElement !== elem) {
                     elem.focus();
                     // keydown 在 focus 前就觸發，字元不會自動進 input，手動補入
-                    elem.value = elem.value + e.key;
+                    elem.value = elem.value + key;
                     this.roomNameInput.string = elem.value;
                     e.preventDefault();
                 }

@@ -7729,6 +7729,20 @@
       "__id__": 163
     },
     "hideOnStart": true,
+    "displayScale": 10,
+    "displayOffsetY": -30,
+    "groundMonkSkill3Clip": null,
+    "groundMonkIdleClip": null,
+    "waterPriestessSkill3Clip": null,
+    "waterPriestessIdleClip": null,
+    "windHashashinSkill3Clip": null,
+    "windHashashinIdleClip": null,
+    "leafRangerSkill3Clip": null,
+    "leafRangerIdleClip": null,
+    "fireKnightSkill3Clip": null,
+    "fireKnightIdleClip": null,
+    "metalBladekeeperSkill3Clip": null,
+    "metalBladekeeperIdleClip": null,
     "_id": "c2LauFDGFDZZXXfy6MB61d"
   },
   {

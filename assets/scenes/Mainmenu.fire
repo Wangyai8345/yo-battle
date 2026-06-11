@@ -7701,7 +7701,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "SumitBtn",
+    "_name": "SubmitBtn",
     "_objFlags": 0,
     "_parent": {
       "__id__": 129
@@ -7911,8 +7911,8 @@
     ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
-    "_string": "Sumit",
-    "_N$string": "Sumit",
+    "_string": "Submit",
+    "_N$string": "Submit",
     "_fontSize": 20,
     "_lineHeight": 40,
     "_enableWrapText": false,
@@ -10089,7 +10089,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "SumitBtn",
+    "_name": "SubmitBtn",
     "_objFlags": 0,
     "_parent": {
       "__id__": 170
@@ -10299,8 +10299,8 @@
     ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
-    "_string": "Sumit",
-    "_N$string": "Sumit",
+    "_string": "Submit",
+    "_N$string": "Submit",
     "_fontSize": 20,
     "_lineHeight": 40,
     "_enableWrapText": false,

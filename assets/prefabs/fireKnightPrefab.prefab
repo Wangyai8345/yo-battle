@@ -876,6 +876,7 @@
     "attackSfxVolume": 0.7,
     "superSfxVolume": 1,
     "dashSpeed": 1000,
+    "fastFallGravityScale": 20,
     "dashDuration": 0.15,
     "dashCooldown": 0.8,
     "dashSoundResource": "dash",

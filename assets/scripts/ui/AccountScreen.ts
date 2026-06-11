@@ -84,7 +84,19 @@ export default class AccountScreen extends cc.Component {
     // ─────────────────────────────────────────────────────
     private _loading: boolean = false;
     private _onCloseCallback: (() => void) | null = null;
-    private _firebaseErrorToChinese(code: string): string {
+    private _firebaseErrorToEnglish(code: string): string {
+        const errorMap: Record<string, string> = {
+            'auth/invalid-email': 'Invalid email format',
+            'auth/user-disabled': 'This account has been disabled',
+            'auth/user-not-found': 'Account not found',
+            'auth/wrong-password': 'Incorrect password',
+            'auth/email-already-in-use': 'This email is already registered',
+            'auth/weak-password': 'Password is too weak',
+            'auth/invalid-credential': 'Invalid email or password',
+        };
+        if (errorMap[code]) {
+            return errorMap[code];
+        }
         switch (code) {
             case 'auth/invalid-email':
                 return '信箱格式錯誤';
@@ -178,12 +190,12 @@ export default class AccountScreen extends cc.Component {
         const password = this.loginPasswordInput?.string.trim() ?? '';
 
         if (!email || !password) {
-            this._setStatus('請填寫所有欄位');
+            this._setStatus('Please fill in all fields');
             return;
         }
 
         this._setLoading(true);
-        this._setStatus('登入中…');
+        this._setStatus('Logging in...');
 
        console.log("Start login:", email);
 
@@ -214,7 +226,7 @@ export default class AccountScreen extends cc.Component {
                 );
 
                 this._setLoading(false);
-                this._setStatus(this._firebaseErrorToChinese(err.code));
+                this._setStatus(this._firebaseErrorToEnglish(err.code));
 
             });
     }
@@ -231,16 +243,16 @@ export default class AccountScreen extends cc.Component {
         const password = this.signupPasswordInput?.string.trim() ?? '';
 
         if (!username || !email || !password) {
-            this._setStatus('請填寫所有欄位');
+            this._setStatus('Please fill in all fields');
             return;
         }
         if (password.length < 6) {
-            this._setStatus('密碼至少 6 個字元');
+            this._setStatus('Password must be at least 6 characters');
             return;
         }
 
         this._setLoading(true);
-        this._setStatus('註冊中…');
+        this._setStatus('Signing up...');
 
         const fb = (window as any).firebase;
 
@@ -279,7 +291,7 @@ export default class AccountScreen extends cc.Component {
             console.log("Signup error message:", err.message);
 
             this._setLoading(false);
-            this._setStatus(this._firebaseErrorToChinese(err.code));
+            this._setStatus(this._firebaseErrorToEnglish(err.code));
 
         });
     }
@@ -287,7 +299,7 @@ export default class AccountScreen extends cc.Component {
     // ── 成功後 ────────────────────────────────────────────
 
     private _onAccountSuccess(user: { email: string; username?: string }) {
-        this._setStatus(`歡迎，${user.username ?? user.email}！`);
+        this._setStatus(`Welcome, ${user.username ?? user.email}!`);
         this.loadPlayerStats();
         this.scheduleOnce(() => { this.close(); }, 1.2);
     }
@@ -339,13 +351,13 @@ export default class AccountScreen extends cc.Component {
     public onChangeUsernameClick() {
         const newName = this.usernameEditBox.string.trim();
         if (!newName) {
-            this._setStatus("請輸入名稱");
+            this._setStatus("Please enter a name");
             return;
         }
         const fb = (window as any).firebase;
         const user = fb.auth().currentUser;
         if (!user) {
-            this._setStatus("尚未登入");
+            this._setStatus("Not logged in");
             return;
         }
         Promise.all([
@@ -359,11 +371,11 @@ export default class AccountScreen extends cc.Component {
                 })
         ])
         .then(() => {
-            this._setStatus("名稱修改成功");
+            this._setStatus("Name updated successfully");
         })
         .catch((err) => {
             console.error(err);
-            this._setStatus("名稱修改失敗");
+            this._setStatus("Failed to update name");
         });
     }
 
