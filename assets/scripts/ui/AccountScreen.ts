@@ -1,4 +1,5 @@
 import AudioManager from '../AudioManager';
+import FirebaseStats from '../firebase/FirebaseStats';
 
 
 const { ccclass, property } = cc._decorator;
@@ -125,6 +126,7 @@ export default class AccountScreen extends cc.Component {
         const user = fb.auth().currentUser;
         if (user) {
             this._showView('LoggedIn');
+            this.loadPlayerStats();
         } 
         else {
             this._showView('choice');
@@ -263,13 +265,14 @@ export default class AccountScreen extends cc.Component {
                     displayName: username
                 }),
                 fb.database()
-                .ref("users/" + uid)
-                .set({
-                    username: username,
-                    email: email,
-                    wins: 0,
-                    losses: 0,
-                    createdAt: Date.now()
+                .ref()
+                .update({
+                    ["users/" + uid]: FirebaseStats.buildInitialUserRecord(email, username),
+                    ["leaderboard/" + uid]: {
+                        uid,
+                        username,
+                        ...FirebaseStats.createDefaultStats(),
+                    }
                 })
 
             ]);
@@ -364,11 +367,7 @@ export default class AccountScreen extends cc.Component {
             user.updateProfile({
                 displayName: newName
             }),
-            fb.database()
-                .ref("users/" + user.uid)
-                .update({
-                    username: newName
-                })
+            FirebaseStats.updateCurrentUserName(newName)
         ])
         .then(() => {
             this._setStatus("Name updated successfully");
@@ -387,19 +386,18 @@ export default class AccountScreen extends cc.Component {
             .ref("users/" + user.uid)
             .once("value")
             .then((snapshot) => {
-                const data = snapshot.val();
+                const data = snapshot.val() || {};
                 const username = data.username || "";
-                const wins = data.wins || 0;
-                const losses = data.losses || 0;
-                const gamesPlayed = wins + losses;
-                const winRate = gamesPlayed > 0? (wins / gamesPlayed * 100).toFixed(1) : "0.0";
+                const stats = FirebaseStats.normalizeStats(data.stats);
+                const gamesPlayed = stats.matchesPlayed;
+                const winRate = FirebaseStats.getMatchWinRate(stats).toFixed(1);
                 // Label
-                this.userGamePlayed.string =
+                if (this.userGamePlayed) this.userGamePlayed.string =
                     `Games Played: ${gamesPlayed}`;
-                this.userWinRate.string =
-                    `Win Rate: ${winRate}%`;
+                if (this.userWinRate) this.userWinRate.string =
+                    `Match Win Rate: ${winRate}%`;
                 // EditBox
-                this.usernameEditBox.string = username;
+                if (this.usernameEditBox) this.usernameEditBox.string = username;
             });
     }
 }

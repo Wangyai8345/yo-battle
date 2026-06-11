@@ -7,6 +7,7 @@ import DragonProjectile from "./DragonProjectile";
 import ProjectileController from "./ProjectileController";
 import UIManager from "./managers/UIManager";
 import GameOverPanel from "./ui/GameOverPanel";
+import FirebaseStats from "./firebase/FirebaseStats";
 
 
 const { ccclass, property } = cc._decorator;
@@ -479,6 +480,10 @@ export default class GameManager extends cc.Component {
         });
 
         const matchStats = this.buildMatchStatsData(state);
+        FirebaseStats.recordCurrentMatch(matchStats, state)
+            .catch((error) => {
+                cc.warn("[GameManager] Failed to record Firebase match stats", error);
+            });
 
         // 延遲跳轉，讓死亡特效與 Camera Shake 播完再切場景
         this.scheduleOnce(() => {

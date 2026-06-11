@@ -1,31 +1,37 @@
 import AudioManager from '../AudioManager';
+import FirebaseStats, { type LeaderboardRecord, type PlayerStats } from '../firebase/FirebaseStats';
 
 const { ccclass, property } = cc._decorator;
 
-/** 一筆排行榜資料 */
-interface LeaderboardEntry {
-    rank:     number;
+type RankedEntry = {
+    uid: string;
     username: string;
-    wins:     number;
-    kills:    number;
-}
+    stats: PlayerStats;
+    matchWinRate: number;
+    roundWinRate: number;
+    avgDamageDealt: number;
+    avgDamageTaken: number;
+};
 
-/**
- * LeaderboardScene
- *
- * 掛在 Leaderboard Scene 的 Canvas 根節點上。
- *
- * 節點結構建議：
- *  Canvas
- *  ├── TitleLabel
- *  ├── BackBtn
- *  ├── StatusLabel          (載入中 / 錯誤訊息)
- *  └── ScrollView
- *      └── content          ← 把這個節點拉進 listContent
- *
- * 每一列用 entryPrefab（內含 RankLabel / UsernameLabel / WinsLabel / KillsLabel）
- * Greybox 階段可先用 cc.Node + cc.Label 手動組。
- */
+type TableColumn = {
+    title: string;
+    width: number;
+    align?: number;
+};
+
+const TABLE_FONT_SIZE = 20;
+const TABLE_COLUMNS: TableColumn[] = [
+    { title: '#', width: 70 },
+    { title: 'Name', width: 180 },
+    { title: 'Matches', width: 120 },
+    { title: 'Match Win Rate', width: 180 },
+    { title: 'Round Win Rate', width: 180 },
+    { title: 'Total Damage', width: 160 },
+    { title: 'Damage Taken', width: 160 },
+    { title: 'Avg Damage', width: 150 },
+    { title: 'Avg Taken', width: 150 },
+];
+
 @ccclass
 export default class LeaderboardScene extends cc.Component {
 
@@ -41,112 +47,164 @@ export default class LeaderboardScene extends cc.Component {
     @property(cc.Button)
     backBtn: cc.Button = null;
 
-    // ─────────────────────────────────────────────────────
+    private runtimeListRoot: cc.Node = null;
+
     start() {
-        this._loadLeaderboard();
+        this.runtimeListRoot = this.ensureListRoot();
+        this.loadLeaderboard();
     }
 
-    // ── 資料載入 ──────────────────────────────────────────
+    private ensureListRoot(): cc.Node {
+        if (this.listContent && cc.isValid(this.listContent)) {
+            return this.listContent;
+        }
 
-    private _loadLeaderboard() {
-        this._setStatus('Loading…');
-        this._clearList();
-
-        // ── TODO：接 Firebase Firestore ───────────────────
-        // firebase.firestore()
-        //   .collection('leaderboard')
-        //   .orderBy('wins', 'desc')
-        //   .limit(20)
-        //   .get()
-        //   .then(snapshot => {
-        //       const entries = snapshot.docs.map((doc, i) => ({
-        //           rank:     i + 1,
-        //           username: doc.data().username,
-        //           wins:     doc.data().wins,
-        //           kills:    doc.data().kills,
-        //       }));
-        //       this._renderList(entries);
-        //   })
-        //   .catch(err => { this._setStatus('載入失敗：' + err.message); });
-        //
-        // 目前 UI 測試用：假資料
-        this.scheduleOnce(() => {
-            this._renderList(LeaderboardScene.MOCK_DATA);
-        }, 0.5);
+        const root = new cc.Node('LeaderboardTextList');
+        root.parent = this.node;
+        root.setPosition(0, 210);
+        this.listContent = root;
+        return root;
     }
 
-    // ── 渲染列表 ──────────────────────────────────────────
+    private async loadLeaderboard() {
+        this.setStatus('Loading leaderboard...');
+        this.clearList();
 
-    private _renderList(entries: LeaderboardEntry[]) {
-        this._setStatus('');
-        this._clearList();
+        const fb = (window as any).firebase;
+        const db = fb?.database?.();
+        if (!db) {
+            this.setStatus('Firebase is unavailable.');
+            return;
+        }
 
-        if (!this.listContent) return;
+        try {
+            const snapshot = await db.ref('leaderboard').once('value');
+            const raw = snapshot.val() as Record<string, LeaderboardRecord> | null;
 
-        entries.forEach(entry => {
-            const row = this.entryPrefab
-                ? cc.instantiate(this.entryPrefab)
-                : this._buildRowNode(entry);
-
-            // 如果用 Prefab，透過 name 找 Label 更新文字
-            if (this.entryPrefab) {
-                this._setLabel(row, 'RankLabel',     `#${entry.rank}`);
-                this._setLabel(row, 'UsernameLabel', entry.username);
-                this._setLabel(row, 'WinsLabel',     `${entry.wins}W`);
-                this._setLabel(row, 'KillsLabel',    `${entry.kills}K`);
+            if (!raw) {
+                this.setStatus('No recorded players yet.');
+                return;
             }
 
-            this.listContent.addChild(row);
-        });
-    }
+            const entries = Object.entries(raw)
+                .map(([uid, value]) => this.toRankedEntry(uid, value))
+                .filter((entry): entry is RankedEntry => entry !== null)
+                .sort((a, b) => this.sortEntries(a, b))
+                .slice(0, 10);
 
-    /** Greybox 無 Prefab 時，用程式建立簡易橫列 */
-    private _buildRowNode(entry: LeaderboardEntry): cc.Node {
-        const row = new cc.Node('Row_' + entry.rank);
-        row.addComponent(cc.Layout);
-        const layout = row.getComponent(cc.Layout);
-        layout.type = cc.Layout.Type.HORIZONTAL;
-        layout.spacingX = 20;
-        layout.padding = 4;
+            if (entries.length === 0) {
+                this.setStatus('No recorded players yet.');
+                return;
+            }
 
-        const cols = [
-            { name: 'RankLabel',     text: `#${entry.rank}`,    width: 60  },
-            { name: 'UsernameLabel', text: entry.username,       width: 200 },
-            { name: 'WinsLabel',     text: `${entry.wins} W`,   width: 80  },
-            { name: 'KillsLabel',    text: `${entry.kills} K`,  width: 80  },
-        ];
-
-        cols.forEach(col => {
-            const cell = new cc.Node(col.name);
-            cell.width = col.width;
-            cell.height = 40;
-            const lbl = cell.addComponent(cc.Label);
-            lbl.string = col.text;
-            lbl.fontSize = 22;
-            lbl.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
-            row.addChild(cell);
-        });
-
-        return row;
-    }
-
-    private _setLabel(root: cc.Node, childName: string, text: string) {
-        const child = root.getChildByName(childName);
-        if (child) {
-            const lbl = child.getComponent(cc.Label);
-            if (lbl) lbl.string = text;
+            this.setStatus('');
+            this.renderList(entries);
+        } catch (error) {
+            cc.error('[LeaderboardScene] Failed to load leaderboard', error);
+            this.setStatus('Failed to load leaderboard.');
         }
     }
 
-    private _clearList() {
-        if (this.listContent) this.listContent.removeAllChildren();
+    private toRankedEntry(uid: string, value: LeaderboardRecord | null): RankedEntry | null {
+        if (!value || typeof value !== 'object') {
+            return null;
+        }
+
+        const stats = FirebaseStats.normalizeStats(value);
+        const username = typeof value.username === 'string' && value.username.trim() !== ''
+            ? value.username.trim()
+            : 'Player';
+
+        return {
+            uid,
+            username,
+            stats,
+            matchWinRate: FirebaseStats.getMatchWinRate(stats),
+            roundWinRate: FirebaseStats.getRoundWinRate(stats),
+            avgDamageDealt: FirebaseStats.getAverageDamageDealt(stats),
+            avgDamageTaken: FirebaseStats.getAverageDamageTaken(stats),
+        };
     }
 
-    private _setStatus(msg: string) {
-        if (this.statusLabel) this.statusLabel.string = msg;
+    private sortEntries(a: RankedEntry, b: RankedEntry): number {
+        if (b.matchWinRate !== a.matchWinRate) return b.matchWinRate - a.matchWinRate;
+        if (b.stats.matchesWon !== a.stats.matchesWon) return b.stats.matchesWon - a.stats.matchesWon;
+        if (b.roundWinRate !== a.roundWinRate) return b.roundWinRate - a.roundWinRate;
+        if (b.stats.totalDamageDealt !== a.stats.totalDamageDealt) return b.stats.totalDamageDealt - a.stats.totalDamageDealt;
+        return a.username.localeCompare(b.username);
     }
 
-    // ── 按鈕回呼 ──────────────────────────────────────────
+    private renderList(entries: RankedEntry[]) {
+        const headerY = 0;
+        const rowGap = 42;
+
+        this.createTableRow(
+            TABLE_COLUMNS.map((column) => column.title),
+            headerY
+        );
+
+        entries.forEach((entry, index) => {
+            this.createTableRow(
+                [
+                    String(index + 1),
+                    entry.username,
+                    String(entry.stats.matchesPlayed),
+                    `${entry.matchWinRate.toFixed(1)}%`,
+                    `${entry.roundWinRate.toFixed(1)}%`,
+                    String(entry.stats.totalDamageDealt),
+                    String(entry.stats.totalDamageTaken),
+                    entry.avgDamageDealt.toFixed(1),
+                    entry.avgDamageTaken.toFixed(1),
+                ],
+                headerY - rowGap * (index + 1)
+            );
+        });
+    }
+
+    private createTableRow(values: string[], y: number) {
+        const rowNode = new cc.Node('LeaderboardRow');
+        rowNode.parent = this.runtimeListRoot;
+        rowNode.setPosition(0, y);
+
+        const totalWidth = TABLE_COLUMNS.reduce((sum, column) => sum + column.width, 0);
+        let cursorX = -totalWidth / 2;
+
+        TABLE_COLUMNS.forEach((column, index) => {
+            const cellNode = this.createCellLabel(values[index] || '', column.width);
+            cellNode.parent = rowNode;
+            cellNode.setPosition(cursorX + column.width / 2, 0);
+            cursorX += column.width;
+        });
+    }
+
+    private createCellLabel(text: string, width: number): cc.Node {
+        const labelNode = new cc.Node('Label');
+        labelNode.width = width;
+        labelNode.height = TABLE_FONT_SIZE + 8;
+
+        const label = labelNode.addComponent(cc.Label);
+        label.string = text;
+        label.fontSize = TABLE_FONT_SIZE;
+        label.lineHeight = TABLE_FONT_SIZE + 6;
+        label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        label.verticalAlign = cc.Label.VerticalAlign.CENTER;
+        label.overflow = cc.Label.Overflow.SHRINK;
+
+        labelNode.color = cc.Color.WHITE;
+        return labelNode;
+    }
+
+    private clearList() {
+        if (this.runtimeListRoot && cc.isValid(this.runtimeListRoot)) {
+            this.runtimeListRoot.removeAllChildren();
+        }
+    }
+
+    private setStatus(message: string) {
+        if (this.statusLabel) {
+            this.statusLabel.string = message;
+        }
+    }
 
     onBackClick() {
         AudioManager.playEffect('click', 0.7);
@@ -155,20 +213,6 @@ export default class LeaderboardScene extends cc.Component {
 
     onRefreshClick() {
         AudioManager.playEffect('click', 0.7);
-        this._loadLeaderboard();
+        this.loadLeaderboard();
     }
-
-    // ── 假資料（接 Firebase 後移除）─────────────────────
-    private static readonly MOCK_DATA: LeaderboardEntry[] = [
-        { rank: 1, username: 'DragonSlayer',  wins: 42, kills: 187 },
-        { rank: 2, username: 'WindRider',     wins: 38, kills: 164 },
-        { rank: 3, username: 'IronFist',      wins: 35, kills: 152 },
-        { rank: 4, username: 'ShadowBlade',   wins: 31, kills: 139 },
-        { rank: 5, username: 'StormBreaker',  wins: 29, kills: 121 },
-        { rank: 6, username: 'FirePhoenix',   wins: 25, kills: 108 },
-        { rank: 7, username: 'FrostArrow',    wins: 22, kills: 97  },
-        { rank: 8, username: 'EarthMonk',     wins: 19, kills: 84  },
-        { rank: 9, username: 'WaterPriess',   wins: 17, kills: 76  },
-        { rank: 10, username: 'MetalHero',    wins: 14, kills: 63  },
-    ];
 }
