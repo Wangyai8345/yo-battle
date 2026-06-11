@@ -295,6 +295,7 @@ export default class SharedHeroController extends PlayerController {
     private gpSpecialPrev: boolean = false;
     private gpDashPrev: boolean = false;
     private gpDefendPrev: boolean = false;
+    private gpSuperPrev: boolean = false;
     private lastAttackSfxTime: number = -999;
     private lastDashSfxTime: number = -999;
 
@@ -382,7 +383,7 @@ export default class SharedHeroController extends PlayerController {
         // ── 普攻（X/Square，邊緣觸發）──────────────────────────────────────
         const gpAttack = gp.buttons[2]?.pressed ?? false;
         if (gpAttack && !this.gpAttackPrev) {
-            this.requestDirectionalAttack();
+            this.useMelee();
         }
         this.gpAttackPrev = gpAttack;
 
@@ -406,6 +407,13 @@ export default class SharedHeroController extends PlayerController {
             this.startDefend();
         }
         this.gpDefendPrev = gpDefend;
+
+        // ── 大招（RB/R1，邊緣觸發）─────────────────────────────────────────
+        const gpSuper = gp.buttons[5]?.pressed ?? false;
+        if (gpSuper && !this.gpSuperPrev) {
+            this.useSuper();
+        }
+        this.gpSuperPrev = gpSuper;
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -988,6 +996,11 @@ export default class SharedHeroController extends PlayerController {
             this.rb.linearVelocity = v;
         }
         this.playAnim(clip, true);
+
+        const defendState = this.anim ? this.anim.getAnimationState(clip) : null;
+        const defendDuration = defendState ? defendState.duration / Math.max(defendState.speed || 1, 0.01) : 0.3;
+        this.unschedule(this.stopDefend);
+        this.scheduleOnce(this.stopDefend, Math.max(defendDuration, 0.05) + 0.02);
     }
 
     stopDefend() {
