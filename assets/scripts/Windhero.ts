@@ -1025,7 +1025,7 @@ export default class Windhero extends PlayerController {
             cc.v2(72, 6),
             cc.v2(88, 40),
             0.12,
-            6,
+            9,
             150
         );
 
@@ -1034,7 +1034,7 @@ export default class Windhero extends PlayerController {
             cc.v2(-72, 6),
             cc.v2(88, 40),
             0.12,
-            6,
+            9,
             150
         );
     }
