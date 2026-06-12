@@ -6205,7 +6205,7 @@
         "__id__": 162
       }
     ],
-    "_active": true,
+    "_active": false,
     "_components": [],
     "_prefab": null,
     "_opacity": 255,
@@ -6839,7 +6839,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 350,
+      "width": 600,
       "height": 60
     },
     "_anchorPoint": {
@@ -7020,10 +7020,8 @@
     "_fontSize": 30,
     "_lineHeight": 25,
     "_enableWrapText": false,
-    "_N$file": {
-      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
-    },
-    "_isSystemFontUsed": false,
+    "_N$file": null,
+    "_isSystemFontUsed": true,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -7090,7 +7088,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 690,
+      "width": 940,
       "height": 60
     },
     "_anchorPoint": {
@@ -7102,7 +7100,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -155,
+        -280,
         30,
         0,
         0,
@@ -7319,7 +7317,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 350,
+      "width": 600,
       "height": 60
     },
     "_anchorPoint": {
@@ -7500,10 +7498,8 @@
     "_fontSize": 30,
     "_lineHeight": 25,
     "_enableWrapText": false,
-    "_N$file": {
-      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
-    },
-    "_isSystemFontUsed": false,
+    "_N$file": null,
+    "_isSystemFontUsed": true,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -7570,7 +7566,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 690,
+      "width": 940,
       "height": 60
     },
     "_anchorPoint": {
@@ -7582,7 +7578,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -155,
+        -280,
         30,
         0,
         0,
@@ -8928,10 +8924,8 @@
     "_fontSize": 30,
     "_lineHeight": 25,
     "_enableWrapText": false,
-    "_N$file": {
-      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
-    },
-    "_isSystemFontUsed": false,
+    "_N$file": null,
+    "_isSystemFontUsed": true,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -9408,10 +9402,8 @@
     "_fontSize": 30,
     "_lineHeight": 25,
     "_enableWrapText": false,
-    "_N$file": {
-      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
-    },
-    "_isSystemFontUsed": false,
+    "_N$file": null,
+    "_isSystemFontUsed": true,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -9888,10 +9880,8 @@
     "_fontSize": 30,
     "_lineHeight": 25,
     "_enableWrapText": false,
-    "_N$file": {
-      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
-    },
-    "_isSystemFontUsed": false,
+    "_N$file": null,
+    "_isSystemFontUsed": true,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -10495,7 +10485,7 @@
         "__id__": 248
       }
     ],
-    "_active": false,
+    "_active": true,
     "_components": [],
     "_prefab": null,
     "_opacity": 255,
@@ -10577,8 +10567,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 128,
-      "height": 50
+      "width": 111.17,
+      "height": 50.4
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -10714,8 +10704,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 160,
-      "height": 40
+      "width": 350,
+      "height": 60
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -10959,8 +10949,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 158,
-      "height": 40
+      "width": 348,
+      "height": 60
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -10971,8 +10961,8 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -78,
-        20,
+        -173,
+        30,
         0,
         0,
         0,
@@ -11016,8 +11006,10 @@
     "_fontSize": 20,
     "_lineHeight": 25,
     "_enableWrapText": false,
-    "_N$file": null,
-    "_isSystemFontUsed": true,
+    "_N$file": {
+      "__uuid__": "3718bf27-4055-45f2-b559-ce667974b1c3"
+    },
+    "_isSystemFontUsed": false,
     "_spacingX": 0,
     "_batchAsBitmap": false,
     "_styleFlags": 0,
@@ -11184,7 +11176,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 150,
+      "width": 190,
       "height": 50
     },
     "_anchorPoint": {
@@ -11246,8 +11238,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 100,
-      "height": 40
+      "width": 129.17,
+      "height": 50.4
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -11481,7 +11473,11 @@
       "__id__": 223
     },
     "_enabled": true,
-    "_materials": [],
+    "_materials": [
+      {
+        "__uuid__": "eca5d2f2-8ef6-41c2-bbe6-f9c79d09c432"
+      }
+    ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
     "_string": "name:",
@@ -11527,8 +11523,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 128,
-      "height": 50
+      "width": 297.93,
+      "height": 50.4
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -11539,7 +11535,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -190,
+        -52.087,
         0,
         0,
         0,
@@ -11572,7 +11568,11 @@
       "__id__": 244
     },
     "_enabled": true,
-    "_materials": [],
+    "_materials": [
+      {
+        "__uuid__": "eca5d2f2-8ef6-41c2-bbe6-f9c79d09c432"
+      }
+    ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
     "_string": "Game Played : 0",
@@ -11618,8 +11618,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 128,
-      "height": 50
+      "width": 255.64,
+      "height": 50.4
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -11630,7 +11630,7 @@
       "__type__": "TypedArray",
       "ctor": "Float64Array",
       "array": [
-        -210,
+        -72.087,
         -80,
         0,
         0,
@@ -11663,7 +11663,11 @@
       "__id__": 246
     },
     "_enabled": true,
-    "_materials": [],
+    "_materials": [
+      {
+        "__uuid__": "eca5d2f2-8ef6-41c2-bbe6-f9c79d09c432"
+      }
+    ],
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
     "_string": "Win Rate : 0%",
