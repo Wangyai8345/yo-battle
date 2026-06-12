@@ -374,7 +374,7 @@ export default class GroundMonkController extends PlayerController {
         }
 
         // 更新跳躍計時器
-        
+
 
         // 若 buffer 內有按跳，且現在能跳（onGround 或還在 coyote time 內），就執行跳
         if (this.isDashing) {
@@ -547,7 +547,7 @@ export default class GroundMonkController extends PlayerController {
             this.rightPressed = true;
             this.refreshMoveDir();
         }
-            // 空中按 space → 二段跳
+        // 空中按 space → 二段跳
         if (false && event.keyCode === cc.macro.KEY.space) {
             if (!this.onGround && !this.airJumpUsed && !this.isDead && !this.isHit && !this.isDashing && this.rb) {
                 this.airJumpUsed = true;
@@ -792,7 +792,7 @@ export default class GroundMonkController extends PlayerController {
                 cc.v2(0, 0),            // center: 碰撞箱中心座標(相對於玩家)
                 cc.v2(70, 30),          // size: 碰撞箱寬度、高度
                 0.1,                    // duration: 碰撞箱存在幾秒後自動消失
-                3,                      // damage: 被這個碰到會扣多少血
+                6,                      // damage: 被這個碰到會扣多少血
                 100                     // kbScale: knockback大小
             );
 
@@ -892,7 +892,7 @@ export default class GroundMonkController extends PlayerController {
             cc.v2(10, 6),
             cc.v2(10, 20),
             0.1,
-            2,
+            4,
             100
         );
 
@@ -939,7 +939,7 @@ export default class GroundMonkController extends PlayerController {
                     230,
                     48,
                     0.1,
-                    3,
+                    6,
                     180,
                     delay,
                     playbackToken
@@ -956,7 +956,7 @@ export default class GroundMonkController extends PlayerController {
                 118,
                 48,
                 0.12,
-                2,
+                4,
                 0,
                 i * 0.25,
                 playbackToken
@@ -971,7 +971,7 @@ export default class GroundMonkController extends PlayerController {
             300,
             128,
             0.14,
-            5,
+            10,
             3000,
             finisherDelay,
             playbackToken
@@ -1220,7 +1220,7 @@ export default class GroundMonkController extends PlayerController {
             320,
             180,
             0.1,
-            15,
+            20,
             2200,
             Math.max(0, duration - 0.5),
             playbackToken
