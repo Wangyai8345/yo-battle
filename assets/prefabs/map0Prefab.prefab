@@ -3583,7 +3583,7 @@
       "__id__": 1
     },
     "_enabled": true,
-    "enableRain": true,
+    "enableRain": false,
     "enableFog": true,
     "forceEffect": "",
     "_id": ""
