@@ -218,9 +218,12 @@ export default abstract class PlayerController extends cc.Component {
         updateGameplayTiming(dt);
 
         if (this.isLocal) {
-            const gameplayDt = getScaledGameplayDt(dt);
+            // const gameplayDt = getScaledGameplayDt(dt);
+            const gameplayDt = dt;
+
             this.checkOutOfBoundsDeath();
             this.localUpdate(gameplayDt);
+            
             NetworkManager.instance.sendPositionToServer(this.node.x, this.node.y);
             NetworkManager.instance.sendScaleXToServer(this.node.scaleX);
         }
