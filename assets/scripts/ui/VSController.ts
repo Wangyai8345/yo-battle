@@ -52,6 +52,15 @@ export default class VSController extends cc.Component {
     @property
     postExitDelay: number = 0.1;
 
+    @property
+    loadingDotInterval: number = 0.4;
+
+    @property
+    maxLoadingDots: number = 3;
+
+    @property
+    loadingIndicatorDelay: number = 0.2;
+
     @property({
         tooltip: "Playback speed multiplier for portrait animations in the VS scene only.",
     })
@@ -114,6 +123,8 @@ export default class VSController extends cc.Component {
     private rightClip: cc.AnimationClip = null;
     private sequenceStarted = false;
     private elapsedWaiting = 0;
+    private loadingLabel: cc.Label = null;
+    private loadingDotCount = 1;
 
     protected onLoad(): void {
         this.resolveReferences();
@@ -122,6 +133,7 @@ export default class VSController extends cc.Component {
         this.rightAnimation = this.ensureAnimation(this.rightPortraitSprite);
         this.configurePortraitNode(this.leftPortraitSprite, false);
         this.configurePortraitNode(this.rightPortraitSprite, true);
+        this.setupLoadingLabel();
 
         if (this.leftPlayerLabel) this.leftPlayerLabel.string = "P1";
         if (this.rightPlayerLabel) this.rightPlayerLabel.string = "P2";
@@ -137,6 +149,8 @@ export default class VSController extends cc.Component {
 
     protected onDestroy(): void {
         this.unschedule(this.tryStartSequence);
+        this.unschedule(this.showLoadingIndicator);
+        this.unschedule(this.updateLoadingText);
     }
 
     private resolveReferences(): void {
@@ -358,10 +372,19 @@ export default class VSController extends cc.Component {
             this.postExitDelay;
 
         this.scheduleOnce(() => {
-            if (this.nextSceneName) {
-                cc.director.loadScene(this.nextSceneName);
-            }
+            this.beginSceneTransition();
         }, totalDuration);
+    }
+
+    private beginSceneTransition(): void {
+        const sceneName = this.nextSceneName ? this.nextSceneName.trim() : "";
+        if (!sceneName) {
+            return;
+        }
+
+        this.unschedule(this.showLoadingIndicator);
+        this.scheduleOnce(this.showLoadingIndicator, Math.max(0, this.loadingIndicatorDelay));
+        cc.director.loadScene(sceneName);
     }
 
     private playClipOnce(animation: cc.Animation | null, clip: cc.AnimationClip | null): void {
@@ -402,5 +425,50 @@ export default class VSController extends cc.Component {
             .delay(this.prePlayDelay + this.holdDuration)
             .to(this.slideOutDuration, { x: hiddenX }, { easing: "quartIn" })
             .start();
+    }
+
+    private setupLoadingLabel(): void {
+        const labelNode = new cc.Node("LoadingLabel");
+        labelNode.active = false;
+        labelNode.parent = this.node;
+        labelNode.setPosition(0, -420);
+
+        const label = labelNode.addComponent(cc.Label);
+        label.string = "Loading .";
+        label.fontSize = 42;
+        label.lineHeight = 48;
+        label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+        label.verticalAlign = cc.Label.VerticalAlign.CENTER;
+
+        labelNode.color = cc.color(255, 255, 255);
+
+        const outline = labelNode.addComponent(cc.LabelOutline);
+        outline.color = cc.color(0, 0, 0, 220);
+        outline.width = 4;
+
+        this.loadingLabel = label;
+    }
+
+    private showLoadingIndicator(): void {
+        if (!this.loadingLabel) {
+            return;
+        }
+
+        this.loadingDotCount = 1;
+        this.loadingLabel.node.active = true;
+        this.updateLoadingText();
+        this.unschedule(this.updateLoadingText);
+        this.schedule(this.updateLoadingText, Math.max(0.1, this.loadingDotInterval));
+    }
+
+    private updateLoadingText(): void {
+        if (!this.loadingLabel) {
+            return;
+        }
+
+        const maxDots = Math.max(1, Math.floor(this.maxLoadingDots));
+        const dots = ".".repeat(this.loadingDotCount);
+        this.loadingLabel.string = `Loading ${dots}`;
+        this.loadingDotCount = this.loadingDotCount >= maxDots ? 1 : this.loadingDotCount + 1;
     }
 }
