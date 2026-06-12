@@ -203,8 +203,25 @@ export default class NetworkManager extends cc.Component {
                 let controller = this.getPlayerControllerOf(sessionId);
                 if(controller) controller.setTargetPosition(newX, player.y)
             });
-            
+
+            // 追蹤遠端玩家的落地狀態（Kinematic body 不會自動更新 onGround）
+            let prevY = player.y;
+            let fallingFrames = 0;
             this.callbacks.listen(player, "y", (newY: number) => {
+                if (newY < prevY - 1) {
+                    fallingFrames++;
+                } else if (fallingFrames >= 2 && newY >= prevY - 1) {
+                    // 從下落轉為靜止 → 落地
+                    const landNode = this.playerNodes.get(sessionId);
+                    if (landNode && cc.isValid(landNode)) {
+                        const worldPos = landNode.convertToWorldSpaceAR(cc.v2(0, -landNode.height * 0.5));
+                        ParticleEffectManager.playLanding(worldPos, cc.find('Canvas'));
+                    }
+                    fallingFrames = 0;
+                } else {
+                    fallingFrames = 0;
+                }
+                prevY = newY;
                 let controller = this.getPlayerControllerOf(sessionId);
                 if(controller) controller.setTargetPosition(player.x, newY)
             });
@@ -322,13 +339,11 @@ export default class NetworkManager extends cc.Component {
         this.room.onMessage("S_playerDead", (message: { sessionId: string }) => {
             debug(`S_playerDead, SessionId: ${message.sessionId}`);
 
-            // 死亡爆炸：不論攻守方皆觸發（onDeath 只在防守方，這裡補攻擊方那側）
-            if (!this.isLocal(message.sessionId)) {
-                const deadNode = this.playerNodes.get(message.sessionId);
-                if (deadNode && cc.isValid(deadNode)) {
-                    const worldPos = deadNode.convertToWorldSpaceAR(cc.v2(0, 0));
-                    ParticleEffectManager.playDeath(worldPos, cc.find('Canvas'));
-                }
+            // 死亡爆炸：所有客戶端都觸發（不分本地/遠端），由 NetworkManager 統一負責
+            const deadNode = this.playerNodes.get(message.sessionId);
+            if (deadNode && cc.isValid(deadNode)) {
+                const worldPos = deadNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                ParticleEffectManager.playDeath(worldPos, cc.find('Canvas'));
             }
             // 死亡：大幅 Camera Shake（兩邊客戶端都觸發）
             CameraController.instance?.shake(0.55, 30);
@@ -383,7 +398,12 @@ export default class NetworkManager extends cc.Component {
                     CameraController.instance?.shake(0.18, 7);
 
                     if (this.isLocal(message.targetSessionId)) {
-                        // 防守方客戶端：走 beAttacked()，內部會觸發 hit spark
+                        // 防守方客戶端：呼叫 beAttacked() 並補上 hit spark（統一處理，不依賴各角色自己實作）
+                        const targetNode = this.playerNodes.get(message.targetSessionId);
+                        if (targetNode && cc.isValid(targetNode)) {
+                            const worldPos = targetNode.convertToWorldSpaceAR(cc.v2(0, 0));
+                            ParticleEffectManager.playHit(worldPos, cc.find('Canvas'));
+                        }
                         let controller = this.getPlayerControllerOf(message.targetSessionId);
                         if (controller) {
                             controller.beAttacked(
@@ -393,7 +413,7 @@ export default class NetworkManager extends cc.Component {
                             );
                         }
                     } else {
-                        // 攻擊方客戶端：beAttacked() 不會在這裡呼叫，手動噴 hit spark
+                        // 攻擊方客戶端：手動噴 hit spark
                         const targetNode = this.playerNodes.get(message.targetSessionId);
                         if (targetNode && cc.isValid(targetNode)) {
                             const worldPos = targetNode.convertToWorldSpaceAR(cc.v2(0, 0));

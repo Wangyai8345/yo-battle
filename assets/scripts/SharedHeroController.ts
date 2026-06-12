@@ -1733,9 +1733,6 @@ export default class SharedHeroController extends PlayerController {
 
         this.consumeCrowdControl();
         this.isDead = true;
-        const deathWorldPos = this.node.convertToWorldSpaceAR(cc.v2(0, 0));
-        console.log('[FX] death explosion at', deathWorldPos.x.toFixed(0), deathWorldPos.y.toFixed(0));
-        ParticleEffectManager.playDeath(deathWorldPos, cc.find('Canvas'));
         this.isHit = false;
         this.isAttacking = false;
         this.isAirAttacking = false;
