@@ -64,18 +64,34 @@ export default class CameraController extends cc.Component {
     private _baseX: number = 0;
     private _baseY: number = 0;
 
+    // ── Death Focus（致命一擊特寫運鏡）────────────────────
+    private _deathFocusTimer: number = 0;
+    private readonly _deathFocusDuration: number = 1.2;
+    private _deathFocusX: number = 0;
+    private _deathFocusY: number = 0;
+
     /**
      * 觸發 Camera Shake
      * @param duration   持續時間（秒），建議：普通攻擊 0.18、死亡 0.4
      * @param intensity  最大偏移量（world units），建議：普通攻擊 7、死亡 18
      */
     shake(duration: number, intensity: number) {
-        // 若新的強度更大就覆蓋，否則取兩者最大值，避免疊擊時縮短
         if (intensity >= this._shakeIntensity || this._shakeTimer <= 0) {
             this._shakeDuration  = duration;
             this._shakeTimer     = duration;
             this._shakeIntensity = intensity;
         }
+    }
+
+    /**
+     * 觸發死亡特寫運鏡：鎖定到死亡位置並 zoom in，持續 1.2 秒後自動恢復
+     * @param worldX  死亡玩家的世界座標 X
+     * @param worldY  死亡玩家的世界座標 Y
+     */
+    deathFocus(worldX: number, worldY: number) {
+        this._deathFocusX = worldX;
+        this._deathFocusY = worldY;
+        this._deathFocusTimer = this._deathFocusDuration;
     }
     // ──────────────────────────────────────────────────────
 
@@ -96,13 +112,30 @@ export default class CameraController extends cc.Component {
         const midX = (p1Pos.x + p2Pos.x) / 2;
         const midY = (p1Pos.y + p2Pos.y) / 2 + this.offsetY;
 
+        // ── Death Focus：覆蓋目標位置與 zoom ─────────────
+        const isDeathFocus = this._deathFocusTimer > 0;
+        let focusX = midX;
+        let focusY = midY;
+        if (isDeathFocus) {
+            this._deathFocusTimer -= dt;
+            // 前半段（0.6s）鎖定死亡位置，後半段慢慢回歸 midpoint
+            const progress = this._deathFocusTimer / this._deathFocusDuration; // 1→0
+            focusX = cc.misc.lerp(midX, this._deathFocusX, progress);
+            focusY = cc.misc.lerp(midY, this._deathFocusY, progress);
+        }
+
         // ── 1. 計算目標 zoom ──────────────────────────────
         const dist = cc.Vec2.distance(cc.v2(p1Pos.x, p1Pos.y), cc.v2(p2Pos.x, p2Pos.y));
         const t = cc.misc.clampf(
             (dist - this.zoomStartDist) / (this.zoomFullDist - this.zoomStartDist),
             0, 1
         );
-        const rawTargetZoom = cc.misc.lerp(this.maxZoom, this.minZoom, t);
+        const baseZoom = cc.misc.lerp(this.maxZoom, this.minZoom, t);
+        // Death Focus 時疊加 zoom in（最多放大到 maxZoom * 1.35）
+        const deathZoomBoost = isDeathFocus
+            ? (this._deathFocusTimer / this._deathFocusDuration) * (this.maxZoom * 0.35)
+            : 0;
+        const rawTargetZoom = Math.min(baseZoom + deathZoomBoost, this.maxZoom * 1.35);
 
         // ── 2. 動態最小 zoom：確保 viewport 不超出背景邊界 ──
         //   viewport 半寬 = cvHalfW / zoomRatio，不能超過 bgHalfWidth
@@ -128,8 +161,8 @@ export default class CameraController extends cc.Component {
         const minY = -(this.bgHalfHeight - viewHalfH);
         const maxY =  (this.bgHalfHeight - viewHalfH);
 
-        const clampedX = cc.misc.clampf(midX, minX, maxX);
-        const clampedY = cc.misc.clampf(midY, minY, maxY);
+        const clampedX = cc.misc.clampf(focusX, minX, maxX);
+        const clampedY = cc.misc.clampf(focusY, minY, maxY);
 
         // ── 6. 平滑移動 Camera（base 位置，不含 shake）─────
         this._baseX = cc.misc.lerp(this._baseX, clampedX, this.followSpeed * dt);

@@ -18,12 +18,9 @@ export default class NameTag extends cc.Component {
     @property
     offsetY: number = 120;   // 顯示在角色頭上多高
 
-    onStart() {
+    onLoad() {
         if (this.nameLabel) {
-            this.nameLabel.node.y = this.offsetY;
-            if (this.playerName) {
-                this.nameLabel.string = this.playerName;
-            }
+            this.nameLabel.node.active = false;
         }
     }
 

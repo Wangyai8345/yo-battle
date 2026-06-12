@@ -339,11 +339,13 @@ export default class NetworkManager extends cc.Component {
         this.room.onMessage("S_playerDead", (message: { sessionId: string }) => {
             debug(`S_playerDead, SessionId: ${message.sessionId}`);
 
-            // 死亡爆炸：所有客戶端都觸發（不分本地/遠端），由 NetworkManager 統一負責
+            // 死亡爆炸 + 特寫運鏡（所有客戶端都觸發）
             const deadNode = this.playerNodes.get(message.sessionId);
             if (deadNode && cc.isValid(deadNode)) {
                 const worldPos = deadNode.convertToWorldSpaceAR(cc.v2(0, 0));
                 ParticleEffectManager.playDeath(worldPos, cc.find('Canvas'));
+                // 死亡特寫：Camera 鎖定到死亡位置並 zoom in
+                CameraController.instance?.deathFocus(deadNode.x, deadNode.y);
             }
             // 死亡：大幅 Camera Shake（兩邊客戶端都觸發）
             CameraController.instance?.shake(0.55, 30);

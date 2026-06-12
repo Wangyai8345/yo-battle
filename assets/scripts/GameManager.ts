@@ -191,14 +191,10 @@ export default class GameManager extends cc.Component {
 
         playerNode.setPosition(player.x, player.y);
 
-        // Player Name Label
+        // Player Name Label (hidden)
         let labelNode = new cc.Node('Player Label');
-        labelNode.color = cc.color(0, 0, 0);
-        const label = labelNode.addComponent(cc.Label);
-        label.string = `${player.name}`;
-        label.fontSize = 14;
+        labelNode.active = false;
         labelNode.parent = playerNode;
-        labelNode.setPosition(0, 30, 0);
 
         // HP Label
         let labelNode2 = new cc.Node('HP Label');
