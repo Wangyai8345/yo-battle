@@ -271,7 +271,7 @@ export default class Arrowhero extends PlayerController {
     rangedProjectileSpeed: number = 900;
 
     @property
-    rangedProjectileLifetime: number = 0.8;
+    rangedProjectileLifetime: number = 3;
 
     @property
     rangedProjectileDamage: number = 10;
@@ -283,7 +283,7 @@ export default class Arrowhero extends PlayerController {
     skill3ProjectileSpeed: number = 900;
 
     @property
-    skill3ProjectileLifetime: number = 0.8;
+    skill3ProjectileLifetime: number = 3;
 
     @property
     skill3ProjectileDamage: number = 10;

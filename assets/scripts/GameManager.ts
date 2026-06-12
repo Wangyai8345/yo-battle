@@ -502,23 +502,29 @@ export default class GameManager extends cc.Component {
     }
 
 
-    // getNodeFromPool(prefabName: string, prefab: cc.Prefab){
-    //     // Create new node pool
-    //     if(!this.nodePools.has(prefabName)){
-    //         this.nodePools.set(prefabName, new cc.NodePool());
-    //     }
+    getNodeFromPool(prefabName: string, prefab: cc.Prefab){
+        // Create new node pool
+        if(!this.nodePools.has(prefabName)){
+            this.nodePools.set(prefabName, new cc.NodePool());
+        }
         
-    //     const pool = this.nodePools.get(prefabName);
-    //     let node: cc.Node = null;
+        const pool = this.nodePools.get(prefabName);
+        let node: cc.Node = null;
         
-    //     if(pool.size() > 0){
-    //         // 
-    //         node = pool.get();
-    //     }
-    //     else{
-    //         node = cc.instantiate(prefab);
-    //     }
-    // }
+        // Get node from pool first, if pool is empty, then instantiate  
+        if(pool.size() > 0){
+            node = pool.get();
+            console.log("Node Pooling: Get node from pool");
+        }
+        else{
+            node = cc.instantiate(prefab);
+            console.log("Node Pooling: Instantiate");
+        }
+
+        node.name = prefabName;
+
+        return node;
+    }
 
 
     handleSpawnPrefab(prefabName: string, infos: any) {
@@ -542,26 +548,27 @@ export default class GameManager extends cc.Component {
             ? this.dragonProjectilePrefab.name
             : "dragonProjectilePrefab";
 
+
         switch (prefabName) {
             case exampleProjectilePrefabName:
-                node = cc.instantiate(this.exampleProjectilePrefab);
+                // node = this.getNodeFromPool(exampleProjectilePrefabName, this.exampleProjectilePrefab);
 
-                node.setPosition(infos.x, infos.y);
+                // node.setPosition(infos.x, infos.y);
 
-                let rb = node.getComponent(cc.RigidBody);
-                if (rb) {
-                    rb.linearVelocity = cc.v2(300, 0);
-                    rb.awake = true;
-                }
+                // let rb = node.getComponent(cc.RigidBody);
+                // if (rb) {
+                //     rb.linearVelocity = cc.v2(300, 0);
+                //     rb.awake = true;
+                // }
 
-                let controller = node.getComponent(ProjectileController);
-                controller.initialize(
-                    infos.isLocal,
-                    infos.uid,
-                    "exampleProjectileAttack",
-                    10,
-                    0
-                );
+                // let controller = node.getComponent(ProjectileController);
+                // controller.initialize(
+                //     infos.isLocal,
+                //     infos.uid,
+                //     "exampleProjectileAttack",
+                //     10,
+                //     0
+                // );
 
                 break;
 
@@ -571,7 +578,7 @@ export default class GameManager extends cc.Component {
                     break;
                 }
 
-                node = cc.instantiate(this.arrowProjectilePrefab);
+                node = this.getNodeFromPool(arrowProjectilePrefabName, this.arrowProjectilePrefab);
                 node.active = true;
                 node.setPosition(infos.x, infos.y);
                 node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
@@ -592,9 +599,16 @@ export default class GameManager extends cc.Component {
                         infos.uid,
                         infos.attackType || "arrowRangedAttack",
                         infos.damage || 0,
-                        infos.kbScale || 0,
-                        infos.lifetime || 0.8
+                        infos.kbScale || 0
                     );
+                }
+
+                if (infos.isLocal && infos.lifetime > 0) {
+                    this.scheduleOnce(() => {
+                        if (this.prefabNodes.has(infos.uid)) {
+                            NetworkManager.instance.destroyPrefab(infos.uid);
+                        }
+                    }, infos.lifetime);
                 }
 
                 break;
@@ -605,7 +619,7 @@ export default class GameManager extends cc.Component {
                     break;
                 }
 
-                node = cc.instantiate(this.arrowBeamPrefab);
+                node = this.getNodeFromPool(arrowBeamPrefabName, this.arrowBeamPrefab);
                 node.active = false;
                 node.setPosition(infos.x, infos.y);
                 node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
@@ -647,7 +661,7 @@ export default class GameManager extends cc.Component {
                     break;
                 }
 
-                node = cc.instantiate(this.dragonProjectilePrefab);
+                node = this.getNodeFromPool(dragonProjectilePrefabName, this.dragonProjectilePrefab);
                 node.setPosition(infos.x, infos.y);
                 node.scaleX = Math.abs(node.scaleX) * (infos.direction >= 0 ? 1 : -1);
 
@@ -672,8 +686,7 @@ export default class GameManager extends cc.Component {
                         infos.uid,
                         infos.attackType || "fireDragonAttack",
                         infos.damage || 0,
-                        infos.kbScale || 0,
-                        infos.lifetime || 1
+                        infos.kbScale || 0
                     );
                 }
 
@@ -703,9 +716,32 @@ export default class GameManager extends cc.Component {
     handleDestroyPrefab(prefabId: string) {
         if (this.prefabNodes.has(prefabId)) {
             const node = this.prefabNodes.get(prefabId);
+
             if (node && cc.isValid(node, true)) {
-                node.destroy();
+                // Call despawn function
+                let controller = node.getComponent(ProjectileController);
+                if (controller && controller.onDespawn) {
+                    controller.onDespawn();
+                }
+                
+                let dragonController = node.getComponent(DragonProjectile);
+                if (dragonController && dragonController.onDespawn) {
+                    dragonController.onDespawn();
+                }
+                
+                // Return to pool first, if sth went wrong, then use destroy
+                const prefabName = node.name;
+
+                if(this.nodePools.has(prefabName)){
+                    this.nodePools.get(prefabName).put(node);
+                    console.log("Node Pooling: Return to pool");
+                }
+                else {
+                    node.destroy();
+                    console.log("Node Pooling: Destroy Node");
+                }
             }
+
             this.prefabNodes.delete(prefabId);
         }
     }

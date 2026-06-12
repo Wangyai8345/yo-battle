@@ -13,7 +13,6 @@ export default class ProjectileController extends cc.Component {
     protected attackType: string = "";
     protected damage: number = 0;
     protected kbScale: number = 0;
-    protected lifetime: number = 5;
     protected hitSessionIds: Set<string> = new Set<string>();
     
     protected rb: cc.RigidBody = null;
@@ -33,29 +32,32 @@ export default class ProjectileController extends cc.Component {
         uid: string,
         attackType: string,
         damage: number = 0,
-        kbScale: number = 0,
-        lifetime: number = 5
+        kbScale: number = 0
     ){
         this.isLocal = isLocal;
         this.uid = uid;
         this.attackType = attackType;
         this.damage = damage;
         this.kbScale = kbScale;
-        this.lifetime = Math.max(0.05, lifetime);
 
-        this.scheduleAutoDestroy();
+        // this.scheduleAutoDestroy();
     }
 
 
-    private scheduleAutoDestroy(){
-        if (!this.isLocal) {
-            return;
-        }
-
-        this.scheduleOnce(() => {
-            NetworkManager.instance.destroyPrefab(this.uid);
-        }, this.lifetime);
+    public onDespawn(){
+        this.hitSessionIds.clear();
     }
+
+
+    // private scheduleAutoDestroy(){
+    //     if (!this.isLocal) {
+    //         return;
+    //     }
+
+    //     this.scheduleOnce(() => {
+    //         NetworkManager.instance.destroyPrefab(this.uid);
+    //     }, this.lifetime);
+    // }
 
 
     // DONT OVERRIDE THIS IN CHILD CLASS

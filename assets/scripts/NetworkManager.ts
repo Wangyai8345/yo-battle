@@ -5,7 +5,7 @@ import ParticleEffectManager from "./ParticleEffectManager";
 import PlayerController from "./PlayerController";
 import { resolvePlayerController } from "./PlayerControllerResolver";
 
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 function debug(msg: string){
     if(!DEBUG_MODE) return;
     console.log(`[Network Manager]: ${msg}`);

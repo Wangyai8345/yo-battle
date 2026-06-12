@@ -57,7 +57,11 @@ export default class DragonProjectile extends cc.Component {
         }
     }
 
-    onDestroy() {
+    // onDestroy() {
+    //     this.detachAnimationFinishedListener();
+    // }
+
+    public onDespawn() {
         this.detachAnimationFinishedListener();
     }
 
