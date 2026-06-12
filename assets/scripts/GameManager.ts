@@ -125,8 +125,8 @@ export default class GameManager extends cc.Component {
         // (maybe the other player quit or taking too long)
         // then terminate the game
 
-        const DISPLAY_WAITING_LABEL_TIME = 2;
-        const WAIT_TIME = 15;
+        const DISPLAY_WAITING_LABEL_TIME = 3;
+        const WAIT_TIME = 30;
 
         this.scheduleOnce(() => {
             if (!this.isReady) {
