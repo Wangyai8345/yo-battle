@@ -641,21 +641,6 @@ export default class SharedHeroController extends PlayerController {
         //     }
         // }
 
-        // TODO: delete this
-        if (event.keyCode === cc.macro.KEY.l) {
-            this.takeDamage(this.debugHitDamage);
-            return;
-        }
-
-        // TODO: delete this
-        if (event.keyCode === cc.macro.KEY.p) {
-            NetworkManager.instance.spawnPrefab("exampleProjectilePrefab", {
-                x: this.node.x,
-                y: this.node.y,
-            });
-            return;
-        }
-
         if (
             !this.isDead &&
             !this.isHit &&

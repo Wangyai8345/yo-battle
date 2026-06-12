@@ -45,9 +45,17 @@ export default class MainMenu extends cc.Component {
     onLoginClick() {
         AudioManager.playEffect('click', 0.7);
         if (this.menuButtons) this.menuButtons.active = false;
-        if (this.accountScreen) this.accountScreen.open(() => {
+        if (this.accountScreen) {
+            void this.accountScreen.open(() => {
+                if (this.menuButtons) this.menuButtons.active = true;
+            }).catch((error) => {
+                console.error('Failed to open account screen', error);
+                if (this.menuButtons) this.menuButtons.active = true;
+            });
+        }
+        else {
             if (this.menuButtons) this.menuButtons.active = true;
-        });
+        }
     }
 
     onLeaderboardClick() {

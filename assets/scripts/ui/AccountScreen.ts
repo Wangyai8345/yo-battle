@@ -85,6 +85,13 @@ export default class AccountScreen extends cc.Component {
     // ─────────────────────────────────────────────────────
     private _loading: boolean = false;
     private _onCloseCallback: (() => void) | null = null;
+
+    onLoad() {
+        this._clearInputs();
+        this._clearPlayerStatsView();
+        this._showView('choice');
+    }
+
     private _firebaseErrorToEnglish(code: string): string {
         const errorMap: Record<string, string> = {
             'auth/invalid-email': 'Invalid email format',
@@ -119,11 +126,13 @@ export default class AccountScreen extends cc.Component {
     }
 
     /** 從外部呼叫：開啟面板 */
-    public open(onClose?: () => void) {
+    public async open(onClose?: () => void) {
         this._onCloseCallback = onClose || null;
         this.node.active = true;
-        const fb = (window as any).firebase;
-        const user = fb.auth().currentUser;
+        this._clearPlayerStatsView();
+        await this._waitForAuthReady();
+
+        const user = this._getCurrentUser();
         if (user) {
             this._showView('LoggedIn');
             this.loadPlayerStats();
@@ -302,9 +311,10 @@ export default class AccountScreen extends cc.Component {
     // ── 成功後 ────────────────────────────────────────────
 
     private _onAccountSuccess(user: { email: string; username?: string }) {
+        this._showView('LoggedIn');
         this._setStatus(`Welcome, ${user.username ?? user.email}!`);
         this.loadPlayerStats();
-        this.scheduleOnce(() => { this.close(); }, 1.2);
+        this._clearInputs();
     }
 
     // ── 工具方法 ──────────────────────────────────────────
@@ -332,6 +342,33 @@ export default class AccountScreen extends cc.Component {
         if (this.signupUsernameInput) this.signupUsernameInput.string = '';
         if (this.signupEmailInput)    this.signupEmailInput.string    = '';
         if (this.signupPasswordInput) this.signupPasswordInput.string = '';
+    }
+
+    private _clearPlayerStatsView() {
+        if (this.usernameEditBox) this.usernameEditBox.string = '';
+        if (this.userGamePlayed) this.userGamePlayed.string = 'Games Played: 0';
+        if (this.userWinRate) this.userWinRate.string = 'Match Win Rate: 0.0%';
+    }
+
+    private async _waitForAuthReady(): Promise<void> {
+        const authReadyPromise = (window as any).__yoBattleAuthReadyPromise;
+        if (authReadyPromise && typeof authReadyPromise.then === 'function') {
+            try {
+                await authReadyPromise;
+            }
+            catch (error) {
+                console.warn('Failed while waiting for Firebase auth initialization', error);
+            }
+        }
+    }
+
+    private _getCurrentUser(): any {
+        const fb = (window as any).firebase;
+        if (!fb || typeof fb.auth !== 'function') {
+            return null;
+        }
+
+        return fb.auth().currentUser || null;
     }
 
     // firebase tool ──────────────────────────────────────────
@@ -380,14 +417,18 @@ export default class AccountScreen extends cc.Component {
 
     private loadPlayerStats() {
         const fb = (window as any).firebase;
-        const user = fb.auth().currentUser;
-        if (!user) return;
+        const user = this._getCurrentUser();
+        if (!fb || typeof fb.database !== 'function' || !user) {
+            this._clearPlayerStatsView();
+            return;
+        }
+
         fb.database()
             .ref("users/" + user.uid)
             .once("value")
             .then((snapshot) => {
                 const data = snapshot.val() || {};
-                const username = data.username || "";
+                const username = data.username || user.displayName || "";
                 const stats = FirebaseStats.normalizeStats(data.stats);
                 const gamesPlayed = stats.matchesPlayed;
                 const winRate = FirebaseStats.getMatchWinRate(stats).toFixed(1);
@@ -398,6 +439,10 @@ export default class AccountScreen extends cc.Component {
                     `Match Win Rate: ${winRate}%`;
                 // EditBox
                 if (this.usernameEditBox) this.usernameEditBox.string = username;
+            })
+            .catch((error) => {
+                console.error("Failed to load player stats", error);
+                this._clearPlayerStatsView();
             });
     }
 }

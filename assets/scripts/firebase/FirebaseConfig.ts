@@ -7,13 +7,12 @@ export default class FirebaseConfig extends cc.Component {
         if (typeof firebase === 'undefined') {
             console.log("Firebase undefined, loading CDN...");
             this.loadFirebaseScripts(() => {
-                this.initFirebase();
+                void this.initFirebase();
             });
         }
         else {
-            this.initFirebase();
+            void this.initFirebase();
         }
-        cc.game.addPersistRootNode(this.node);
     }
 
     loadFirebaseScripts(callback: () => void) {
@@ -39,7 +38,17 @@ export default class FirebaseConfig extends cc.Component {
         });
     }
 
-    initFirebase() {
+    async initFirebase() {
+        if ((window as any).__yoBattleFirebaseInitPromise) {
+            await (window as any).__yoBattleFirebaseInitPromise;
+            return;
+        }
+
+        (window as any).__yoBattleFirebaseInitPromise = this.initializeFirebaseRuntime();
+        await (window as any).__yoBattleFirebaseInitPromise;
+    }
+
+    private async initializeFirebaseRuntime(): Promise<void> {
         const firebaseConfig = {
             apiKey: "AIzaSyBuGBqqZ0XUI4SjSWVLVCnhiqy09lP3NSY",
             authDomain: "yo-battle-9921a.firebaseapp.com",
@@ -52,8 +61,38 @@ export default class FirebaseConfig extends cc.Component {
         };
 
         if (!firebase.apps.length) {
-            const app = firebase.initializeApp(firebaseConfig);
+            firebase.initializeApp(firebaseConfig);
             console.log("Firebase initialized");
+        }
+
+        (window as any).__yoBattleAuthReadyPromise = this.configureAuthPersistence();
+        await (window as any).__yoBattleAuthReadyPromise;
+    }
+
+    private async configureAuthPersistence(): Promise<void> {
+        if (typeof firebase === "undefined" || typeof firebase.auth !== "function") {
+            return;
+        }
+
+        const auth = firebase.auth();
+
+        try {
+            await auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
+
+            await new Promise<void>((resolve) => {
+                const unsubscribe = auth.onAuthStateChanged(
+                    () => {
+                        unsubscribe();
+                        resolve();
+                    },
+                    (error) => {
+                        console.warn("Failed to initialize Firebase auth state", error);
+                        resolve();
+                    }
+                );
+            });
+        } catch (error) {
+            console.warn("Failed to configure Firebase auth persistence", error);
         }
     }
 }
