@@ -8,6 +8,7 @@ import ProjectileController from "./ProjectileController";
 import UIManager from "./managers/UIManager";
 import GameOverPanel from "./ui/GameOverPanel";
 import FirebaseStats from "./firebase/FirebaseStats";
+import { configurePhysicsTiming } from "./PhysicsConfig";
 
 
 const { ccclass, property } = cc._decorator;
@@ -88,8 +89,7 @@ export default class GameManager extends cc.Component {
 
 
     onLoad() {
-        let physicsManager = cc.director.getPhysicsManager();
-        physicsManager.enabled = true;
+        configurePhysicsTiming();
 
         if (GameManager.instance === null) {
             GameManager.instance = this;

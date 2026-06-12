@@ -3,6 +3,8 @@ import GameManager from "./GameManager";
 import AttackHitBox from "./AttackHitbox";
 import UIManager from "./managers/UIManager";
 import ScreenEffect from "./ui/ScreenEffect";
+import { getGameplayFrameScale, getScaledGameplayDt, updateGameplayTiming } from "./GameplayTiming";
+import { configurePhysicsTiming } from "./PhysicsConfig";
 
 const { ccclass, property } = cc._decorator;
 
@@ -51,7 +53,7 @@ export default abstract class PlayerController extends cc.Component {
 
 
     protected onLoad(): void {
-        cc.director.getPhysicsManager().enabled = true;
+        configurePhysicsTiming();
 
         this.rb = this.getComponent(cc.RigidBody);
         this.anim = this.getComponent(cc.Animation);
@@ -188,6 +190,19 @@ export default abstract class PlayerController extends cc.Component {
         return Number.isFinite(parsedValue) ? Math.max(0, parsedValue) : 0;
     }
 
+    protected getGameplayFrameScale(): number {
+        return getGameplayFrameScale();
+    }
+
+    protected scaleGameplaySpeed(value: number): number {
+        return value * this.getGameplayFrameScale();
+    }
+
+    protected scaleGameplayGravityScale(value: number): number {
+        const frameScale = this.getGameplayFrameScale();
+        return value * frameScale * frameScale;
+    }
+
     public syncDeathState() {
         this.onDeath();
     }
@@ -200,9 +215,12 @@ export default abstract class PlayerController extends cc.Component {
 
 
     protected update(dt: number): void {
+        updateGameplayTiming(dt);
+
         if (this.isLocal) {
+            const gameplayDt = getScaledGameplayDt(dt);
             this.checkOutOfBoundsDeath();
-            this.localUpdate(dt);
+            this.localUpdate(gameplayDt);
             NetworkManager.instance.sendPositionToServer(this.node.x, this.node.y);
             NetworkManager.instance.sendScaleXToServer(this.node.scaleX);
         }

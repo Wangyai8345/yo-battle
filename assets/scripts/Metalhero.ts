@@ -391,12 +391,12 @@ export default class Metalhero extends PlayerController {
             if (!this.onGround && !this.airJumpUsed && this.rb) {
                 this.airJumpUsed = true;
                 const v = this.rb.linearVelocity;
-                v.y = this.jumpSpeed;
+                v.y = this.scaleGameplaySpeed(this.jumpSpeed);
                 this.rb.linearVelocity = v;
                 this.updateAnimation();
             } else if (this.onGround && !this.isDead && !this.isHit && !this.movementLocked && this.rb) {
                 const v = this.rb.linearVelocity;
-                v.y = this.jumpSpeed;
+                v.y = this.scaleGameplaySpeed(this.jumpSpeed);
                 this.rb.linearVelocity = v;
                 this.onGround = false;
                 this.groundContactCount = 0;
@@ -496,7 +496,7 @@ export default class Metalhero extends PlayerController {
             this.rb
         ) {
             const velocity = this.rb.linearVelocity;
-            velocity.y = this.jumpSpeed;
+            velocity.y = this.scaleGameplaySpeed(this.jumpSpeed);
             this.rb.linearVelocity = velocity;
             this.onGround = false;
             this.groundContactCount = 0;
@@ -513,7 +513,7 @@ export default class Metalhero extends PlayerController {
             // 二段跳
             this.airJumpUsed = true;
             const v = this.rb.linearVelocity;
-            v.y = this.jumpSpeed;
+            v.y = this.scaleGameplaySpeed(this.jumpSpeed);
             this.rb.linearVelocity = v;
             this.updateAnimation();
         }
@@ -1078,7 +1078,7 @@ export default class Metalhero extends PlayerController {
             return this.onGround ? 0 : currentX;
         }
 
-        const targetX = this.moveInput * this.speed;
+        const targetX = this.moveInput * this.scaleGameplaySpeed(this.speed);
         const hasInput = this.moveInput !== 0;
         const acceleration = this.onGround
             ? (hasInput ? this.groundAcceleration : this.groundDeceleration)
@@ -1162,9 +1162,9 @@ export default class Metalhero extends PlayerController {
             this._initialGravityScale = this.rb.gravityScale;
         }
         if (!this.onGround && !this.isDashing && this.downPressed) {
-            this.rb.gravityScale = this.fastFallGravityScale;
+            this.rb.gravityScale = this.scaleGameplayGravityScale(this.fastFallGravityScale);
         } else {
-            this.rb.gravityScale = this._initialGravityScale;
+            this.rb.gravityScale = this.scaleGameplayGravityScale(this._initialGravityScale);
         }
     }
 
@@ -1210,7 +1210,7 @@ export default class Metalhero extends PlayerController {
 
         const dir = this.facingDir;
         const velocity = this.rb.linearVelocity;
-        velocity.x = dir * this.dashSpeed;
+        velocity.x = dir * this.scaleGameplaySpeed(this.dashSpeed);
         this.rb.linearVelocity = velocity;
 
         this.scheduleOnce(() => {

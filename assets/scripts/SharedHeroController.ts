@@ -355,7 +355,7 @@ export default class SharedHeroController extends PlayerController {
             if (!this.onGround && !this.airJumpUsed && this.rb) {
                 this.airJumpUsed = true;
                 const v = this.rb.linearVelocity;
-                v.y = this.jumpSpeed;
+                v.y = this.scaleGameplaySpeed(this.jumpSpeed);
                 this.rb.linearVelocity = v;
                 this.startJumpCornerCorrection();
                 this.updateAnimation();
@@ -370,7 +370,7 @@ export default class SharedHeroController extends PlayerController {
                 this.rb
             ) {
                 const v = this.rb.linearVelocity;
-                v.y = this.jumpSpeed;
+                v.y = this.scaleGameplaySpeed(this.jumpSpeed);
                 this.rb.linearVelocity = v;
                 this.startJumpCornerCorrection();
                 this.onGround = false;
@@ -541,7 +541,7 @@ export default class SharedHeroController extends PlayerController {
         }
 
         if (this.isAttacking) {
-            v.x = this.moveDir * this.speed * 0.45;
+            v.x = this.moveDir * this.scaleGameplaySpeed(this.speed * 0.45);
             this.rb.linearVelocity = v;
 
             if (this.moveDir !== 0 && this.facingDir !== this.moveDir) {
@@ -653,7 +653,7 @@ export default class SharedHeroController extends PlayerController {
             this.rb
         ) {
             const velocity = this.rb.linearVelocity;
-            velocity.y = this.jumpSpeed;
+            velocity.y = this.scaleGameplaySpeed(this.jumpSpeed);
             this.rb.linearVelocity = velocity;
             this.startJumpCornerCorrection();
             this.onGround = false;
@@ -671,7 +671,7 @@ export default class SharedHeroController extends PlayerController {
             // 二段跳
             this.airJumpUsed = true;
             const v = this.rb.linearVelocity;
-            v.y = this.jumpSpeed;
+            v.y = this.scaleGameplaySpeed(this.jumpSpeed);
             this.rb.linearVelocity = v;
             this.startJumpCornerCorrection();
             this.updateAnimation();
@@ -901,7 +901,7 @@ export default class SharedHeroController extends PlayerController {
     }
 
     private updateHorizontalVelocity(currentX: number, dt: number): number {
-        const targetX = this.moveDir * this.speed;
+        const targetX = this.moveDir * this.scaleGameplaySpeed(this.speed);
         if (!this.onGround) {
             return targetX;
         }
@@ -1344,9 +1344,9 @@ export default class SharedHeroController extends PlayerController {
         // ?迤?瑁?頝唾?嚗???buffer/coyote嚗??單???湧漲
         this.jumpBufferTimer = 0;
         this.coyoteTimer = 0;
-        this.rb.gravityScale = this.jumpGravityScale;
+        this.rb.gravityScale = this.scaleGameplayGravityScale(this.jumpGravityScale);
         const v = this.rb.linearVelocity;
-        v.y = this.jumpSpeed;
+        v.y = this.scaleGameplaySpeed(this.jumpSpeed);
         this.rb.linearVelocity = v;
         this.startJumpCornerCorrection();
         this.onGround = false;
@@ -1365,7 +1365,7 @@ export default class SharedHeroController extends PlayerController {
         this.playAnim(this.getExistingAnimClip(this.dashClip, this.animDash, 'roll', 'dash'), true);
 
         let v = this.rb.linearVelocity;
-        v.x = this.facingDir * this.dashSpeed;
+        v.x = this.facingDir * this.scaleGameplaySpeed(this.dashSpeed);
         v.y = 0;
         this.rb.linearVelocity = v;
 
@@ -1514,17 +1514,19 @@ export default class SharedHeroController extends PlayerController {
         }
 
         if (this.onGround || this.isDashing) {
-            this.rb.gravityScale = 1;
+            this.rb.gravityScale = this.scaleGameplayGravityScale(1);
             return;
         }
 
         // 蝛箔葉??嚗翰??憓?
         if (this.downPressed) {
-            this.rb.gravityScale = this.fastFallGravityScale;
+            this.rb.gravityScale = this.scaleGameplayGravityScale(this.fastFallGravityScale);
             return;
         }
 
-        this.rb.gravityScale = this.rb.linearVelocity.y > 0 ? this.jumpGravityScale : this.fallGravityScale;
+        this.rb.gravityScale = this.rb.linearVelocity.y > 0
+            ? this.scaleGameplayGravityScale(this.jumpGravityScale)
+            : this.scaleGameplayGravityScale(this.fallGravityScale);
     }
 
     hasAnimClip(animName: string): boolean {
