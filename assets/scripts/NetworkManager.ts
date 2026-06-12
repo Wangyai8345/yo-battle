@@ -519,7 +519,14 @@ export default class NetworkManager extends cc.Component {
 
 
     /** @usage called at Join Game Scene when player clicked join game button */
-    public async connectToServer(roomName: string, chosenCharacter: string, onMatchReady: Function) {
+    public async connectToServer(
+        roomName: string,
+        chosenCharacter: string,
+        playerName: string,
+        winCount: number,
+        loseCount: number,
+        onMatchReady: Function
+    ) {
         try{
             this.onMatchReadyCallback = onMatchReady;
             this.gameOverData = null;
@@ -527,7 +534,10 @@ export default class NetworkManager extends cc.Component {
 
             this.room = await this.client.joinOrCreate("my_room", { 
                 customRoomName: roomName,
-                chosenCharacter: chosenCharacter
+                chosenCharacter: chosenCharacter,
+                playerName: playerName,
+                winCount: winCount,
+                loseCount: loseCount
             });
 
             this.localSessionId = this.room.sessionId;

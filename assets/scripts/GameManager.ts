@@ -79,7 +79,9 @@ export default class GameManager extends cc.Component {
 
     public static instance: GameManager = null;
     private playerNodes: cc.Node[] = [];
+    private nodePools: Map<string, cc.NodePool> = new Map();
     private prefabNodes: Map<string, cc.Node> = new Map();
+
     private isReady: boolean = false;
     private localRoundStats: RoundStatData[] = [];
     private hasRecordedCurrentRound: boolean = false;
@@ -498,6 +500,25 @@ export default class GameManager extends cc.Component {
         if (this.gameOverPanel && this.gameOverPanel.node.active) return;
         cc.director.loadScene("join_room_scene");
     }
+
+
+    // getNodeFromPool(prefabName: string, prefab: cc.Prefab){
+    //     // Create new node pool
+    //     if(!this.nodePools.has(prefabName)){
+    //         this.nodePools.set(prefabName, new cc.NodePool());
+    //     }
+        
+    //     const pool = this.nodePools.get(prefabName);
+    //     let node: cc.Node = null;
+        
+    //     if(pool.size() > 0){
+    //         // 
+    //         node = pool.get();
+    //     }
+    //     else{
+    //         node = cc.instantiate(prefab);
+    //     }
+    // }
 
 
     handleSpawnPrefab(prefabName: string, infos: any) {

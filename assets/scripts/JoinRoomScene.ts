@@ -144,6 +144,9 @@ export default class JoinRoomScene extends cc.Component {
             await NetworkManager.instance.connectToServer(
                 this.roomNameInput.string.trim(),
                 this.getSelectedCharacter(),
+                this.getPlayerName(),
+                this.getWinCount(),
+                this.getLoseCount(),
                 () => {
                     this.matchReady = true;
                     this.quitButton.interactable = false;
@@ -273,5 +276,21 @@ export default class JoinRoomScene extends cc.Component {
         }
 
         return null;
+    }
+
+
+    getPlayerName(){
+        // TODO
+        return "";
+    }
+    
+    getWinCount(){
+        // TODO
+        return 0;
+    }
+    
+    getLoseCount(){
+        // TODO
+        return 0;
     }
 }   

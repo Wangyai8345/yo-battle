@@ -63,14 +63,14 @@ export class MyRoom extends Room {
 		 */
 
 		const player = new Player();
-
-		player.character = options.chosenCharacter;
-
+		
 		// 1 or 2
 		player.id = this.clients.length;
-
-		// TODO: change this to player name (it's "P1" or "P2" for now)
-		player.name = `P${player.id.toString()}`;
+		
+		player.character = options.chosenCharacter;
+		player.name = options.playerName;
+		player.winCount = options.winCount;
+		player.loseCount = options.loseCount;
 
 		console.log(client.sessionId, "joined!");
 

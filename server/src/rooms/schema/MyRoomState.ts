@@ -11,6 +11,9 @@ export class Player extends Schema {
     @type("number") heart: number = 3;
     @type("number") hp: number = 100;
 
+    @type("number") winCount: number = 0;
+    @type("number") loseCount: number = 0;
+
     @type("string") character: string;
 }
 
