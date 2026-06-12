@@ -308,6 +308,18 @@ export default class AccountScreen extends cc.Component {
         });
     }
 
+    // ── Logout ────────────────────────────────────────────
+
+    onLogoutClick() {
+        AudioManager.playEffect('click', 0.7);
+        const fb = (window as any).firebase;
+        if (!fb || typeof fb.auth !== 'function') return;
+        fb.auth().signOut().then(() => {
+            this._showView('choice');
+            this._setStatus('');
+        });
+    }
+
     // ── 成功後 ────────────────────────────────────────────
 
     private _onAccountSuccess(user: { email: string; username?: string }) {
