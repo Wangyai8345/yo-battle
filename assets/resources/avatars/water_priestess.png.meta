@@ -1,0 +1,38 @@
+{
+  "ver": "2.3.7",
+  "uuid": "cc262f94-9c53-41a2-ae36-c960cbef67f1",
+  "importer": "texture",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 64,
+  "height": 64,
+  "platformSettings": {},
+  "subMetas": {
+    "water_priestess": {
+      "ver": "1.0.6",
+      "uuid": "04d389df-5567-4683-8e88-4a17938823ea",
+      "importer": "sprite-frame",
+      "rawTextureUuid": "cc262f94-9c53-41a2-ae36-c960cbef67f1",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -1,
+      "offsetY": -2.5,
+      "trimX": 0,
+      "trimY": 5,
+      "width": 62,
+      "height": 59,
+      "rawWidth": 64,
+      "rawHeight": 64,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}

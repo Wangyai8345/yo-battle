@@ -1,0 +1,37 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "j_down",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.2,
+  "sample": 15,
+  "speed": 1,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "353f3c1f-ddf2-449a-845d-9d28d6319738"
+            }
+          },
+          {
+            "frame": 0.06666666666666667,
+            "value": {
+              "__uuid__": "d8631320-2e22-4365-a815-c642496a601e"
+            }
+          },
+          {
+            "frame": 0.13333333333333333,
+            "value": {
+              "__uuid__": "8b7afb95-6ffd-4951-b9d3-02bc74abdb6b"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}

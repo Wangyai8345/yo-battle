@@ -1,0 +1,49 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "diamond",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.625,
+  "sample": 8,
+  "speed": 1,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "518539cd-72c5-45e5-bb61-925ffe57108b"
+            }
+          },
+          {
+            "frame": 0.125,
+            "value": {
+              "__uuid__": "085d1aa2-6c3f-44e5-b9af-89b687236fe0"
+            }
+          },
+          {
+            "frame": 0.25,
+            "value": {
+              "__uuid__": "c9d3243a-4281-4c7a-b59b-d4a7506b4ad7"
+            }
+          },
+          {
+            "frame": 0.375,
+            "value": {
+              "__uuid__": "b40a40e6-f1a4-4819-80ff-16b9548c844a"
+            }
+          },
+          {
+            "frame": 0.5,
+            "value": {
+              "__uuid__": "2c472f38-f289-4cfb-83e6-cc1f635c4004"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}

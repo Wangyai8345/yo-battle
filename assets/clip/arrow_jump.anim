@@ -1,0 +1,39 @@
+{
+    "__type__":  "cc.AnimationClip",
+    "_name":  "arrow_jump",
+    "_objFlags":  0,
+    "_native":  "",
+    "_duration":  0.05,
+    "sample":  60,
+    "speed":  0.5,
+    "wrapMode":  1,
+    "curveData":  {
+                      "comps":  {
+                                    "cc.Sprite":  {
+                                                      "spriteFrame":  [
+                                                                          {
+                                                                              "frame":  0,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "8c7c9c72-7755-4411-9eee-0b83dc5a5a8b"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.016666666666666666,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "293dbb44-ccfb-454f-810c-4da7b158edc1"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.03333333333333333,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "656ecf34-3edd-4691-b4ca-2bf27e6db573"
+                                                                                        }
+                                                                          }
+                                                                      ]
+                                                  }
+                                }
+                  },
+    "events":  [
+
+               ]
+}

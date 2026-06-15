@@ -1,0 +1,38 @@
+{
+  "ver": "2.3.7",
+  "uuid": "1e811550-1767-4c5f-8e15-9526d648e3cd",
+  "importer": "texture",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "bilinear",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 64,
+  "height": 64,
+  "platformSettings": {},
+  "subMetas": {
+    "metal_bladekeeper": {
+      "ver": "1.0.6",
+      "uuid": "313ae696-8691-4025-9b4d-a35aae025a56",
+      "importer": "sprite-frame",
+      "rawTextureUuid": "1e811550-1767-4c5f-8e15-9526d648e3cd",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -1.5,
+      "offsetY": -3,
+      "trimX": 0,
+      "trimY": 6,
+      "width": 61,
+      "height": 58,
+      "rawWidth": 64,
+      "rawHeight": 64,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}

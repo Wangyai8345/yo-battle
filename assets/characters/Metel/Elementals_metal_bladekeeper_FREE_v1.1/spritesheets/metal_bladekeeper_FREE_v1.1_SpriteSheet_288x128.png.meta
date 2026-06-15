@@ -1,0 +1,38 @@
+{
+  "ver": "2.3.7",
+  "uuid": "4833192a-3383-49f2-a363-7daf3b22b8ac",
+  "importer": "texture",
+  "type": "sprite",
+  "wrapMode": "clamp",
+  "filterMode": "point",
+  "premultiplyAlpha": false,
+  "genMipmaps": false,
+  "packable": true,
+  "width": 5760,
+  "height": 2048,
+  "platformSettings": {},
+  "subMetas": {
+    "metal_bladekeeper_FREE_v1.1_SpriteSheet_288x128": {
+      "ver": "1.0.6",
+      "uuid": "bf29d829-e3c2-4bed-926a-b8943ee26bad",
+      "importer": "sprite-frame",
+      "rawTextureUuid": "4833192a-3383-49f2-a363-7daf3b22b8ac",
+      "trimType": "auto",
+      "trimThreshold": 1,
+      "rotated": false,
+      "offsetX": -2.5,
+      "offsetY": -42,
+      "trimX": 116,
+      "trimY": 85,
+      "width": 5523,
+      "height": 1962,
+      "rawWidth": 5760,
+      "rawHeight": 2048,
+      "borderTop": 0,
+      "borderBottom": 0,
+      "borderLeft": 0,
+      "borderRight": 0,
+      "subMetas": {}
+    }
+  }
+}

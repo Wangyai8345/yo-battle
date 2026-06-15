@@ -1,0 +1,39 @@
+{
+    "__type__":  "cc.AnimationClip",
+    "_name":  "wind_jumpup",
+    "_objFlags":  0,
+    "_native":  "",
+    "_duration":  0.05,
+    "sample":  60,
+    "speed":  1,
+    "wrapMode":  1,
+    "curveData":  {
+                      "comps":  {
+                                    "cc.Sprite":  {
+                                                      "spriteFrame":  [
+                                                                          {
+                                                                              "frame":  0,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "3b853896-e12e-4c3c-b089-37c3eff3d2df"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.016666666666666666,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "c273c896-ea7a-41fa-9645-92603c1aeff9"
+                                                                                        }
+                                                                          },
+                                                                          {
+                                                                              "frame":  0.03333333333333333,
+                                                                              "value":  {
+                                                                                            "__uuid__":  "12e96acc-a141-4eb6-bb3f-7d8f7bfb01d0"
+                                                                                        }
+                                                                          }
+                                                                      ]
+                                                  }
+                                }
+                  },
+    "events":  [
+
+               ]
+}

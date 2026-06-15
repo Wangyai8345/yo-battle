@@ -1,0 +1,41 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "metal_jumpup",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.05,
+  "sample": 60,
+  "speed": 1,
+  "wrapMode": 1,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "6c18cb0a-294d-4717-94c8-e1d84dc5e6c9"
+            }
+          },
+          {
+            "frame": 0.016666666666666666,
+            "value": {
+              "__uuid__": "9ef0285f-bae1-46c5-a232-6ab10272af21"
+            }
+          },
+          {
+            "frame": 0.03333333333333333,
+            "value": {
+              "__uuid__": "60c22b4a-cf84-42cc-825b-7bae25a20b4c"
+            }
+          }
+        ]
+            }
+    }
+  },
+  "events": []
+}
+
+
+
+

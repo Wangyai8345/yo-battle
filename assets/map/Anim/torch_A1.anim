@@ -1,0 +1,43 @@
+{
+  "__type__": "cc.AnimationClip",
+  "_name": "torch_A1",
+  "_objFlags": 0,
+  "_native": "",
+  "_duration": 0.5,
+  "sample": 8,
+  "speed": 1,
+  "wrapMode": 2,
+  "curveData": {
+    "comps": {
+      "cc.Sprite": {
+        "spriteFrame": [
+          {
+            "frame": 0,
+            "value": {
+              "__uuid__": "c8661aac-433a-4251-82c7-59436a3949fd"
+            }
+          },
+          {
+            "frame": 0.125,
+            "value": {
+              "__uuid__": "ef533968-5719-41c8-903a-6ba2ee3c1686"
+            }
+          },
+          {
+            "frame": 0.25,
+            "value": {
+              "__uuid__": "d63174c4-f515-44fe-8eb3-c25c20382a63"
+            }
+          },
+          {
+            "frame": 0.375,
+            "value": {
+              "__uuid__": "4ce2fb33-15e5-43b0-9258-b0f9fc914ac3"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "events": []
+}
